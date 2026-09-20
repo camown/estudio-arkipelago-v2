@@ -1,26 +1,83 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Light Theme Defaults (matching Image 3 minimal studio look) */
+  --bg-main: #F4F4F5;
+  --text-main: #18181B;
+  --surface-main: #FFFFFF;
+  --surface-hover: #F1F5F9;
+  --border-main: #E2E8F0;
+  --border-strong: #CBD5E1;
+  --muted-main: #64748B;
+  --accent-cyan: #0284C7; /* Refined cyan accent for light mode */
+  --accent-yellow: #D97706;
+  --accent-red: #DC2626;
+  --card-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.05), 0 1px 2px -1px rgb(0 0 0 / 0.05);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+.dark, [data-theme="dark"] {
+  /* Dark Theme (Night Mode) */
+  --bg-main: #0A0A0A;
+  --text-main: #FAFAFA;
+  --surface-main: #141414;
+  --surface-hover: #1E1E1E;
+  --border-main: #2A2A2A;
+  --border-strong: #444444;
+  --muted-main: #94A3B8;
+  --accent-cyan: #00FFE0;
+  --accent-yellow: #FFE000;
+  --accent-red: #FF3333;
+  --card-shadow: none;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* Custom UI colors override */
+[style*="--custom-bg"] {
+  --bg-main: var(--custom-bg) !important;
+}
+
+[style*="--custom-text"] {
+  --text-main: var(--custom-text) !important;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg-main);
+  color: var(--text-main);
+  font-family: var(--font-geist-mono), monospace;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+::selection {
+  background-color: var(--accent-cyan);
+  color: var(--bg-main);
+}
+
+/* Scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) var(--bg-main);
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-main);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted-main);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent-cyan);
+  outline-offset: 2px;
 }
