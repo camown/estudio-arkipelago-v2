@@ -20,6 +20,7 @@ import {
   X,
   PlusCircle,
   FolderKanban,
+  MessageSquare,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PRESET_ACCOUNTS, MOCK_PROJECTS } from '@/lib/constants';
@@ -47,9 +48,9 @@ const INITIAL_THREADS: ThreadChannel[] = [
     name: '[MT-2024] SCHEMATIC REVISION & MASSING',
     category: 'PROJECT_TOPIC',
     projectCode: 'MT-2024',
-    projectName: 'Makati Tower Phase 2',
+    projectName: 'Makati Commercial Tower',
     topicName: 'Schematic Revision & 3D Massing Review',
-    participants: ['TESTING3', 'ARCH. MARIA CRUZ'],
+    participants: ['Arch. Testing3', 'Arch. Testing2'],
   },
   {
     id: 'thread-002',
@@ -58,7 +59,7 @@ const INITIAL_THREADS: ThreadChannel[] = [
     projectCode: 'CV-2024',
     projectName: 'Casa Verde Residence',
     topicName: 'Italian Marble & Timber Veneer Selection',
-    participants: ['TESTING3', 'ENGR. ANA VILLANUEVA'],
+    participants: ['Arch. Testing3', 'Engr. Testing4'],
   },
   {
     id: 'thread-003',
@@ -67,21 +68,21 @@ const INITIAL_THREADS: ThreadChannel[] = [
     projectCode: 'BCP-2024',
     projectName: 'BGC Cultural Pavilion',
     topicName: 'Foundation Soil Test & City Permits',
-    participants: ['TESTING3', 'ARCH. DIEGO REYES'],
+    participants: ['Arch. Testing3', 'Arch. Testing1'],
   },
   {
     id: 'dm-001',
-    name: 'ARCH. MARIA CRUZ',
+    name: 'Arch. Testing2',
     category: 'DIRECT_MESSAGE',
-    topicName: 'Direct 1-on-1 Communication',
-    participants: ['TESTING3', 'ARCH. MARIA CRUZ'],
+    topicName: 'Direct 1-on-1 Testing Channel',
+    participants: ['Arch. Testing3', 'Arch. Testing2'],
   },
   {
     id: 'dm-002',
-    name: 'ENGR. ANA VILLANUEVA',
+    name: 'Engr. Testing4',
     category: 'DIRECT_MESSAGE',
-    topicName: 'Direct 1-on-1 Communication',
-    participants: ['TESTING3', 'ENGR. ANA VILLANUEVA'],
+    topicName: 'Direct 1-on-1 Structural Consultation',
+    participants: ['Arch. Testing3', 'Engr. Testing4'],
   },
 ];
 
@@ -100,31 +101,59 @@ export default function ChatPage() {
     'thread-001': [
       {
         id: 'msg-1',
-        sender: 'ARCH. MARIA CRUZ',
-        text: 'Hi! Have you checked the latest 3D massing model for Makati Tower floor 14-16?',
+        sender: 'Arch. Testing2',
+        text: 'Hi Arch. Testing3! Have you checked the latest testing chat for Makati Tower floor 14-16 massing model?',
         timestamp: '10:15 AM',
       },
       {
         id: 'msg-2',
-        sender: 'TESTING3',
-        text: 'Yes! The cantilever looks great. I am finishing the schematic drawings set for review.',
+        sender: 'Arch. Testing3',
+        text: 'Yes Arch. Testing2! Testing chat: The cantilever looks great. I am finishing the schematic drawings set for review.',
         timestamp: '10:20 AM',
+      },
+      {
+        id: 'msg-3',
+        sender: 'Arch. Testing1',
+        text: 'Testing chat report: Great progress team. Please make sure all PDF revisions are ready for tomorrow briefing.',
+        timestamp: '10:35 AM',
       },
     ],
     'thread-002': [
       {
-        id: 'msg-3',
-        sender: 'ENGR. ANA VILLANUEVA',
-        text: 'For Casa Verde, we received 3 marble samples for the foyer. Will upload specs.',
+        id: 'msg-4',
+        sender: 'Engr. Testing4',
+        text: 'Testing chat: For Casa Verde, we received 3 marble samples for the foyer. Will upload specs.',
         timestamp: '09:45 AM',
+      },
+      {
+        id: 'msg-5',
+        sender: 'Arch. Testing3',
+        text: 'Testing chat: Received Engr. Testing4. Let us schedule a material board review with Arch. Testing1.',
+        timestamp: '09:50 AM',
+      },
+    ],
+    'thread-003': [
+      {
+        id: 'msg-6',
+        sender: 'Engr. Testing4',
+        text: 'Testing chat: Foundation soil test and city permits are ready for submission.',
+        timestamp: '08:30 AM',
       },
     ],
     'dm-001': [
       {
-        id: 'msg-4',
-        sender: 'ARCH. MARIA CRUZ',
-        text: 'Please review the HR overtime approval when you get a chance.',
+        id: 'msg-7',
+        sender: 'Arch. Testing2',
+        text: 'Testing chat: Please review the HR overtime approval when you get a chance.',
         timestamp: '11:00 AM',
+      },
+    ],
+    'dm-002': [
+      {
+        id: 'msg-8',
+        sender: 'Engr. Testing4',
+        text: 'Testing chat: Direct chat channel active for structural coordination.',
+        timestamp: '11:30 AM',
       },
     ],
   });
@@ -138,7 +167,7 @@ export default function ChatPage() {
   const [isTopicModalOpen, setIsTopicModalOpen] = useState(false);
   const [newTopicName, setNewTopicName] = useState('');
   const [newTopicProject, setNewTopicProject] = useState(MOCK_PROJECTS[0]?.code || 'GENERAL');
-  const [newTopicParticipant, setNewTopicParticipant] = useState(PRESET_ACCOUNTS[1]?.name || 'ARCH. MARIA CRUZ');
+  const [newTopicParticipant, setNewTopicParticipant] = useState(PRESET_ACCOUNTS[1]?.name || 'Arch. Testing2');
   const [initialNote, setInitialNote] = useState('');
 
   const currentThread = threads.find((t) => t.id === selectedThreadId) || threads[0];
@@ -154,7 +183,7 @@ export default function ChatPage() {
     if (!chatInput.trim()) return;
     const newMsg: ChatMessage = {
       id: 'msg-' + Date.now(),
-      sender: user?.name ? user.name.toUpperCase() : 'TESTING3',
+      sender: user?.name ? user.name : 'Arch. Testing3',
       text: chatInput.trim(),
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
@@ -178,28 +207,26 @@ export default function ChatPage() {
 
     const matchedProject = MOCK_PROJECTS.find((p) => p.code === newTopicProject);
     const newId = 'thread-' + Date.now();
-
     const createdThread: ThreadChannel = {
       id: newId,
-      name: `[${newTopicProject}] ${newTopicName.trim().toUpperCase()}`,
+      name: `[${newTopicProject}] ${newTopicName.toUpperCase()}`,
       category: 'PROJECT_TOPIC',
       projectCode: newTopicProject,
       projectName: matchedProject?.name || 'Studio Project',
-      topicName: newTopicName.trim(),
-      participants: [user?.name?.toUpperCase() || 'TESTING3', newTopicParticipant.toUpperCase()],
+      topicName: newTopicName,
+      participants: [user?.name || 'Arch. Testing3', newTopicParticipant],
     };
 
     setThreads((prev) => [createdThread, ...prev]);
 
-    // Initial message if typed
     if (initialNote.trim()) {
       setMessages((prev) => ({
         ...prev,
         [newId]: [
           {
             id: 'msg-init-' + Date.now(),
-            sender: user?.name ? user.name.toUpperCase() : 'TESTING3',
-            text: initialNote.trim(),
+            sender: user?.name || 'Arch. Testing3',
+            text: `[TOPIC INITIALIZED] ${initialNote.trim()}`,
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           },
         ],
@@ -208,14 +235,8 @@ export default function ChatPage() {
 
     setSelectedThreadId(newId);
     setIsTopicModalOpen(false);
-
-    // Reset Form
     setNewTopicName('');
     setInitialNote('');
-  };
-
-  const handleClearMessages = () => {
-    setMessages((prev) => ({ ...prev, [currentThread.id]: [] }));
   };
 
   const formatDate = (isoString: string) => {
@@ -235,12 +256,112 @@ export default function ChatPage() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-bg-main text-text-main font-mono transition-colors pb-12">
-      {/* Top Navigation Tabs */}
+    <div className="flex flex-col h-full bg-bg-main text-text-main font-mono transition-colors pb-8 relative">
+      {/* NEW THREAD / TOPIC MODAL */}
+      {isTopicModalOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-surface-main border border-border-main rounded-2xl w-full max-w-lg p-6 space-y-6 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-border-main pb-4">
+              <div className="flex items-center gap-2">
+                <Hash className="w-5 h-5 text-slate-800 dark:text-slate-200" />
+                <h2 className="font-extrabold text-sm uppercase tracking-wider text-text-main">
+                  START NEW TOPIC THREAD
+                </h2>
+              </div>
+              <button
+                onClick={() => setIsTopicModalOpen(false)}
+                className="p-1 rounded-lg hover:bg-surface-hover text-muted-main hover:text-text-main"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-muted-main mb-1.5">
+                  LINK TO PROJECT
+                </label>
+                <select
+                  value={newTopicProject}
+                  onChange={(e) => setNewTopicProject(e.target.value)}
+                  className="w-full bg-surface-hover border border-border-main rounded-xl px-4 py-3 text-xs font-mono text-text-main focus:outline-none focus:border-text-main uppercase"
+                >
+                  {MOCK_PROJECTS.map((p) => (
+                    <option key={p.id} value={p.code}>
+                      [{p.code}] {p.name}
+                    </option>
+                  ))}
+                  <option value="GENERAL">[GENERAL] STUDIO GENERAL TOPICS</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-muted-main mb-1.5">
+                  TOPIC NAME / DISCUSSION TITLE *
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. 3D Massing Review, Material Board Selection..."
+                  value={newTopicName}
+                  onChange={(e) => setNewTopicName(e.target.value)}
+                  className="w-full bg-surface-hover border border-border-main rounded-xl px-4 py-3 text-xs font-mono text-text-main focus:outline-none focus:border-text-main placeholder:text-muted-main/60 uppercase"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-muted-main mb-1.5">
+                  INVITE PARTICIPANT / MEMBER
+                </label>
+                <select
+                  value={newTopicParticipant}
+                  onChange={(e) => setNewTopicParticipant(e.target.value)}
+                  className="w-full bg-surface-hover border border-border-main rounded-xl px-4 py-3 text-xs font-mono text-text-main focus:outline-none focus:border-text-main uppercase"
+                >
+                  {PRESET_ACCOUNTS.map((acc) => (
+                    <option key={acc.email} value={acc.name}>
+                      {acc.name} ({acc.role.replace('_', ' ')})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-muted-main mb-1.5">
+                  INITIAL NOTE / CONTEXT MESSAGE (OPTIONAL)
+                </label>
+                <textarea
+                  rows={3}
+                  placeholder="Provide background context or initial testing note for this discussion topic..."
+                  value={initialNote}
+                  onChange={(e) => setInitialNote(e.target.value)}
+                  className="w-full bg-surface-hover border border-border-main rounded-xl p-3 text-xs font-mono text-text-main focus:outline-none focus:border-text-main placeholder:text-muted-main/60"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                onClick={() => setIsTopicModalOpen(false)}
+                className="px-5 py-2.5 rounded-xl border border-border-main text-xs font-bold uppercase tracking-wider hover:bg-surface-hover transition-colors"
+              >
+                CANCEL
+              </button>
+              <button
+                onClick={handleCreateTopicThread}
+                className="px-6 py-2.5 rounded-xl bg-black text-white dark:bg-white dark:text-black text-xs font-extrabold uppercase tracking-wider hover:opacity-90 transition-opacity shadow-md"
+              >
+                CREATE THREAD
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Top Main Tabs Header */}
       <div className="flex border-b border-border-main mb-4">
         <button
           className={cn(
-            'px-6 py-4 uppercase font-extrabold text-xs tracking-wider border-b-2 -mb-[2px] transition-colors',
+            'px-6 py-3.5 uppercase font-extrabold text-xs tracking-wider border-b-2 -mb-[2px] transition-colors',
             activeTab === 'wall'
               ? 'border-text-main text-text-main font-extrabold'
               : 'border-transparent text-muted-main hover:text-text-main'
@@ -251,7 +372,7 @@ export default function ChatPage() {
         </button>
         <button
           className={cn(
-            'px-6 py-4 uppercase font-extrabold text-xs tracking-wider border-b-2 -mb-[2px] transition-colors flex items-center gap-2',
+            'px-6 py-3.5 uppercase font-extrabold text-xs tracking-wider border-b-2 -mb-[2px] transition-colors flex items-center gap-2',
             activeTab === 'chat'
               ? 'border-text-main text-text-main font-extrabold'
               : 'border-transparent text-muted-main hover:text-text-main'
@@ -259,7 +380,7 @@ export default function ChatPage() {
           onClick={() => setActiveTab('chat')}
         >
           <span>CHAT & THREADS</span>
-          <span className="bg-accent-cyan/10 border border-accent-cyan/40 text-accent-cyan px-2 py-0.5 rounded text-[10px]">
+          <span className="bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 px-2 py-0.5 rounded-full text-[10px] font-bold border border-slate-300 dark:border-slate-700">
             {threads.length} TOPICS
           </span>
         </button>
@@ -270,7 +391,7 @@ export default function ChatPage() {
         {activeTab === 'wall' && (
           <div className="max-w-2xl mx-auto space-y-8 pt-4">
             {/* Post Composer */}
-            <div className="bg-surface-main border border-border-main rounded-xl p-5 flex flex-col gap-4 shadow-sm">
+            <div className="bg-surface-main border border-border-main rounded-2xl p-5 flex flex-col gap-4 shadow-sm">
               <textarea
                 className="w-full bg-transparent border-none outline-none resize-none min-h-[120px] font-mono text-text-main placeholder:text-muted-main text-sm"
                 placeholder="Share something with estudio..."
@@ -293,7 +414,7 @@ export default function ChatPage() {
                   </button>
                 </div>
                 <button
-                  className="bg-black text-white dark:bg-white dark:text-black px-5 py-2.5 rounded-lg uppercase font-bold text-xs tracking-wider hover:opacity-90 transition-opacity"
+                  className="bg-black text-white dark:bg-white dark:text-black px-5 py-2.5 rounded-xl uppercase font-bold text-xs tracking-wider hover:opacity-90 transition-opacity shadow-sm"
                   onClick={handlePost}
                 >
                   POST WALL
@@ -306,7 +427,7 @@ export default function ChatPage() {
               {posts.map((post) => (
                 <div
                   key={post.id}
-                  className="bg-surface-main border border-border-main rounded-xl p-6 shadow-sm space-y-4"
+                  className="bg-surface-main border border-border-main rounded-2xl p-6 shadow-sm space-y-4"
                 >
                   <div className="flex items-center gap-4">
                     <div className="w-10 h-10 rounded-full bg-surface-hover border border-border-strong flex items-center justify-center font-bold uppercase text-sm text-text-main">
@@ -319,7 +440,7 @@ export default function ChatPage() {
                           {formatDate(post.createdAt)}
                         </span>
                       </div>
-                      <div className="text-[10px] font-bold text-accent-cyan uppercase tracking-wider">
+                      <div className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
                         {post.authorRole?.replace('_', ' ')}
                       </div>
                     </div>
@@ -335,7 +456,7 @@ export default function ChatPage() {
 
         {/* CHAT & TOPIC THREADS VIEW */}
         {activeTab === 'chat' && (
-          <div className="flex flex-col md:flex-row h-[calc(100vh-13rem)] min-h-[500px] border border-border-main bg-surface-main rounded-xl overflow-hidden shadow-sm">
+          <div className="flex flex-col md:flex-row h-[calc(100vh-13rem)] min-h-[500px] border border-border-main bg-surface-main rounded-2xl overflow-hidden shadow-sm">
             {/* LEFT SIDEBAR: THREADS & TOPICS */}
             <div className="w-full md:w-80 border-r border-border-main bg-surface-main flex flex-col shrink-0">
               {/* Search & Action Controls Header */}
@@ -347,12 +468,12 @@ export default function ChatPage() {
                     placeholder="Search threads or topics..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full bg-surface-hover/70 border border-border-main rounded-md py-1.5 pl-8 pr-3 text-xs font-mono text-text-main focus:outline-none focus:border-text-main placeholder:text-muted-main/60"
+                    className="w-full bg-surface-hover border border-border-main rounded-xl py-2 pl-8 pr-3 text-xs font-mono text-text-main focus:outline-none focus:border-text-main placeholder:text-muted-main/60"
                   />
                 </div>
                 <button
                   onClick={() => setIsTopicModalOpen(true)}
-                  className="px-3 py-1.5 bg-black text-white dark:bg-white dark:text-black rounded-md flex items-center gap-1 hover:opacity-90 transition-opacity text-xs font-bold uppercase tracking-wider shrink-0"
+                  className="px-3.5 py-2 bg-black text-white dark:bg-white dark:text-black rounded-xl flex items-center gap-1 hover:opacity-90 transition-opacity text-xs font-bold uppercase tracking-wider shrink-0 shadow-xs"
                   title="Create New Topic Thread"
                 >
                   <Plus className="w-3.5 h-3.5" />
@@ -361,13 +482,13 @@ export default function ChatPage() {
               </div>
 
               {/* Subheader: START TOPIC THREAD quick action */}
-              <div className="p-3 border-b border-border-main/50 bg-surface-hover/30 flex items-center justify-between">
-                <span className="text-[10px] font-extrabold uppercase tracking-wider text-muted-main">
+              <div className="p-3 border-b border-border-main bg-surface-hover/40 flex items-center justify-between">
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-300">
                   STUDIO WORKSPACE THREADS
                 </span>
                 <button
                   onClick={() => setIsTopicModalOpen(true)}
-                  className="text-[10px] font-bold text-accent-cyan uppercase hover:underline flex items-center gap-1"
+                  className="text-[10px] font-bold text-slate-900 dark:text-slate-100 uppercase hover:underline flex items-center gap-1"
                 >
                   <PlusCircle className="w-3 h-3" />
                   <span>+ NEW TOPIC</span>
@@ -376,19 +497,19 @@ export default function ChatPage() {
 
               {/* Threads & Channels List Accordion */}
               <div className="flex-1 overflow-y-auto divide-y divide-border-main/30">
-                {/* 1. PROJECT TOPIC THREADS SECTION */}
+                {/* 1. PROJECT TOPIC THREADS SECTION (Refined Corporate Slate Colors) */}
                 <div>
                   <button
                     onClick={() => setIsProjectThreadsOpen(!isProjectThreadsOpen)}
-                    className="w-full px-4 py-2 flex items-center justify-between text-[10px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 uppercase tracking-wider border-b border-border-main/30"
+                    className="w-full px-4 py-2.5 flex items-center justify-between text-[10px] font-extrabold text-slate-800 dark:text-slate-200 bg-slate-100 dark:bg-slate-800/60 uppercase tracking-wider border-b border-border-main/30"
                   >
                     <span className="flex items-center gap-1.5">
-                      <FolderKanban className="w-3.5 h-3.5" />
+                      <FolderKanban className="w-3.5 h-3.5 text-slate-700 dark:text-slate-300" />
                       PROJECT TOPIC THREADS ({threads.filter((t) => t.category === 'PROJECT_TOPIC').length})
                     </span>
                     <ChevronDown
                       className={cn(
-                        'w-3.5 h-3.5 transition-transform',
+                        'w-3.5 h-3.5 transition-transform text-slate-600 dark:text-slate-400',
                         isProjectThreadsOpen ? 'rotate-0' : '-rotate-90'
                       )}
                     />
@@ -415,16 +536,16 @@ export default function ChatPage() {
                               className={cn(
                                 'p-3.5 flex items-start gap-3 cursor-pointer transition-all border-l-4',
                                 isSelected
-                                  ? 'bg-surface-hover border-l-black dark:border-l-white shadow-2xs'
+                                  ? 'bg-surface-hover border-l-black dark:border-l-white shadow-2xs font-semibold'
                                   : 'hover:bg-surface-hover/50 border-l-transparent'
                               )}
                             >
-                              <div className="w-8 h-8 rounded-lg bg-emerald-500/20 border border-emerald-500/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
+                              <div className="w-8 h-8 rounded-lg bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 flex items-center justify-center shrink-0 mt-0.5">
                                 <Hash className="w-4 h-4" />
                               </div>
                               <div className="overflow-hidden flex-1 space-y-0.5">
                                 <div className="flex items-center justify-between">
-                                  <span className="text-[9px] font-extrabold px-1.5 py-0.5 bg-surface-hover border border-border-main text-muted-main rounded">
+                                  <span className="text-[9px] font-extrabold px-1.5 py-0.5 bg-slate-900 text-white dark:bg-slate-100 dark:text-black rounded">
                                     {thread.projectCode || 'PROJECT'}
                                   </span>
                                   <span className="text-[9px] font-bold text-muted-main">
@@ -434,7 +555,7 @@ export default function ChatPage() {
                                 <div className="text-xs font-extrabold uppercase truncate text-text-main">
                                   {thread.name}
                                 </div>
-                                <div className="text-[10px] text-muted-main truncate">
+                                <div className="text-[10px] text-muted-main truncate font-sans">
                                   {lastMsg ? `${lastMsg.sender}: ${lastMsg.text}` : thread.topicName || 'Topic room ready'}
                                 </div>
                               </div>
@@ -449,15 +570,15 @@ export default function ChatPage() {
                 <div>
                   <button
                     onClick={() => setIsDirectMessagesOpen(!isDirectMessagesOpen)}
-                    className="w-full px-4 py-2 flex items-center justify-between text-[10px] font-bold text-cyan-700 dark:text-cyan-400 bg-cyan-500/10 uppercase tracking-wider border-b border-border-main/30"
+                    className="w-full px-4 py-2.5 flex items-center justify-between text-[10px] font-extrabold text-slate-800 dark:text-slate-200 bg-slate-100 dark:bg-slate-800/60 uppercase tracking-wider border-b border-border-main/30"
                   >
                     <span className="flex items-center gap-1.5">
-                      <Users className="w-3.5 h-3.5" />
+                      <Users className="w-3.5 h-3.5 text-slate-700 dark:text-slate-300" />
                       DIRECT MESSAGES ({threads.filter((t) => t.category === 'DIRECT_MESSAGE').length})
                     </span>
                     <ChevronDown
                       className={cn(
-                        'w-3.5 h-3.5 transition-transform',
+                        'w-3.5 h-3.5 transition-transform text-slate-600 dark:text-slate-400',
                         isDirectMessagesOpen ? 'rotate-0' : '-rotate-90'
                       )}
                     />
@@ -469,7 +590,8 @@ export default function ChatPage() {
                         .filter(
                           (t) =>
                             t.category === 'DIRECT_MESSAGE' &&
-                            t.name.toLowerCase().includes(searchQuery.toLowerCase())
+                            (t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                              (t.topicName && t.topicName.toLowerCase().includes(searchQuery.toLowerCase())))
                         )
                         .map((thread) => {
                           const isSelected = selectedThreadId === thread.id;
@@ -481,23 +603,23 @@ export default function ChatPage() {
                               key={thread.id}
                               onClick={() => setSelectedThreadId(thread.id)}
                               className={cn(
-                                'p-3.5 flex items-center gap-3 cursor-pointer transition-all border-l-4',
+                                'p-3.5 flex items-start gap-3 cursor-pointer transition-all border-l-4',
                                 isSelected
-                                  ? 'bg-surface-hover border-l-black dark:border-l-white shadow-2xs'
+                                  ? 'bg-surface-hover border-l-black dark:border-l-white shadow-2xs font-semibold'
                                   : 'hover:bg-surface-hover/50 border-l-transparent'
                               )}
                             >
-                              <div className="w-9 h-9 rounded-full bg-surface-hover border border-border-strong flex items-center justify-center shrink-0 font-bold uppercase text-xs text-text-main">
+                              <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 flex items-center justify-center shrink-0 mt-0.5 font-bold text-xs">
                                 {thread.name.charAt(0)}
                               </div>
-                              <div className="overflow-hidden flex-1">
-                                <div className="text-[10px] font-bold text-muted-main uppercase tracking-wider">
-                                  1-ON-1 CHAT
+                              <div className="overflow-hidden flex-1 space-y-0.5">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-[9px] font-bold text-muted-main uppercase">1-ON-1 CHAT</span>
                                 </div>
                                 <div className="text-xs font-extrabold uppercase truncate text-text-main">
                                   {thread.name}
                                 </div>
-                                <div className="text-[10px] text-muted-main truncate">
+                                <div className="text-[10px] text-muted-main truncate font-sans">
                                   {lastMsg ? lastMsg.text : 'Direct chat active'}
                                 </div>
                               </div>
@@ -510,116 +632,112 @@ export default function ChatPage() {
               </div>
             </div>
 
-            {/* MAIN CHAT THREAD CONVERSATION PANEL */}
+            {/* RIGHT MAIN PANEL: ACTIVE THREAD CHAT CONVERSATION */}
             <div className="flex-1 flex flex-col bg-surface-main">
-              {/* Active Thread Header Banner (Displays Topic, Project & Participants) */}
-              <div className="p-4 border-b border-border-main bg-surface-main flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    {currentThread.projectCode && (
-                      <span className="px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/40 text-emerald-600 dark:text-emerald-400 rounded text-[10px] font-extrabold uppercase tracking-wider">
-                        PROJECT: {currentThread.projectCode}
-                      </span>
+              {/* Header Bar for Active Thread */}
+              <div className="p-4 border-b border-border-main flex items-center justify-between bg-surface-hover/30">
+                <div className="flex items-center gap-3 overflow-hidden">
+                  <div className="w-9 h-9 rounded-xl bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 flex items-center justify-center shrink-0 font-bold text-sm">
+                    {currentThread.category === 'DIRECT_MESSAGE' ? (
+                      currentThread.name.charAt(0)
+                    ) : (
+                      <Hash className="w-4 h-4" />
                     )}
-                    <span className="px-2 py-0.5 bg-surface-hover border border-border-main text-muted-main rounded text-[10px] font-bold uppercase tracking-wider">
-                      {currentThread.category.replace('_', ' ')}
-                    </span>
                   </div>
-                  <h2 className="text-sm sm:text-base font-extrabold uppercase tracking-wider text-text-main flex items-center gap-2">
-                    <Hash className="w-4 h-4 text-accent-cyan" />
-                    <span>{currentThread.name}</span>
-                  </h2>
-                  {currentThread.topicName && (
-                    <p className="text-xs text-muted-main font-sans flex items-center gap-1.5">
-                      <Tag className="w-3 h-3 text-muted-main shrink-0" />
-                      <span>TOPIC: {currentThread.topicName}</span>
-                    </p>
-                  )}
+                  <div className="overflow-hidden">
+                    <div className="flex items-center gap-2">
+                      {currentThread.projectCode && (
+                        <span className="text-[9px] font-extrabold px-1.5 py-0.5 bg-slate-900 text-white dark:bg-slate-100 dark:text-black rounded uppercase">
+                          PROJECT: {currentThread.projectCode}
+                        </span>
+                      )}
+                      <span className="text-[10px] font-bold text-muted-main uppercase">
+                        {currentThread.category.replace('_', ' ')}
+                      </span>
+                    </div>
+                    <h2 className="text-sm font-extrabold uppercase tracking-wider text-text-main truncate mt-0.5">
+                      {currentThread.name}
+                    </h2>
+                    {currentThread.topicName && (
+                      <p className="text-[10px] text-muted-main flex items-center gap-1 uppercase truncate font-sans">
+                        <Tag className="w-3 h-3 text-muted-main" />
+                        <span>TOPIC: {currentThread.topicName}</span>
+                      </p>
+                    )}
+                  </div>
                 </div>
 
-                <div className="flex items-center gap-3">
-                  <div className="text-[10px] text-right font-bold text-muted-main uppercase hidden lg:block">
-                    <div>TOPIC PARTICIPANTS:</div>
-                    <div className="text-text-main font-mono">{currentThread.participants.join(', ')}</div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button className="p-2 text-muted-main hover:text-text-main border border-border-main rounded-lg">
-                      <MoreVertical className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={handleClearMessages}
-                      className="p-2 text-muted-main hover:text-accent-red border border-border-main rounded-lg transition-colors"
-                      title="Clear Thread Messages"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={() => setIsTopicModalOpen(true)}
+                    className="hidden sm:flex items-center gap-1 px-3 py-1.5 border border-border-main hover:bg-surface-hover rounded-xl text-xs font-bold uppercase tracking-wider text-text-main transition-colors"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>NEW TOPIC</span>
+                  </button>
+                  <button className="p-2 rounded-xl hover:bg-surface-hover text-muted-main hover:text-text-main">
+                    <MoreVertical className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
 
-              {/* Chat Messages Body */}
-              <div className="flex-1 overflow-y-auto p-6 space-y-4">
-                {activeMessages.length === 0 ? (
-                  <div className="h-full flex flex-col items-center justify-center text-center space-y-2 text-muted-main">
-                    <Hash className="w-10 h-10 opacity-30" />
-                    <p className="text-xs uppercase tracking-widest italic font-bold">
-                      NO MESSAGES YET IN THIS TOPIC THREAD
-                    </p>
-                    <p className="text-[11px] max-w-sm">
-                      Start the topic conversation by sending a message below with your team.
+              {/* Chat Messages Stream */}
+              <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-surface-main">
+                {activeMessages.map((msg) => {
+                  const isMe = msg.sender === (user?.name || 'Arch. Testing3') || msg.sender === 'Arch. Testing3';
+
+                  return (
+                    <div
+                      key={msg.id}
+                      className={cn('flex flex-col max-w-xl space-y-1', isMe ? 'ml-auto items-end' : 'mr-auto items-start')}
+                    >
+                      <div className="flex items-center gap-2 text-[10px] font-bold uppercase text-muted-main px-1">
+                        <span>{msg.sender}</span>
+                        <span>{msg.timestamp}</span>
+                      </div>
+                      <div
+                        className={cn(
+                          'p-4 rounded-2xl text-xs font-sans leading-relaxed shadow-2xs border',
+                          isMe
+                            ? 'bg-black text-white dark:bg-white dark:text-black border-black dark:border-white font-medium'
+                            : 'bg-surface-hover text-text-main border-border-main'
+                        )}
+                      >
+                        {msg.text}
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {activeMessages.length === 0 && (
+                  <div className="h-full flex flex-col items-center justify-center text-center p-8 space-y-2">
+                    <MessageSquare className="w-10 h-10 text-muted-main/40" />
+                    <p className="text-xs text-muted-main uppercase font-mono tracking-wider">
+                      THIS TOPIC THREAD IS READY FOR DISCUSSION. SEND A TESTING CHAT MESSAGE BELOW.
                     </p>
                   </div>
-                ) : (
-                  activeMessages.map((msg) => {
-                    const isSelf = msg.sender === (user?.name ? user.name.toUpperCase() : 'TESTING3');
-                    return (
-                      <div
-                        key={msg.id}
-                        className={cn('flex flex-col max-w-lg', isSelf ? 'ml-auto items-end' : 'mr-auto items-start')}
-                      >
-                        <div className="flex items-center gap-2 text-[10px] text-muted-main uppercase font-bold mb-1">
-                          <span>{msg.sender}</span>
-                          <span>{msg.timestamp}</span>
-                        </div>
-                        <div
-                          className={cn(
-                            'p-3.5 rounded-xl text-xs leading-relaxed font-sans shadow-xs',
-                            isSelf
-                              ? 'bg-black text-white dark:bg-white dark:text-black font-semibold'
-                              : 'bg-surface-hover border border-border-main text-text-main'
-                          )}
-                        >
-                          {msg.text}
-                        </div>
-                      </div>
-                    );
-                  })
                 )}
               </div>
 
-              {/* Input Footer Bar */}
-              <div className="p-4 border-t border-border-main flex items-center gap-3 bg-surface-main">
-                <button className="p-2.5 border border-border-main hover:bg-surface-hover text-muted-main hover:text-text-main rounded-lg transition-colors">
+              {/* Chat Input Field Bar */}
+              <div className="p-4 border-t border-border-main bg-surface-main flex items-center gap-3">
+                <button className="p-2 rounded-xl border border-border-main hover:bg-surface-hover text-muted-main hover:text-text-main transition-colors shrink-0">
                   <Paperclip className="w-4 h-4" />
-                </button>
-                <button className="px-3.5 py-2.5 border border-border-main hover:bg-surface-hover text-xs font-bold uppercase tracking-wider text-muted-main hover:text-text-main rounded-lg transition-colors flex items-center gap-1.5">
-                  <Smile className="w-4 h-4" />
-                  <span>STICKER</span>
                 </button>
 
                 <input
                   type="text"
+                  placeholder={`Send testing chat message to ${currentThread.name}...`}
                   value={chatInput}
                   onChange={(e) => setChatInput(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  placeholder={`Send message in ${currentThread.name}...`}
-                  className="flex-1 bg-surface-hover/40 border border-border-main rounded-lg py-2.5 px-4 font-mono text-xs text-text-main focus:outline-none focus:border-text-main placeholder:text-muted-main/60"
+                  onKeyDown={handleKeyPress}
+                  className="flex-1 bg-surface-hover border border-border-main rounded-xl px-4 py-3 text-xs font-mono text-text-main focus:outline-none focus:border-text-main placeholder:text-muted-main/60"
                 />
 
                 <button
                   onClick={handleSendMessage}
-                  className="w-10 h-10 bg-black text-white dark:bg-white dark:text-black rounded-lg flex items-center justify-center hover:opacity-90 transition-opacity shrink-0 shadow-sm"
-                  title="Send Message"
+                  disabled={!chatInput.trim()}
+                  className="p-3 bg-black text-white dark:bg-white dark:text-black rounded-xl hover:opacity-90 disabled:opacity-40 transition-opacity shrink-0 shadow-xs"
                 >
                   <Send className="w-4 h-4" />
                 </button>
@@ -628,110 +746,6 @@ export default function ChatPage() {
           </div>
         )}
       </div>
-
-      {/* NEW TOPIC THREAD MODAL */}
-      {isTopicModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-md p-4 font-mono">
-          <div className="bg-[#262626] border border-[#3F3F46] w-full max-w-lg rounded-2xl shadow-2xl p-7 space-y-5 text-white">
-            <div className="flex items-center justify-between border-b border-[#3F3F46] pb-3">
-              <div className="flex items-center gap-2">
-                <Hash className="w-4 h-4 text-cyan-400" />
-                <h3 className="text-sm font-bold uppercase tracking-widest text-[#E4E4E7]">
-                  START NEW TOPIC THREAD
-                </h3>
-              </div>
-              <button
-                onClick={() => setIsTopicModalOpen(false)}
-                className="p-1 text-[#A1A1AA] hover:text-white transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className="text-[10px] font-bold text-[#A1A1AA] uppercase tracking-wider block mb-1">
-                  TOPIC / THREAD TITLE *
-                </label>
-                <input
-                  type="text"
-                  value={newTopicName}
-                  onChange={(e) => setNewTopicName(e.target.value)}
-                  placeholder="E.G. FACADE GLASS SPECIFICATIONS"
-                  className="w-full bg-[#18181B] border-2 border-[#0284C7] p-3 text-xs font-mono text-[#FAFAFA] rounded-xl focus:outline-none uppercase placeholder-[#52525B]"
-                  autoFocus
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="text-[10px] font-bold text-[#A1A1AA] uppercase tracking-wider block mb-1">
-                    TAG PROJECT
-                  </label>
-                  <select
-                    value={newTopicProject}
-                    onChange={(e) => setNewTopicProject(e.target.value)}
-                    className="w-full bg-[#18181B] border border-[#3F3F46] focus:border-[#0284C7] p-3 text-xs font-mono text-[#FAFAFA] rounded-xl focus:outline-none uppercase"
-                  >
-                    {MOCK_PROJECTS.map((p) => (
-                      <option key={p.id} value={p.code}>
-                        {p.code} - {p.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="text-[10px] font-bold text-[#A1A1AA] uppercase tracking-wider block mb-1">
-                    CONNECT WITH USER *
-                  </label>
-                  <select
-                    value={newTopicParticipant}
-                    onChange={(e) => setNewTopicParticipant(e.target.value)}
-                    className="w-full bg-[#18181B] border border-[#3F3F46] focus:border-[#0284C7] p-3 text-xs font-mono text-[#FAFAFA] rounded-xl focus:outline-none uppercase"
-                  >
-                    {PRESET_ACCOUNTS.map((acc) => (
-                      <option key={acc.email} value={acc.name.toUpperCase()}>
-                        {acc.name.toUpperCase()} ({acc.role.replace('_', ' ').toUpperCase()})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="text-[10px] font-bold text-[#A1A1AA] uppercase tracking-wider block mb-1">
-                  INITIAL TOPIC NOTE / MESSAGE (OPTIONAL)
-                </label>
-                <textarea
-                  rows={3}
-                  value={initialNote}
-                  onChange={(e) => setInitialNote(e.target.value)}
-                  placeholder="Share context or questions for this topic thread..."
-                  className="w-full bg-[#18181B] border border-[#3F3F46] focus:border-[#0284C7] p-3 text-xs font-mono text-[#FAFAFA] rounded-xl focus:outline-none resize-none placeholder-[#52525B]"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3 pt-2">
-              <button
-                onClick={handleCreateTopicThread}
-                className="py-3 bg-white text-black font-extrabold text-xs uppercase tracking-widest rounded-xl hover:bg-zinc-200 transition-colors shadow-md flex items-center justify-center gap-1.5"
-              >
-                <Plus className="w-4 h-4" />
-                CREATE THREAD
-              </button>
-              <button
-                onClick={() => setIsTopicModalOpen(false)}
-                className="py-3 bg-[#3F3F46]/60 border border-[#52525B] text-white font-extrabold text-xs uppercase tracking-widest rounded-xl hover:bg-[#3F3F46] transition-colors"
-              >
-                CANCEL
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
-

@@ -141,30 +141,30 @@ export const HR_REQUEST_TYPES: HRRequestTypeOption[] = [
 export const PRESET_ACCOUNTS: PresetAccount[] = [
   {
     email: 'partner@arkipelago.com',
-    name: 'TESTING3',
-    role: 'junior_architect',
-    description: 'Staff architect — Clock-in, wall posting, assigned projects',
-    accessLevel: 'STAFF',
+    name: 'Arch. Testing1',
+    role: 'partner',
+    description: 'Partner Management — Full studio clearance, ledgers, approvals',
+    accessLevel: 'ADMIN',
   },
   {
     email: 'senior@arkipelago.com',
-    name: 'Arch. Maria Cruz',
+    name: 'Arch. Testing2',
     role: 'senior_architect',
-    description: 'Project lead — HR requests, wall posting, team oversight',
+    description: 'Senior Architect / Lead — HR requests, wall posting, team oversight',
     accessLevel: 'LEAD',
   },
   {
     email: 'junior@arkipelago.com',
-    name: 'Arch. Diego Reyes',
+    name: 'Arch. Testing3',
     role: 'junior_architect',
-    description: 'Staff architect — Clock-in, wall posting, assigned projects',
+    description: 'Junior Architect / Staff — Clock-in, wall posting, assigned projects',
     accessLevel: 'STAFF',
   },
   {
     email: 'contractor@arkipelago.com',
-    name: 'Engr. Ana Villanueva',
+    name: 'Engr. Testing4',
     role: 'contractor',
-    description: 'External — Clock-in, assigned project chat only',
+    description: 'Consultant / External — Clock-in, assigned project chat only',
     accessLevel: 'EXTERNAL',
   },
 ];
@@ -177,24 +177,23 @@ export const SEED_WALL_POSTS: WallPost[] = [
   {
     id: 'wall-seed-001',
     authorId: 'system',
-    authorName: 'ESTUDIO ARKIPELAGO',
+    authorName: 'Arch. Testing1',
     authorRole: 'partner',
-    content: `Thursday Office Activity: Social/Affordable Housing Design!
+    content: `Thursday Office Activity & Design Review (Testing Chat Announcement):
 
-We Live Worried About Our Deadlines and Submissions, but as Architects, We Should Never Lose Our Dream of Making the World a Better Place to Live. A Cool One...
+We live worried about our deadlines and submissions, but as architects, we should never lose our dream of making the world a better place to live!
 
-So, to Keep You Away for 1 Day of Your Tasks, We Will Be Trying to Do More Activities That Help You Grow as Architects and Give Further Purpose to Our Practice.
+So, to keep you refreshed, we will be trying to do more design activities that help you grow as architects and give further purpose to our practice.
 
-Estudio Will Be Joining a Design Competition, and We Want the Whole Office to Be Involved With the Design/Concept Process.
+Estudio will be joining a design competition, and we want the whole office to be involved with the design/concept process.
 
-Thursday 25.
-10am- Briefing
-10:30am- Office to Be Divided Into 4 Teams, Each of Them Will Have Their Own Approach.
-5pm – Concept Presentations 20/30 Mint Each Team
-7pm – Wrap Up, Decide Direction
+Thursday 25:
+10:00 AM - Briefing
+10:30 AM - Office to be divided into 4 teams, each with their own approach.
+05:00 PM - Concept presentations (20 mins each team)
+07:00 PM - Wrap up and decide direction
 
-It Will Be a Full Day Activity, and Meanwhile, Endika and Felipe Will Be Doing the Evaluations.
-So We Expect Everyone To Be at the Office on Time.
+It will be a full day activity. Meanwhile, Arch. Testing2 and Arch. Testing1 will be doing evaluations. We expect everyone to be at the studio on time!
 
 Thanks!`,
     createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
@@ -202,11 +201,11 @@ Thanks!`,
   {
     id: 'wall-seed-002',
     authorId: 'system',
-    authorName: 'Arch. Maria Cruz',
+    authorName: 'Arch. Testing2',
     authorRole: 'senior_architect',
-    content: `Quick reminder team — all Makati Tower Phase 2 site visit photos need to be uploaded to the project folder by EOD Friday. Please include geo-tagged shots of the structural work on floors 12-15. 
+    content: `Testing Chat Discussion: Quick reminder team — all Makati Tower Phase 2 site visit photos need to be uploaded to the project folder by EOD Friday. Please include geo-tagged shots of the structural work on floors 12-15. 
 
-Also, the client requested an updated material board for the lobby. @Diego can you handle this? Let me know if you need the supplier contacts from the Directory.`,
+Also, the client requested an updated material board for the lobby. @Arch. Testing3 can you handle this? Let me know if you need the supplier contacts from the Directory.`,
     createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
   },
 ];
