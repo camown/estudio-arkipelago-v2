@@ -6,6 +6,8 @@ import { Sidebar } from '@/components/layout/Sidebar';
 import { BottomNav } from '@/components/layout/BottomNav';
 import { TopBar } from '@/components/layout/TopBar';
 import { ThemeProvider } from '@/lib/themeContext';
+import { TimeTrackingNudge } from '@/components/common/TimeTrackingNudge';
+import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { User } from '@/types';
 
 function getInitialUser(): User | null {
@@ -34,15 +36,18 @@ export default function StudioLayout({
 
   return (
     <ThemeProvider>
-      <div className="min-h-screen bg-bg-main text-text-main flex flex-col md:flex-row transition-colors">
-        <Sidebar user={user} />
-        <main className="flex-1 ml-0 md:ml-64 pt-6 pb-24 md:pb-10 px-6 md:px-10 w-full max-w-none font-mono transition-colors relative">
-          <TopBar user={user} />
-          {children}
-        </main>
+      <ErrorBoundary>
+        <div className="min-h-screen bg-bg-main text-text-main flex flex-col md:flex-row transition-colors">
+          <Sidebar user={user} />
+          <main className="flex-1 ml-0 md:ml-64 pt-6 pb-24 md:pb-10 px-6 md:px-10 w-full max-w-none font-mono transition-colors relative">
+            <TopBar user={user} />
+            <ErrorBoundary>{children}</ErrorBoundary>
+            <TimeTrackingNudge />
+          </main>
 
-        <BottomNav />
-      </div>
+          <BottomNav />
+        </div>
+      </ErrorBoundary>
     </ThemeProvider>
   );
 }
