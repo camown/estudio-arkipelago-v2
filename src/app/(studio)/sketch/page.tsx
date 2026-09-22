@@ -53,37 +53,16 @@ export default function SketchingStudioPage() {
   const [opacity, setOpacity] = useState(100);
   
   const [activeTab, setActiveTab] = useState<'archive' | 'pdf'>('archive');
-  const [savedSketches, setSavedSketches] = useState<SavedSketch[]>([]);
-
-  // Load saved sketches
-  useEffect(() => {
-    const raw = localStorage.getItem('arkipelago_sketches');
-    if (raw) {
-      try {
-        setSavedSketches(JSON.parse(raw));
-      } catch (e) {
-        console.error('Failed to parse sketches', e);
-      }
+  const [savedSketches, setSavedSketches] = useState<SavedSketch[]>(() => {
+    if (typeof window === 'undefined') return [];
+    try {
+      const raw = localStorage.getItem('arkipelago_sketches');
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      console.error('Failed to parse sketches', e);
+      return [];
     }
-  }, []);
-
-  // Resize canvas dynamically
-  const resizeCanvas = useCallback(() => {
-    const canvas = canvasRef.current;
-    const container = containerRef.current;
-    if (!canvas || !container) return;
-
-    canvas.width = container.clientWidth;
-    canvas.height = container.clientHeight;
-    
-    redrawCanvas(history);
-  }, [history]);
-
-  useEffect(() => {
-    resizeCanvas();
-    window.addEventListener('resize', resizeCanvas);
-    return () => window.removeEventListener('resize', resizeCanvas);
-  }, [resizeCanvas]);
+  });
 
   const hexToRgba = (hex: string, alphaPercent: number) => {
     const alpha = alphaPercent / 100;
@@ -120,6 +99,24 @@ export default function SketchingStudioPage() {
       ctx.stroke();
     });
   }, []);
+
+  // Resize canvas dynamically
+  const resizeCanvas = useCallback(() => {
+    const canvas = canvasRef.current;
+    const container = containerRef.current;
+    if (!canvas || !container) return;
+
+    canvas.width = container.clientWidth;
+    canvas.height = container.clientHeight;
+    
+    redrawCanvas(history);
+  }, [history, redrawCanvas]);
+
+  useEffect(() => {
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+    return () => window.removeEventListener('resize', resizeCanvas);
+  }, [resizeCanvas]);
 
   const getCanvasCoords = (e: React.MouseEvent | React.TouchEvent): Point | null => {
     const canvas = canvasRef.current;
@@ -187,7 +184,7 @@ export default function SketchingStudioPage() {
     }
   };
 
-  const stopDrawing = (e?: React.MouseEvent | React.TouchEvent) => {
+  const stopDrawing = useCallback((e?: React.MouseEvent | React.TouchEvent) => {
     if (e) e.preventDefault();
     if (!isDrawing || !currentStroke) return;
     
@@ -196,7 +193,7 @@ export default function SketchingStudioPage() {
     setHistory(newHistory);
     setRedoStack([]);
     setCurrentStroke(null);
-  };
+  }, [isDrawing, currentStroke, history]);
 
   useEffect(() => {
     const handleMouseUp = () => {
@@ -204,7 +201,7 @@ export default function SketchingStudioPage() {
     };
     window.addEventListener('mouseup', handleMouseUp);
     return () => window.removeEventListener('mouseup', handleMouseUp);
-  }, [isDrawing, currentStroke]);
+  }, [isDrawing, stopDrawing]);
 
   const handleUndo = () => {
     if (history.length === 0) return;
@@ -390,18 +387,18 @@ export default function SketchingStudioPage() {
             />
 
             {/* Color Palette Floating Panel */}
-            <div className="absolute top-4 right-4 bg-surface-main/95 backdrop-blur border border-border-main p-4 rounded-xl shadow-lg w-64 space-y-3 z-20">
+            <div className="absolute top-4 right-4 bg-surface-main border-2 border-border-main p-4 rounded-xl shadow-2xl w-64 space-y-3 z-20 font-mono text-text-main">
               <div className="text-[10px] font-bold text-muted-main uppercase tracking-wider">
                 BRUSH & COLOR PALETTE
               </div>
               
-              <div className="grid grid-cols-6 gap-1.5">
+              <div className="grid grid-cols-6 gap-2">
                 {COLORS.map((c) => (
                   <button
                     key={c}
                     onClick={() => setColor(c)}
                     className={cn(
-                      "w-7 h-7 rounded-full border border-border-strong transition-transform hover:scale-110",
+                      "w-7 h-7 rounded-full border border-border-strong transition-transform hover:scale-110 shrink-0",
                       color === c ? "ring-2 ring-accent-cyan scale-110" : ""
                     )}
                     style={{ backgroundColor: c }}
@@ -409,30 +406,36 @@ export default function SketchingStudioPage() {
                 ))}
               </div>
 
-              <div className="space-y-1 pt-1">
-                <div className="flex justify-between text-[10px] text-muted-main uppercase font-bold">
+              <div className="space-y-1.5 pt-1">
+                <div className="flex justify-between items-center text-[10px] text-muted-main uppercase font-bold">
                   <span>OPACITY</span>
-                  <span>{opacity}%</span>
+                  <span className="text-text-main font-extrabold">{opacity}%</span>
                 </div>
-                <input
-                  type="range"
-                  min="10"
-                  max="100"
-                  value={opacity}
-                  onChange={(e) => setOpacity(Number(e.target.value))}
-                  className="w-full h-1 bg-surface-hover rounded-lg appearance-none cursor-pointer accent-accent-cyan"
-                />
+                <div className="flex items-center gap-3">
+                  <input
+                    type="range"
+                    min="10"
+                    max="100"
+                    value={opacity}
+                    onChange={(e) => setOpacity(Number(e.target.value))}
+                    className="w-full h-1.5 bg-surface-hover rounded-lg appearance-none cursor-pointer accent-accent-cyan"
+                  />
+                  <span
+                    className="w-4 h-4 rounded-full border border-border-strong shrink-0 shadow-xs"
+                    style={{ backgroundColor: hexToRgba(color, opacity) }}
+                  />
+                </div>
               </div>
 
-              <div className="flex items-center justify-between gap-1 pt-1">
+              <div className="flex items-center justify-between gap-1.5 pt-1">
                 {BRUSH_SIZES.map((b) => (
                   <button
                     key={b.label}
                     onClick={() => setSize(b.value)}
                     className={cn(
-                      "flex-1 py-1 text-xs font-bold uppercase rounded border transition-colors",
+                      "flex-1 py-1.5 text-xs font-extrabold uppercase rounded-lg border transition-all",
                       size === b.value
-                        ? "bg-black text-white dark:bg-white dark:text-black border-text-main"
+                        ? "bg-text-main text-bg-main border-text-main shadow-xs"
                         : "bg-surface-hover border-border-main text-muted-main hover:text-text-main"
                     )}
                   >

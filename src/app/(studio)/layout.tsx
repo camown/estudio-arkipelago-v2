@@ -8,39 +8,36 @@ import { TopBar } from '@/components/layout/TopBar';
 import { ThemeProvider } from '@/lib/themeContext';
 import { User } from '@/types';
 
+function getInitialUser(): User | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const storedUser = localStorage.getItem('arkipelago_user');
+    return storedUser ? JSON.parse(storedUser) : null;
+  } catch {
+    return null;
+  }
+}
+
 export default function StudioLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
-  const [mounted, setMounted] = useState(false);
+  const [user] = useState<User | null>(getInitialUser);
 
   useEffect(() => {
-    setMounted(true);
-    const storedUser = localStorage.getItem('arkipelago_user');
-    if (!storedUser) {
+    if (!user) {
       router.push('/login');
-    } else {
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch (e) {
-        console.error('Failed to parse user', e);
-        router.push('/login');
-      }
     }
-  }, [router]);
-
-  if (!mounted) return null; // Avoid hydration mismatch
+  }, [user, router]);
 
   return (
     <ThemeProvider>
       <div className="min-h-screen bg-bg-main text-text-main flex flex-col md:flex-row transition-colors">
         <Sidebar user={user} />
-        <TopBar user={user} />
-
-        <main className="flex-1 ml-0 md:ml-64 pt-20 pb-24 md:pb-10 px-6 md:px-10 w-full max-w-none font-mono transition-colors">
+        <main className="flex-1 ml-0 md:ml-64 pt-6 pb-24 md:pb-10 px-6 md:px-10 w-full max-w-none font-mono transition-colors relative">
+          <TopBar user={user} />
           {children}
         </main>
 

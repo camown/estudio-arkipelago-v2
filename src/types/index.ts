@@ -110,3 +110,44 @@ export interface PresetAccount {
   description: string;
   accessLevel: string;
 }
+
+// ============================================================
+// Task Initialization & Management Types
+// ============================================================
+
+export type ProjectPhase =
+  | 'SCHEMATIC'
+  | 'DESIGN DEVELOPMENT'
+  | 'CONTRACT DOCUMENTS'
+  | 'CONSTRUCTION ADMINISTRATION'
+  | 'COMPLETION';
+
+export type TaskType =
+  | 'MEETING'
+  | 'WORKSHOP'
+  | 'PRESENTATION'
+  | 'DEADLINE'
+  | 'DELIVERABLE'
+  | 'SITE_VISIT';
+
+export type TaskPriority = 'LOW' | 'MEDIUM' | 'HIGH';
+
+export type TaskStatus = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED';
+
+export interface TaskItem {
+  id: string;
+  name: string;
+  projectId: string;
+  description?: string;
+  projectPhase?: ProjectPhase;
+  deliverables?: string[];
+  taskType: TaskType;
+  priority: TaskPriority;
+  assignedMember?: string;
+  startDate?: string;
+  endDate?: string;
+  timeNeeded?: string;
+  status: TaskStatus;
+  createdAt: string;
+}
+

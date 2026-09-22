@@ -1,4 +1,4 @@
-# ESTUDIO ARKIPELAGO — Studio Operations System
+# ESTUDIO ARKIPELAGO V2 — Studio Operations System
 
 A Progressive Web App (PWA) built for **Estudio Arkipelago**, an architecture firm, to centralize all daily operations: time tracking, project management, scheduling, communications, and design collaboration.
 

@@ -3,7 +3,6 @@ import {
   LayoutDashboard,
   Clock,
   FolderKanban,
-  CalendarDays,
   MessageSquare,
   BookUser,
   PenTool,
@@ -27,6 +26,13 @@ export const NAV_ITEMS: NavItem[] = [
     href: '/dashboard',
     icon: Home,
     iconName: 'Home',
+    minRole: ROLES.CONTRACTOR,
+  },
+  {
+    label: 'Dashboard',
+    href: '/calendar',
+    icon: LayoutDashboard,
+    iconName: 'LayoutDashboard',
     minRole: ROLES.CONTRACTOR,
   },
   {
@@ -135,10 +141,10 @@ export const HR_REQUEST_TYPES: HRRequestTypeOption[] = [
 export const PRESET_ACCOUNTS: PresetAccount[] = [
   {
     email: 'partner@arkipelago.com',
-    name: 'Arch. Felipe Santos',
-    role: 'partner',
-    description: 'Full admin access — HR approvals, financials, all projects',
-    accessLevel: 'ADMIN',
+    name: 'TESTING3',
+    role: 'junior_architect',
+    description: 'Staff architect — Clock-in, wall posting, assigned projects',
+    accessLevel: 'STAFF',
   },
   {
     email: 'senior@arkipelago.com',

@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { NAV_ITEMS, MOCK_PROJECTS } from '@/lib/constants';
 import { User } from '@/types';
 import { cn } from '@/lib/utils';
@@ -17,6 +17,7 @@ interface SidebarProps {
 
 export function Sidebar({ user }: SidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const { themeMode, toggleThemeMode } = useTheme();
 
   const {
@@ -160,7 +161,7 @@ export function Sidebar({ user }: SidebarProps) {
         <button
           onClick={() => {
             localStorage.removeItem('arkipelago_user');
-            window.location.href = '/login';
+            router.push('/login');
           }}
           className="text-muted-main hover:text-accent-red transition-colors p-1 rounded"
           title="Sign Out"

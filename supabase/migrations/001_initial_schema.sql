@@ -88,6 +88,21 @@ ALTER TABLE projects ENABLE ROW LEVEL SECURITY;
 ALTER TABLE project_members ENABLE ROW LEVEL SECURITY;
 ALTER TABLE time_entries ENABLE ROW LEVEL SECURITY;
 
+-- ============================================================
+-- HELPER FUNCTIONS FOR RLS (Security Definer to prevent infinite recursion)
+-- ============================================================
+CREATE OR REPLACE FUNCTION public.get_user_role(user_id UUID)
+RETURNS user_role AS $$
+  SELECT role FROM public.profiles WHERE id = user_id;
+$$ LANGUAGE sql SECURITY DEFINER STABLE;
+
+CREATE OR REPLACE FUNCTION public.is_partner(user_id UUID)
+RETURNS BOOLEAN AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.profiles WHERE id = user_id AND role = 'partner'
+  );
+$$ LANGUAGE sql SECURITY DEFINER STABLE;
+
 -- ----------------------------------------
 -- PROFILES POLICIES
 -- ----------------------------------------
@@ -97,15 +112,10 @@ CREATE POLICY "Users can view own profile"
   ON profiles FOR SELECT
   USING (auth.uid() = id);
 
--- Partners can read all profiles
+-- Partners can read all profiles (using SECURITY DEFINER function to prevent recursion)
 CREATE POLICY "Partners can view all profiles"
   ON profiles FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM profiles
-      WHERE id = auth.uid() AND role = 'partner'
-    )
-  );
+  USING (public.is_partner(auth.uid()));
 
 -- Users can update their own profile
 CREATE POLICY "Users can update own profile"
@@ -120,10 +130,7 @@ CREATE POLICY "Users can update own profile"
 CREATE POLICY "Senior staff can view all projects"
   ON projects FOR SELECT
   USING (
-    EXISTS (
-      SELECT 1 FROM profiles
-      WHERE id = auth.uid() AND role IN ('partner', 'senior_architect')
-    )
+    public.get_user_role(auth.uid()) IN ('partner', 'senior_architect')
   );
 
 -- Junior architects can only view assigned projects
@@ -139,12 +146,21 @@ CREATE POLICY "Juniors can view assigned projects"
 -- Only partners can create/update/delete projects
 CREATE POLICY "Partners can manage projects"
   ON projects FOR ALL
-  USING (
-    EXISTS (
-      SELECT 1 FROM profiles
-      WHERE id = auth.uid() AND role = 'partner'
-    )
-  );
+  USING (public.is_partner(auth.uid()));
+
+-- ----------------------------------------
+-- PROJECT MEMBERS POLICIES
+-- ----------------------------------------
+
+-- Users can view their own project assignments
+CREATE POLICY "Users can view own assignments"
+  ON project_members FOR SELECT
+  USING (auth.uid() = user_id OR public.is_partner(auth.uid()));
+
+-- Partners can insert/update/delete project members
+CREATE POLICY "Partners can manage project members"
+  ON project_members FOR ALL
+  USING (public.is_partner(auth.uid()));
 
 -- ----------------------------------------
 -- TIME ENTRIES POLICIES
@@ -158,12 +174,7 @@ CREATE POLICY "Users can manage own time entries"
 -- Partners can view all time entries
 CREATE POLICY "Partners can view all time entries"
   ON time_entries FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM profiles
-      WHERE id = auth.uid() AND role = 'partner'
-    )
-  );
+  USING (public.is_partner(auth.uid()));
 
 -- ----------------------------------------
 -- INDEXES

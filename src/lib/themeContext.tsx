@@ -20,7 +20,7 @@ interface ThemeContextType {
 }
 
 const DEFAULT_LIGHT_COLORS: UIColors = {
-  bgColor: '#F4F4F5', // Light clean studio background
+  bgColor: '#EAEAEA', // Matching reference screenshot studio light gray
   textColor: '#18181B', // Dark crisp text
 };
 
@@ -33,27 +33,31 @@ const STORAGE_KEY = 'arkipelago_theme_prefs';
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
-export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [themeMode, setThemeModeState] = useState<ThemeMode>('light');
-  const [customColors, setCustomColorsState] = useState<UIColors>(DEFAULT_LIGHT_COLORS);
-  const [isCustomized, setIsCustomized] = useState(false);
-
-  // Load from localStorage on mount
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (parsed.themeMode) setThemeModeState(parsed.themeMode);
-        if (parsed.customColors) {
-          setCustomColorsState(parsed.customColors);
-          setIsCustomized(Boolean(parsed.isCustomized));
-        }
-      }
-    } catch (e) {
-      console.error('Failed to load theme preferences:', e);
+function getInitialThemePrefs() {
+  if (typeof window === 'undefined') {
+    return { themeMode: 'light' as ThemeMode, customColors: DEFAULT_LIGHT_COLORS, isCustomized: false };
+  }
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      return {
+        themeMode: (parsed.themeMode || 'light') as ThemeMode,
+        customColors: parsed.customColors || DEFAULT_LIGHT_COLORS,
+        isCustomized: Boolean(parsed.isCustomized),
+      };
     }
-  }, []);
+  } catch (e) {
+    console.error('Failed to load theme preferences:', e);
+  }
+  return { themeMode: 'light' as ThemeMode, customColors: DEFAULT_LIGHT_COLORS, isCustomized: false };
+}
+
+export function ThemeProvider({ children }: { children: React.ReactNode }) {
+  const [initialPrefs] = useState(getInitialThemePrefs);
+  const [themeMode, setThemeModeState] = useState<ThemeMode>(initialPrefs.themeMode);
+  const [customColors, setCustomColorsState] = useState<UIColors>(initialPrefs.customColors);
+  const [isCustomized, setIsCustomized] = useState(initialPrefs.isCustomized);
 
   // Update root element data attributes & CSS variables
   useEffect(() => {

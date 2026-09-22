@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import type { User } from '@/types';
 import { PRESET_ACCOUNTS } from '@/lib/constants';
 
@@ -21,15 +22,31 @@ function getNameFromEmail(email: string): string {
 }
 
 export function useAuth() {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
+  const router = useRouter();
+  const [user, setUser] = useState<User | null>(() => {
+    if (typeof window === 'undefined') return null;
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) setUser(JSON.parse(stored));
-    } catch {}
-    setLoading(false);
+      return stored ? JSON.parse(stored) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [loading] = useState(false);
+
+  useEffect(() => {
+    // Sync state if storage changes across tabs
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === STORAGE_KEY) {
+        try {
+          setUser(e.newValue ? JSON.parse(e.newValue) : null);
+        } catch {
+          setUser(null);
+        }
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
@@ -48,8 +65,8 @@ export function useAuth() {
   const logout = useCallback(() => {
     localStorage.removeItem(STORAGE_KEY);
     setUser(null);
-    window.location.href = '/login';
-  }, []);
+    router.push('/login');
+  }, [router]);
 
   return { user, loading, login, logout, isAuthenticated: Boolean(user) };
 }

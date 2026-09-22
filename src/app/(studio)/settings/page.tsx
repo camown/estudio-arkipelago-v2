@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useTheme } from '@/lib/themeContext';
 import { User, Phone, Mail, Camera, RefreshCw, Save, Check } from 'lucide-react';
@@ -9,31 +9,17 @@ export default function ProfileSettingsPage() {
   const { user } = useAuth();
   const {
     themeMode,
-    toggleThemeMode,
     customColors,
     setCustomColors,
     resetToDefaults,
-    isCustomized,
   } = useTheme();
 
-  const [displayName, setDisplayName] = useState('');
+  const [displayName, setDisplayName] = useState(() => user?.name || 'TESTING3');
   const [phoneNumber, setPhoneNumber] = useState('09173333333');
-  const [emailAddress, setEmailAddress] = useState('');
-  const [bgColor, setBgColor] = useState('#FFFFFF');
-  const [textColor, setTextColor] = useState('#000000');
+  const [emailAddress, setEmailAddress] = useState(() => user?.email ? user.email.toUpperCase() : 'TESTING3@ESTUDIOARKIPELAGO.COM');
+  const [bgColor, setBgColor] = useState(() => customColors.bgColor);
+  const [textColor, setTextColor] = useState(() => customColors.textColor);
   const [savedSuccess, setSavedSuccess] = useState(false);
-
-  useEffect(() => {
-    if (user) {
-      setDisplayName(user.name || 'TESTING3');
-      setEmailAddress(user.email ? user.email.toUpperCase() : 'TESTING3@ESTUDIOARKIPELAGO.COM');
-    }
-  }, [user]);
-
-  useEffect(() => {
-    setBgColor(customColors.bgColor);
-    setTextColor(customColors.textColor);
-  }, [customColors]);
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();

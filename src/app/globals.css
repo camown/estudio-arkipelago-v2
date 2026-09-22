@@ -1,13 +1,13 @@
 @import "tailwindcss";
 
 :root {
-  /* Light Theme Defaults (matching Image 3 minimal studio look) */
-  --bg-main: #F4F4F5;
+  /* Light Theme Defaults (matching studio clean light gray) */
+  --bg-main: #EAEAEA;
   --text-main: #18181B;
   --surface-main: #FFFFFF;
   --surface-hover: #F1F5F9;
-  --border-main: #E2E8F0;
-  --border-strong: #CBD5E1;
+  --border-main: #D1D5DB;
+  --border-strong: #9CA3AF;
   --muted-main: #64748B;
   --accent-cyan: #0284C7; /* Refined cyan accent for light mode */
   --accent-yellow: #D97706;

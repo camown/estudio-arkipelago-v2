@@ -29,11 +29,38 @@ export function formatElapsed(seconds: number): string {
     .join(':');
 }
 
+function getInitialClockInState() {
+  if (typeof window === 'undefined') {
+    return { isClocked: false, startTime: null, elapsed: 0, selectedProjectId: null };
+  }
+  try {
+    const rawState = localStorage.getItem(CLOCKIN_STATE_KEY);
+    if (rawState) {
+      const parsed: StoredClockInState = JSON.parse(rawState);
+      if (parsed.isClocked && parsed.startTime) {
+        const start = new Date(parsed.startTime);
+        const now = new Date();
+        const initialElapsed = Math.max(0, Math.floor((now.getTime() - start.getTime()) / 1000));
+        return {
+          isClocked: true,
+          startTime: start,
+          elapsed: initialElapsed,
+          selectedProjectId: parsed.selectedProjectId || null,
+        };
+      }
+    }
+  } catch (error) {
+    console.error('Failed to restore clock-in state:', error);
+  }
+  return { isClocked: false, startTime: null, elapsed: 0, selectedProjectId: null };
+}
+
 export function useClockIn() {
-  const [isClocked, setIsClocked] = useState<boolean>(false);
-  const [startTime, setStartTime] = useState<Date | null>(null);
-  const [elapsed, setElapsed] = useState<number>(0);
-  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [initialState] = useState(getInitialClockInState);
+  const [isClocked, setIsClocked] = useState<boolean>(initialState.isClocked);
+  const [startTime, setStartTime] = useState<Date | null>(initialState.startTime);
+  const [elapsed, setElapsed] = useState<number>(initialState.elapsed);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(initialState.selectedProjectId);
   const [todayEntries, setTodayEntries] = useState<TimeEntry[]>([]);
 
   const getEntries = useCallback((): TimeEntry[] => {
@@ -70,32 +97,11 @@ export function useClockIn() {
     setTodayEntries(getTodayEntries());
   }, [getTodayEntries]);
 
-  // Restore clock-in state and entries on mount
   useEffect(() => {
-    try {
-      const rawState = localStorage.getItem(CLOCKIN_STATE_KEY);
-      if (rawState) {
-        const parsed: StoredClockInState = JSON.parse(rawState);
-        if (parsed.isClocked && parsed.startTime) {
-          const start = new Date(parsed.startTime);
-          const now = new Date();
-          const initialElapsed = Math.max(
-            0,
-            Math.floor((now.getTime() - start.getTime()) / 1000)
-          );
-
-          setIsClocked(true);
-          setStartTime(start);
-          setElapsed(initialElapsed);
-          setSelectedProjectId(parsed.selectedProjectId || null);
-        }
-      }
-    } catch (error) {
-      console.error('Failed to restore clock-in state:', error);
-    }
-
     refreshTodayEntries();
   }, [refreshTodayEntries]);
+
+
 
   // Tick elapsed duration every second while clocked in
   useEffect(() => {

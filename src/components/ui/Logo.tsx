@@ -17,27 +17,27 @@ export function Logo({ className = '', showText = false, size = 48 }: LogoProps)
         xmlns="http://www.w3.org/2000/svg"
         className="text-current transition-colors"
       >
-        {/* Outer loop */}
+        {/* Topmost organic wireframe loop */}
         <path
-          d="M50 12 C68 12, 85 45, 82 72 C79 90, 30 88, 20 75 C10 60, 32 12, 50 12 Z"
+          d="M 50 15 C 55 25, 62 42, 67 58 C 55 64, 40 68, 32 60 C 35 45, 43 28, 50 15 Z"
           stroke="currentColor"
-          strokeWidth="3.5"
+          strokeWidth="2.2"
           strokeLinecap="round"
           strokeLinejoin="round"
         />
-        {/* Middle loop */}
+        {/* Middle overlapping wireframe loop */}
         <path
-          d="M52 28 C64 28, 76 50, 72 70 C68 82, 38 80, 30 70 C22 58, 40 28, 52 28 Z"
+          d="M 45 28 C 53 38, 65 52, 69 68 C 52 75, 35 77, 30 65 C 33 50, 40 38, 45 28 Z"
           stroke="currentColor"
-          strokeWidth="3"
+          strokeWidth="2.2"
           strokeLinecap="round"
           strokeLinejoin="round"
         />
-        {/* Inner loop */}
+        {/* Bottom base overlapping loop */}
         <path
-          d="M53 45 C60 45, 68 56, 64 68 C60 75, 43 74, 38 68 C33 60, 46 45, 53 45 Z"
+          d="M 38 48 C 52 50, 68 58, 70 72 C 55 82, 38 82, 32 74 C 30 64, 34 54, 38 48 Z"
           stroke="currentColor"
-          strokeWidth="2.5"
+          strokeWidth="2.2"
           strokeLinecap="round"
           strokeLinejoin="round"
         />

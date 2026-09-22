@@ -29,7 +29,7 @@ export interface HRRequest {
   date: string;
   status: 'pending' | 'approved' | 'rejected';
   reason: string;
-  details: Record<string, any>;
+  details: Record<string, unknown>;
   userId?: string;
   userName?: string;
   createdAt: string;
@@ -46,61 +46,53 @@ const HR_REQUEST_TYPES = [
   { id: 'complaint' as HRRequestType, label: 'SUBMIT COMPLAINT', icon: AlertTriangle, destructive: true },
 ];
 
+function getInitialTodayDate() {
+  if (typeof window === 'undefined') return '';
+  return new Date().toISOString().split('T')[0];
+}
+
+function getInitialHRRequests(): HRRequest[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const saved = localStorage.getItem('arkipelago_hr_requests');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch (e) {
+    console.error('Failed to parse HR requests', e);
+  }
+  return [];
+}
+
 export default function HRPage() {
   const { user } = useAuth();
 
   const [selectedType, setSelectedType] = useState<HRRequestType>('overtime');
   const [reason, setReason] = useState('');
   
-  const [todayStr, setTodayStr] = useState('');
-  useEffect(() => {
-    setTodayStr(new Date().toISOString().split('T')[0]);
-  }, []);
+  const [todayStr] = useState(getInitialTodayDate);
 
   // Form states
-  const [otDate, setOtDate] = useState('');
+  const [otDate, setOtDate] = useState(todayStr);
   const [otIn, setOtIn] = useState('09:00');
   const [otOut, setOtOut] = useState('18:00');
   
   const [leaveType, setLeaveType] = useState('Vacation');
-  const [leaveFrom, setLeaveFrom] = useState('');
-  const [leaveTo, setLeaveTo] = useState('');
+  const [leaveFrom, setLeaveFrom] = useState(todayStr);
+  const [leaveTo, setLeaveTo] = useState(todayStr);
   
   const [reimburseAmount, setReimburseAmount] = useState('');
-  const [reimburseDate, setReimburseDate] = useState('');
+  const [reimburseDate, setReimburseDate] = useState(todayStr);
   const [reimburseDesc, setReimburseDesc] = useState('');
   
   const [complaintCategory, setComplaintCategory] = useState('Workplace Issue');
   const [complaintDesc, setComplaintDesc] = useState('');
   
-  const [genericDate, setGenericDate] = useState('');
+  const [genericDate, setGenericDate] = useState(todayStr);
 
-  const [requests, setRequests] = useState<HRRequest[]>([]);
+  const [requests, setRequests] = useState<HRRequest[]>(getInitialHRRequests);
   const [successMsg, setSuccessMsg] = useState('');
-
-  useEffect(() => {
-    if (todayStr) {
-      if (!otDate) setOtDate(todayStr);
-      if (!leaveFrom) setLeaveFrom(todayStr);
-      if (!leaveTo) setLeaveTo(todayStr);
-      if (!reimburseDate) setReimburseDate(todayStr);
-      if (!genericDate) setGenericDate(todayStr);
-    }
-  }, [todayStr]);
-
-  useEffect(() => {
-    const saved = localStorage.getItem('arkipelago_hr_requests');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) {
-          setRequests(parsed);
-        }
-      } catch (e) {
-        console.error('Failed to parse HR requests', e);
-      }
-    }
-  }, []);
 
   const calculateOvertime = () => {
     const [inH, inM] = otIn.split(':').map(Number);
@@ -120,7 +112,7 @@ export default function HRPage() {
       return;
     }
 
-    let details: Record<string, any> = {};
+    let details: Record<string, unknown> = {};
 
     switch (selectedType) {
       case 'overtime':
@@ -169,6 +161,28 @@ export default function HRPage() {
 
   const activeTypeDef = HR_REQUEST_TYPES.find(t => t.id === selectedType);
 
+  const isPartner = user?.role === 'partner';
+
+  const handleApprove = (reqId: string) => {
+    if (!isPartner) {
+      alert('ONLY PARTNERS CAN APPROVE HR REQUESTS.');
+      return;
+    }
+    const updated = requests.map((r) => (r.id === reqId ? { ...r, status: 'approved' as const } : r));
+    setRequests(updated);
+    localStorage.setItem('arkipelago_hr_requests', JSON.stringify(updated));
+  };
+
+  const handleReject = (reqId: string) => {
+    if (!isPartner) {
+      alert('ONLY PARTNERS CAN REJECT HR REQUESTS.');
+      return;
+    }
+    const updated = requests.map((r) => (r.id === reqId ? { ...r, status: 'rejected' as const } : r));
+    setRequests(updated);
+    localStorage.setItem('arkipelago_hr_requests', JSON.stringify(updated));
+  };
+
   return (
     <div className="min-h-screen bg-bg-main text-text-main font-mono transition-colors pb-12">
       {/* Header */}
@@ -179,13 +193,20 @@ export default function HRPage() {
             FILE PROFESSIONAL WORKPLACE REQUESTS, TRACK ATTENDANCE LEDGERS, AND MANAGE SCHEDULES SECURELY.
           </p>
         </div>
-        <button className="border-2 border-border-strong px-5 py-2 text-xs font-bold uppercase hover:bg-surface-hover transition-colors rounded-lg">
-          REQUESTS
-        </button>
+        <div className="flex items-center gap-2">
+          <span className={`text-[10px] px-3 py-1 font-bold rounded uppercase tracking-wider border ${
+            isPartner ? 'bg-amber-500/20 text-amber-600 border-amber-500/40' : 'bg-surface-hover text-muted-main border-border-main'
+          }`}>
+            ROLE: {user?.role ? user.role.replace('_', ' ') : 'JUNIOR ARCHITECT'}
+          </span>
+          <button className="border-2 border-border-strong px-4 py-1.5 text-xs font-bold uppercase hover:bg-surface-hover transition-colors rounded-lg">
+            REQUESTS
+          </button>
+        </div>
       </header>
 
       <div className="flex flex-col lg:flex-row gap-8">
-        {/* LEFT COLUMN */}
+        {/* LEFT COLUMN: FILE REQUEST FORM */}
         <div className="lg:w-[60%] flex flex-col gap-6">
           
           {/* SECTION 1: Type Selection */}
@@ -414,14 +435,16 @@ export default function HRPage() {
 
         </div>
 
-        {/* RIGHT COLUMN */}
+        {/* RIGHT COLUMN: REQUESTS LEDGER */}
         <div className="lg:w-[40%]">
           <section className="bg-surface-main border border-border-main rounded-xl p-6 shadow-sm h-full flex flex-col">
-            <div className="border-b border-border-main pb-4 mb-6">
-              <h2 className="text-sm font-bold uppercase tracking-wider text-text-main mb-1">REQUESTS LEDGER & CLEARANCES</h2>
-              <p className="text-muted-main text-[11px] uppercase tracking-wide">
-                LISTING YOUR REGISTERED SUBMITTALS AND THEIR CORRESPONDING CLEARANCE STATES.
-              </p>
+            <div className="border-b border-border-main pb-4 mb-6 flex items-center justify-between">
+              <div>
+                <h2 className="text-sm font-bold uppercase tracking-wider text-text-main mb-1">REQUESTS LEDGER & CLEARANCES</h2>
+                <p className="text-muted-main text-[11px] uppercase tracking-wide">
+                  LISTING REGISTERED SUBMITTALS & CLEARANCES.
+                </p>
+              </div>
             </div>
 
             <div className="flex-1 flex flex-col justify-center">
@@ -450,10 +473,33 @@ export default function HRPage() {
                       <p className="text-xs text-muted-main font-sans line-clamp-2">
                         {req.reason}
                       </p>
-                      <div className="text-[10px] text-muted-main/60 uppercase pt-1 border-t border-border-main/40 flex justify-between">
-                        <span>BY: {req.userName}</span>
+                      
+                      <div className="text-[10px] text-muted-main/80 uppercase pt-2 border-t border-border-main/40 flex items-center justify-between">
+                        <span>FILED BY: {req.userName}</span>
                         <span>{new Date(req.createdAt).toLocaleDateString()}</span>
                       </div>
+
+                      {/* Partner-only Approval Controls */}
+                      {isPartner && req.status === 'pending' ? (
+                        <div className="pt-2 flex gap-2">
+                          <button
+                            onClick={() => handleApprove(req.id)}
+                            className="flex-1 py-1.5 bg-emerald-600 text-white font-bold text-[10px] uppercase rounded hover:bg-emerald-700 transition-colors"
+                          >
+                            APPROVE
+                          </button>
+                          <button
+                            onClick={() => handleReject(req.id)}
+                            className="flex-1 py-1.5 bg-accent-red text-white font-bold text-[10px] uppercase rounded hover:bg-red-700 transition-colors"
+                          >
+                            REJECT
+                          </button>
+                        </div>
+                      ) : !isPartner && req.status === 'pending' ? (
+                        <div className="text-[10px] text-amber-600 dark:text-amber-400 font-bold uppercase italic pt-1">
+                          AWAITING PARTNER APPROVAL
+                        </div>
+                      ) : null}
                     </div>
                   ))}
                 </div>

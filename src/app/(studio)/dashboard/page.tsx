@@ -1,10 +1,12 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/hooks/useAuth';
 import Logo from '@/components/ui/Logo';
 import CalendarGrid from '@/components/dashboard/CalendarGrid';
+import { TaskInitializationModal } from '@/components/dashboard/TaskInitializationModal';
+import { TaskItem } from '@/types';
 import {
   LayoutDashboard,
   FolderKanban,
@@ -14,16 +16,46 @@ import {
   ArrowRight,
   Clock,
   Pencil,
+  Plus,
 } from 'lucide-react';
 
 export default function DashboardPage() {
   const { user } = useAuth();
   const userName = user?.name ? user.name.toUpperCase() : 'TESTING3';
+  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
+  const [tasks, setTasks] = useState<TaskItem[]>([]);
+
+  const handleTaskCreated = (newTaskData: Partial<TaskItem>) => {
+    const created: TaskItem = {
+      id: 'task-' + Date.now(),
+      name: newTaskData.name || 'UNTITLED TASK',
+      projectId: newTaskData.projectId || '',
+      description: newTaskData.description || '',
+      projectPhase: newTaskData.projectPhase || 'SCHEMATIC',
+      deliverables: newTaskData.deliverables || [],
+      taskType: newTaskData.taskType || 'WORKSHOP',
+      priority: newTaskData.priority || 'MEDIUM',
+      assignedMember: newTaskData.assignedMember || 'UNASSIGNED',
+      startDate: newTaskData.startDate,
+      endDate: newTaskData.endDate,
+      timeNeeded: newTaskData.timeNeeded,
+      status: 'PENDING',
+      createdAt: new Date().toISOString(),
+    };
+    setTasks((prev) => [created, ...prev]);
+  };
 
   return (
     <div className="space-y-8 font-mono pb-12">
+      {/* Task Initialization Modal */}
+      <TaskInitializationModal
+        isOpen={isTaskModalOpen}
+        onClose={() => setIsTaskModalOpen(false)}
+        onTaskCreated={handleTaskCreated}
+      />
+
       {/* 1. Header Banner with Studio Logo & Welcome Message (Matching Image 3) */}
-      <div className="flex flex-col items-center justify-center text-center py-6 space-y-3">
+      <div className="flex flex-col items-center justify-center text-center py-6 space-y-3 relative">
         <Logo size={56} className="text-text-main" />
         <div className="space-y-1">
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-[0.2em] uppercase text-text-main">
@@ -33,6 +65,15 @@ export default function DashboardPage() {
             WELCOME, {userName}!
           </p>
         </div>
+
+        {/* Task Initialization Quick Action Button */}
+        <button
+          onClick={() => setIsTaskModalOpen(true)}
+          className="mt-2 px-5 py-2.5 bg-black text-white dark:bg-white dark:text-black font-extrabold text-xs uppercase tracking-widest flex items-center gap-2 rounded-lg shadow-sm hover:opacity-90 transition-all"
+        >
+          <Plus className="w-4 h-4" />
+          INITIALIZE TASK
+        </button>
       </div>
 
       {/* 2. Quotation / Weekly Studio Inspiration Box (Matching Image 3) */}
@@ -149,7 +190,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Right Column (Priority Task Queue - 5 cols) */}
-        <div className="lg:col-span-5 bg-surface-main border border-border-main rounded-xl p-6 shadow-sm flex flex-col justify-between">
+        <div className="lg:col-span-5 bg-surface-main border border-border-main rounded-xl p-6 shadow-sm flex flex-col justify-between space-y-4">
           <div className="flex items-center justify-between border-b border-border-main pb-4">
             <div className="flex items-center gap-2.5">
               <Clock className="w-4 h-4 text-amber-500" />
@@ -157,19 +198,60 @@ export default function DashboardPage() {
                 PRIORITY TASK QUEUE
               </h3>
             </div>
-            <Link
-              href="/tasks"
-              className="text-[11px] font-bold text-muted-main hover:text-text-main transition-colors uppercase tracking-wider flex items-center gap-1"
+            <button
+              onClick={() => setIsTaskModalOpen(true)}
+              className="text-[11px] font-bold text-accent-cyan hover:underline transition-colors uppercase tracking-wider flex items-center gap-1"
             >
-              FULL LIST <ArrowRight className="w-3 h-3" />
-            </Link>
+              + NEW TASK
+            </button>
           </div>
 
-          <div className="py-16 flex items-center justify-center text-center">
-            <p className="text-xs text-muted-main italic tracking-wide uppercase">
-              NO ACTIVE HIGH-PRIORITY TASKS IN YOUR QUEUE
-            </p>
-          </div>
+          {tasks.length > 0 ? (
+            <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
+              {tasks.map((task) => (
+                <div
+                  key={task.id}
+                  className="p-3 border border-border-main bg-surface-hover/60 rounded-lg space-y-1.5"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-extrabold text-xs uppercase text-text-main truncate">
+                      {task.name}
+                    </span>
+                    <span
+                      className={`text-[9px] font-bold px-2 py-0.5 rounded uppercase ${
+                        task.priority === 'HIGH'
+                          ? 'bg-rose-500/20 text-rose-500 border border-rose-500/30'
+                          : task.priority === 'MEDIUM'
+                          ? 'bg-orange-500/20 text-orange-500 border border-orange-500/30'
+                          : 'bg-amber-500/20 text-amber-500 border border-amber-500/30'
+                      }`}
+                    >
+                      {task.priority}
+                    </span>
+                  </div>
+                  {task.description && (
+                    <p className="text-[11px] text-muted-main line-clamp-2">{task.description}</p>
+                  )}
+                  <div className="flex items-center justify-between text-[10px] text-muted-main font-bold pt-1 uppercase border-t border-border-main/40">
+                    <span>TYPE: {task.taskType}</span>
+                    <span>PHASE: {task.projectPhase}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="py-12 flex flex-col items-center justify-center text-center space-y-3">
+              <p className="text-xs text-muted-main italic tracking-wide uppercase">
+                NO ACTIVE HIGH-PRIORITY TASKS IN YOUR QUEUE
+              </p>
+              <button
+                onClick={() => setIsTaskModalOpen(true)}
+                className="px-4 py-2 border border-border-strong hover:border-text-main text-xs font-bold uppercase rounded tracking-wider transition-all"
+              >
+                + INITIALIZE FIRST TASK
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
