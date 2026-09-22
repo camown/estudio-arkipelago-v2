@@ -1,4 +1,7 @@
-import React from 'react';
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import { useTheme } from '@/lib/themeContext';
 
 interface LogoProps {
   className?: string;
@@ -6,24 +9,32 @@ interface LogoProps {
 }
 
 export function Logo({ className = '', size = 120 }: LogoProps) {
+  const [mounted, setMounted] = useState(false);
+  let themeMode = 'light';
+
+  try {
+    const themeCtx = useTheme();
+    themeMode = themeCtx.themeMode;
+  } catch {
+    // Fallback if rendered outside ThemeProvider
+  }
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Use black logo for Light Mode (maximum contrast on light backgrounds), white logo for Dark Mode
+  const isDark = mounted && (themeMode === 'dark' || (typeof document !== 'undefined' && document.documentElement.classList.contains('dark')));
+  const logoSrc = isDark ? '/logo-white.png' : '/logo-black.png';
+
   return (
     <div className={`flex flex-col items-center justify-center ${className}`}>
-      {/* Light Mode Logo (Pristine Dark Black Logo on Light Gray/White Background) */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src="/logo-black.png"
+        src={logoSrc}
         alt="Estudio Arkipelago Logo"
         style={{ width: size, height: 'auto' }}
-        className="object-contain block dark:hidden transition-all hover:opacity-90"
-      />
-
-      {/* Dark Mode Logo (Pristine Crisp White Logo on Dark Background) */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src="/logo-white.png"
-        alt="Estudio Arkipelago Logo"
-        style={{ width: size, height: 'auto' }}
-        className="object-contain hidden dark:block transition-all hover:opacity-90"
+        className="object-contain transition-all hover:opacity-90"
       />
     </div>
   );
