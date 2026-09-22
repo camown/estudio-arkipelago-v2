@@ -34,16 +34,8 @@ export function Sidebar({ user }: SidebarProps) {
       <div className="flex-1 flex flex-col overflow-y-auto">
         {/* Top Studio Brand Header */}
         <div className="p-6 border-b border-border-main flex items-center justify-between">
-          <Link href="/dashboard" className="flex items-center gap-3 group">
-            <Logo size={36} />
-            <div>
-              <h1 className="font-bold text-sm tracking-wider uppercase leading-none">
-                ESTUDIO
-              </h1>
-              <p className="text-xs font-light tracking-[0.2em] text-muted-main uppercase">
-                ARKIPELAGO
-              </p>
-            </div>
+          <Link href="/dashboard" className="flex items-center group">
+            <Logo size={140} />
           </Link>
 
           {/* Theme Toggle Button (Day Light / Night Light) */}

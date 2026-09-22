@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { Geist, Geist_Mono } from 'next/font/google';
-import { JetBrains_Mono } from 'next/font/google';
+import { Geist, Geist_Mono, JetBrains_Mono, Plus_Jakarta_Sans } from 'next/font/google';
 import './globals.css';
 
 const geistSans = Geist({
@@ -16,6 +15,12 @@ const geistMono = Geist_Mono({
 const jetbrainsMono = JetBrains_Mono({
   variable: '--font-jetbrains-mono',
   subsets: ['latin'],
+});
+
+const jakartaDisplay = Plus_Jakarta_Sans({
+  variable: '--font-jakarta',
+  subsets: ['latin'],
+  weight: ['300', '400', '500', '600', '700', '800'],
 });
 
 export const metadata: Metadata = {
@@ -47,7 +52,7 @@ export default function RootLayout({
         <link rel="manifest" href="/manifest.json" />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${jetbrainsMono.variable} antialiased min-h-screen bg-[#0A0A0A] text-[#FAFAFA]`}
+        className={`${geistSans.variable} ${geistMono.variable} ${jetbrainsMono.variable} ${jakartaDisplay.variable} antialiased min-h-screen bg-bg-main text-text-main`}
       >
         {children}
       </body>

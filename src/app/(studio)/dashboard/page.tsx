@@ -54,17 +54,12 @@ export default function DashboardPage() {
         onTaskCreated={handleTaskCreated}
       />
 
-      {/* 1. Header Banner with Studio Logo & Welcome Message (Matching Image 3) */}
-      <div className="flex flex-col items-center justify-center text-center py-6 space-y-3 relative">
-        <Logo size={56} className="text-text-main" />
-        <div className="space-y-1">
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-[0.2em] uppercase text-text-main">
-            ESTUDIO ARKIPELAGO
-          </h1>
-          <p className="text-xs sm:text-sm font-bold tracking-[0.25em] text-muted-main uppercase">
-            WELCOME, {userName}!
-          </p>
-        </div>
+      {/* 1. Header Banner with Official Studio Logo PNG Asset & Welcome Message */}
+      <div className="flex flex-col items-center justify-center text-center py-6 space-y-4 relative">
+        <Logo size={200} />
+        <p className="text-xs sm:text-sm font-bold tracking-[0.25em] text-muted-main uppercase font-mono">
+          WELCOME, {userName}!
+        </p>
 
         {/* Task Initialization Quick Action Button */}
         <button

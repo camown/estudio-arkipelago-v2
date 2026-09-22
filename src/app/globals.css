@@ -44,8 +44,16 @@ body {
   padding: 0;
   background-color: var(--bg-main);
   color: var(--text-main);
-  font-family: var(--font-geist-mono), monospace;
+  font-family: var(--font-jakarta), var(--font-geist-sans), sans-serif;
   transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.font-display {
+  font-family: var(--font-jakarta), var(--font-geist-sans), sans-serif;
+}
+
+.font-mono {
+  font-family: var(--font-geist-mono), var(--font-jetbrains-mono), monospace;
 }
 
 ::selection {
