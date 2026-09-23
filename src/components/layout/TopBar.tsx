@@ -14,6 +14,7 @@ interface NotificationItem {
   description: string;
   time: string;
   unread: boolean;
+  link: string;
 }
 
 interface TopBarProps {
@@ -34,6 +35,7 @@ export function TopBar({ user }: TopBarProps) {
       description: 'Arch. Maria Cruz sent a photo update on Makati Tower Phase 2.',
       time: '10m ago',
       unread: true,
+      link: '/chat?thread=thread-001',
     },
     {
       id: 'n2',
@@ -42,6 +44,7 @@ export function TopBar({ user }: TopBarProps) {
       description: 'Casa Verde Residence schematic review due by EOD Friday.',
       time: '1h ago',
       unread: true,
+      link: '/projects?project=CV-2024',
     },
     {
       id: 'n3',
@@ -50,6 +53,7 @@ export function TopBar({ user }: TopBarProps) {
       description: 'BGC Cultural Pavilion site survey scheduled for tomorrow 10:00 AM.',
       time: '3h ago',
       unread: false,
+      link: '/calendar?event=studio-01',
     },
   ]);
 
@@ -186,6 +190,10 @@ export function TopBar({ user }: TopBarProps) {
                       setNotifications((prev) =>
                         prev.map((n) => (n.id === notif.id ? { ...n, unread: false } : n))
                       );
+                      setIsNotifOpen(false);
+                      if (notif.link) {
+                        router.push(notif.link);
+                      }
                     }}
                     className={`p-4 transition-all flex items-start gap-3 cursor-pointer ${
                       themeMode === 'light'

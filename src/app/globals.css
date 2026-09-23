@@ -1,5 +1,18 @@
 @import "tailwindcss";
 
+@theme {
+  --color-bg-main: var(--bg-main);
+  --color-text-main: var(--text-main);
+  --color-surface-main: var(--surface-main);
+  --color-surface-hover: var(--surface-hover);
+  --color-border-main: var(--border-main);
+  --color-border-strong: var(--border-strong);
+  --color-muted-main: var(--muted-main);
+  --color-accent-cyan: var(--accent-cyan);
+  --color-accent-yellow: var(--accent-yellow);
+  --color-accent-red: var(--accent-red);
+}
+
 :root {
   /* Light Theme Defaults (matching studio clean light gray) */
   --bg-main: #EAEAEA;

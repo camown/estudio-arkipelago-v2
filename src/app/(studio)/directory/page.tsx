@@ -1,8 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Search, HardHat, Wrench, Truck, Briefcase, BookUser, Plus, X, Phone, Mail as MailIcon, MapPin } from 'lucide-react';
-import { useAuth } from '@/lib/hooks/useAuth';
+import { Search, HardHat, Wrench, Truck, Briefcase, Plus, X, Phone, Mail as MailIcon, MapPin } from 'lucide-react';
 
 interface DirectoryEntry {
   id: string;
@@ -15,7 +14,6 @@ interface DirectoryEntry {
 }
 
 export default function DirectoryPage() {
-  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState<string>('ALL');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -196,29 +194,40 @@ export default function DirectoryPage() {
                 </div>
               </div>
 
-              <div className="space-y-1.5 text-xs text-muted-main border-t border-border-main/40 pt-3">
+              <div className="space-y-2 text-xs text-muted-main border-t border-border-main/40 pt-3">
                 {entry.contactPerson && (
                   <div className="font-bold text-text-main uppercase">
                     CONTACT: {entry.contactPerson}
                   </div>
                 )}
                 {entry.phone && (
-                  <div className="flex items-center gap-2">
-                    <Phone className="w-3.5 h-3.5" />
+                  <a
+                    href={`tel:${entry.phone.replace(/\s+/g, '')}`}
+                    className="flex items-center gap-2 hover:text-accent-cyan transition-colors"
+                  >
+                    <Phone className="w-3.5 h-3.5 text-emerald-500" />
                     <span>{entry.phone}</span>
-                  </div>
+                  </a>
                 )}
                 {entry.email && (
-                  <div className="flex items-center gap-2">
-                    <MailIcon className="w-3.5 h-3.5" />
+                  <a
+                    href={`mailto:${entry.email}`}
+                    className="flex items-center gap-2 hover:text-accent-cyan transition-colors"
+                  >
+                    <MailIcon className="w-3.5 h-3.5 text-accent-cyan" />
                     <span>{entry.email}</span>
-                  </div>
+                  </a>
                 )}
                 {entry.location && (
-                  <div className="flex items-center gap-2">
-                    <MapPin className="w-3.5 h-3.5" />
+                  <a
+                    href={`https://maps.google.com/?q=${encodeURIComponent(entry.location)}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center gap-2 hover:text-accent-cyan transition-colors"
+                  >
+                    <MapPin className="w-3.5 h-3.5 text-rose-500" />
                     <span>{entry.location}</span>
-                  </div>
+                  </a>
                 )}
               </div>
             </div>
@@ -235,14 +244,14 @@ export default function DirectoryPage() {
       {/* Add Directory Modal */}
       {isAddModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-md p-4 font-mono">
-          <div className="bg-[#262626] border border-[#3F3F46] w-full max-w-lg rounded-2xl shadow-2xl p-7 space-y-5 text-white">
-            <div className="flex items-center justify-between border-b border-[#3F3F46] pb-3">
-              <h3 className="text-sm font-bold uppercase tracking-widest text-[#E4E4E7]">
+          <div className="bg-surface-main border border-border-main w-full max-w-lg rounded-2xl shadow-2xl p-7 space-y-5 text-text-main">
+            <div className="flex items-center justify-between border-b border-border-main pb-3">
+              <h3 className="text-sm font-bold uppercase tracking-widest text-text-main">
                 ADD TO DIRECTORY
               </h3>
               <button
                 onClick={() => setIsAddModalOpen(false)}
-                className="p-1 text-[#A1A1AA] hover:text-white transition-colors"
+                className="p-1 text-muted-main hover:text-text-main transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -250,7 +259,7 @@ export default function DirectoryPage() {
 
             <div className="space-y-4">
               <div>
-                <label className="text-[10px] font-bold text-[#A1A1AA] uppercase tracking-wider block mb-1">
+                <label className="text-[10px] font-bold text-muted-main uppercase tracking-wider block mb-1">
                   NAME / COMPANY *
                 </label>
                 <input
@@ -258,26 +267,26 @@ export default function DirectoryPage() {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="E.G. STRUCTURAL SOLUTIONS INC."
-                  className="w-full bg-[#18181B] border border-[#3F3F46] focus:border-[#0284C7] p-3 text-xs font-mono text-[#FAFAFA] rounded-xl focus:outline-none uppercase placeholder-[#52525B]"
+                  className="w-full bg-surface-hover border border-border-main focus:border-accent-cyan p-3 text-xs font-mono text-text-main rounded-xl focus:outline-none uppercase placeholder:text-muted-main/60"
                 />
               </div>
 
               <div>
-                <label className="text-[10px] font-bold text-[#A1A1AA] uppercase tracking-wider block mb-1">CATEGORY</label>
+                <label className="text-[10px] font-bold text-muted-main uppercase tracking-wider block mb-1">CATEGORY</label>
                 <select
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
-                  className="w-full bg-[#18181B] border border-[#3F3F46] focus:border-[#0284C7] p-3 text-xs font-mono text-[#FAFAFA] rounded-xl focus:outline-none uppercase"
+                  className="w-full bg-surface-hover border border-border-main focus:border-accent-cyan p-3 text-xs font-mono text-text-main rounded-xl focus:outline-none uppercase"
                 >
-                  <option value="Engineers">ENGINEERS</option>
-                  <option value="Suppliers">SUPPLIERS</option>
-                  <option value="Contractors">CONTRACTORS</option>
-                  <option value="Allied Services">ALLIED SERVICES</option>
+                  <option value="Engineers" className="bg-surface-main text-text-main">ENGINEERS</option>
+                  <option value="Suppliers" className="bg-surface-main text-text-main">SUPPLIERS</option>
+                  <option value="Contractors" className="bg-surface-main text-text-main">CONTRACTORS</option>
+                  <option value="Allied Services" className="bg-surface-main text-text-main">ALLIED SERVICES</option>
                 </select>
               </div>
 
               <div>
-                <label className="text-[10px] font-bold text-[#A1A1AA] uppercase tracking-wider block mb-1">
+                <label className="text-[10px] font-bold text-muted-main uppercase tracking-wider block mb-1">
                   CONTACT PERSON
                 </label>
                 <input
@@ -285,41 +294,41 @@ export default function DirectoryPage() {
                   value={contactPerson}
                   onChange={(e) => setContactPerson(e.target.value)}
                   placeholder="E.G. ENGR. JUAN DELA CRUZ"
-                  className="w-full bg-[#18181B] border border-[#3F3F46] focus:border-[#0284C7] p-3 text-xs font-mono text-[#FAFAFA] rounded-xl focus:outline-none uppercase placeholder-[#52525B]"
+                  className="w-full bg-surface-hover border border-border-main focus:border-accent-cyan p-3 text-xs font-mono text-text-main rounded-xl focus:outline-none uppercase placeholder:text-muted-main/60"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-[10px] font-bold text-[#A1A1AA] uppercase tracking-wider block mb-1">PHONE</label>
+                  <label className="text-[10px] font-bold text-muted-main uppercase tracking-wider block mb-1">PHONE</label>
                   <input
                     type="text"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     placeholder="+63 900 000 0000"
-                    className="w-full bg-[#18181B] border border-[#3F3F46] focus:border-[#0284C7] p-3 text-xs font-mono text-[#FAFAFA] rounded-xl focus:outline-none placeholder-[#52525B]"
+                    className="w-full bg-surface-hover border border-border-main focus:border-accent-cyan p-3 text-xs font-mono text-text-main rounded-xl focus:outline-none placeholder:text-muted-main/60"
                   />
                 </div>
                 <div>
-                  <label className="text-[10px] font-bold text-[#A1A1AA] uppercase tracking-wider block mb-1">EMAIL</label>
+                  <label className="text-[10px] font-bold text-muted-main uppercase tracking-wider block mb-1">EMAIL</label>
                   <input
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="contact@domain.com"
-                    className="w-full bg-[#18181B] border border-[#3F3F46] focus:border-[#0284C7] p-3 text-xs font-mono text-[#FAFAFA] rounded-xl focus:outline-none placeholder-[#52525B]"
+                    className="w-full bg-surface-hover border border-border-main focus:border-accent-cyan p-3 text-xs font-mono text-text-main rounded-xl focus:outline-none placeholder:text-muted-main/60"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="text-[10px] font-bold text-[#A1A1AA] uppercase tracking-wider block mb-1">LOCATION</label>
+                <label className="text-[10px] font-bold text-muted-main uppercase tracking-wider block mb-1">LOCATION</label>
                 <input
                   type="text"
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
                   placeholder="E.G. MAKATI CITY"
-                  className="w-full bg-[#18181B] border border-[#3F3F46] focus:border-[#0284C7] p-3 text-xs font-mono text-[#FAFAFA] rounded-xl focus:outline-none uppercase placeholder-[#52525B]"
+                  className="w-full bg-surface-hover border border-border-main focus:border-accent-cyan p-3 text-xs font-mono text-text-main rounded-xl focus:outline-none uppercase placeholder:text-muted-main/60"
                 />
               </div>
             </div>
@@ -327,13 +336,13 @@ export default function DirectoryPage() {
             <div className="grid grid-cols-2 gap-3 pt-2">
               <button
                 onClick={handleAddEntry}
-                className="py-3 bg-white text-black font-extrabold text-xs uppercase tracking-widest rounded-xl hover:bg-zinc-200 transition-colors shadow-md"
+                className="py-3 bg-black text-white dark:bg-white dark:text-black font-extrabold text-xs uppercase tracking-widest rounded-xl hover:opacity-90 transition-opacity shadow-md"
               >
                 SAVE ENTRY
               </button>
               <button
                 onClick={() => setIsAddModalOpen(false)}
-                className="py-3 bg-[#3F3F46]/60 border border-[#52525B] text-white font-extrabold text-xs uppercase tracking-widest rounded-xl hover:bg-[#3F3F46] transition-colors"
+                className="py-3 bg-surface-hover border border-border-main text-text-main font-extrabold text-xs uppercase tracking-widest rounded-xl hover:bg-border-main/40 transition-colors"
               >
                 CANCEL
               </button>

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Sparkles, Clock, X, Check, ArrowRight } from 'lucide-react';
+import { Sparkles, X, Check } from 'lucide-react';
 import { useClockIn } from '@/lib/hooks/useClockIn';
 import { MOCK_PROJECTS } from '@/lib/constants';
 import { usePathname } from 'next/navigation';
@@ -9,7 +9,7 @@ import { usePathname } from 'next/navigation';
 const NUDGE_DISMISSED_KEY = 'arkipelago_nudge_dismissed_until';
 
 export function TimeTrackingNudge() {
-  const { isClockedIn, selectedProjectId, clockIn } = useClockIn();
+  const { isClockedIn, clockIn } = useClockIn();
   const pathname = usePathname();
   const [suggestedProject, setSuggestedProject] = useState<typeof MOCK_PROJECTS[0] | null>(null);
   const [isVisible, setIsVisible] = useState(false);
@@ -17,42 +17,43 @@ export function TimeTrackingNudge() {
 
   // Smart Context Detection Engine
   const detectContextualProject = useCallback(() => {
-    // If already clocked in, don't show prompt
-    if (isClockedIn) {
-      setIsVisible(false);
-      return;
-    }
-
     // Check if dismissed recently (within last 30 minutes)
-    const dismissedUntil = localStorage.getItem(NUDGE_DISMISSED_KEY);
-    if (dismissedUntil && Date.now() < parseInt(dismissedUntil, 10)) {
-      return;
+    if (typeof window !== 'undefined') {
+      const dismissedUntil = localStorage.getItem(NUDGE_DISMISSED_KEY);
+      if (dismissedUntil && Date.now() < parseInt(dismissedUntil, 10)) {
+        return;
+      }
     }
 
     // 1. Detect by active page route (e.g., viewing project details or specific chat)
     if (pathname.includes('/projects') || pathname.includes('/sketch')) {
-      // Default contextual recommendation
       const project = MOCK_PROJECTS.find(p => p.id === 'proj-001') || MOCK_PROJECTS[0];
-      setSuggestedProject(project);
-      setIsVisible(true);
-      return;
+      const timer = setTimeout(() => {
+        setSuggestedProject(project);
+        setIsVisible(true);
+      }, 100);
+      return () => clearTimeout(timer);
     }
 
     // 2. Default activity recognition (Casa Verde Residence as primary studio focus)
     const defaultProject = MOCK_PROJECTS[0]; // Casa Verde Residence
-    setSuggestedProject(defaultProject);
 
-    // Show after 4 seconds of idle page presence if unclocked
+    // Show after 3.5 seconds of idle page presence if unclocked
     const timer = setTimeout(() => {
+      setSuggestedProject(defaultProject);
       setIsVisible(true);
     }, 3500);
 
     return () => clearTimeout(timer);
-  }, [isClockedIn, pathname]);
+  }, [pathname]);
 
   useEffect(() => {
-    detectContextualProject();
-  }, [detectContextualProject]);
+    if (isClockedIn) return;
+    const cleanup = detectContextualProject();
+    return () => {
+      if (cleanup) cleanup();
+    };
+  }, [isClockedIn, detectContextualProject]);
 
   const handleAccept = () => {
     if (suggestedProject) {

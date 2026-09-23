@@ -3,10 +3,10 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/hooks/useAuth';
+import { useTasks } from '@/lib/hooks/useTasks';
 import Logo from '@/components/ui/Logo';
 import CalendarGrid from '@/components/dashboard/CalendarGrid';
 import { TaskInitializationModal } from '@/components/dashboard/TaskInitializationModal';
-import { TaskItem } from '@/types';
 import {
   LayoutDashboard,
   FolderKanban,
@@ -21,28 +21,12 @@ import {
 
 export default function DashboardPage() {
   const { user } = useAuth();
+  const { tasks, addTask } = useTasks();
   const userName = user?.name ? user.name.toUpperCase() : 'TESTING3';
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
-  const [tasks, setTasks] = useState<TaskItem[]>([]);
 
-  const handleTaskCreated = (newTaskData: Partial<TaskItem>) => {
-    const created: TaskItem = {
-      id: 'task-' + Date.now(),
-      name: newTaskData.name || 'UNTITLED TASK',
-      projectId: newTaskData.projectId || '',
-      description: newTaskData.description || '',
-      projectPhase: newTaskData.projectPhase || 'SCHEMATIC',
-      deliverables: newTaskData.deliverables || [],
-      taskType: newTaskData.taskType || 'WORKSHOP',
-      priority: newTaskData.priority || 'MEDIUM',
-      assignedMember: newTaskData.assignedMember || 'UNASSIGNED',
-      startDate: newTaskData.startDate,
-      endDate: newTaskData.endDate,
-      timeNeeded: newTaskData.timeNeeded,
-      status: 'PENDING',
-      createdAt: new Date().toISOString(),
-    };
-    setTasks((prev) => [created, ...prev]);
+  const handleTaskCreated = (newTaskData: Parameters<typeof addTask>[0]) => {
+    addTask(newTaskData);
   };
 
   return (
@@ -264,10 +248,13 @@ export default function DashboardPage() {
           <p className="text-xs text-muted-main uppercase tracking-wider leading-relaxed">
             CONNECT YOUR GMAIL ACCOUNT TO VIEW YOUR INBOX DIRECTLY FROM THE DASHBOARD.
           </p>
-          <button className="px-6 py-3 border-2 border-border-strong hover:border-text-main bg-surface-hover hover:bg-surface-main transition-all font-bold text-xs uppercase tracking-widest flex items-center gap-2 rounded-lg shadow-xs">
+          <a
+            href="/api/auth/google/login"
+            className="px-6 py-3 border-2 border-border-strong hover:border-text-main bg-surface-hover hover:bg-surface-main transition-all font-bold text-xs uppercase tracking-widest flex items-center gap-2 rounded-lg shadow-xs text-text-main"
+          >
             <span className="font-serif italic font-bold text-base leading-none">G</span>
             CONNECT GMAIL
-          </button>
+          </a>
         </div>
       </div>
     </div>

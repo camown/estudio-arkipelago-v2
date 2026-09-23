@@ -56,13 +56,6 @@ function getInitialClockInState() {
 }
 
 export function useClockIn() {
-  const [initialState] = useState(getInitialClockInState);
-  const [isClocked, setIsClocked] = useState<boolean>(initialState.isClocked);
-  const [startTime, setStartTime] = useState<Date | null>(initialState.startTime);
-  const [elapsed, setElapsed] = useState<number>(initialState.elapsed);
-  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(initialState.selectedProjectId);
-  const [todayEntries, setTodayEntries] = useState<TimeEntry[]>([]);
-
   const getEntries = useCallback((): TimeEntry[] => {
     if (typeof window === 'undefined') {
       return [];
@@ -93,13 +86,16 @@ export function useClockIn() {
     });
   }, [getEntries]);
 
+  const [initialState] = useState(getInitialClockInState);
+  const [isClocked, setIsClocked] = useState<boolean>(initialState.isClocked);
+  const [startTime, setStartTime] = useState<Date | null>(initialState.startTime);
+  const [elapsed, setElapsed] = useState<number>(initialState.elapsed);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(initialState.selectedProjectId);
+  const [todayEntries, setTodayEntries] = useState<TimeEntry[]>(getTodayEntries);
+
   const refreshTodayEntries = useCallback(() => {
     setTodayEntries(getTodayEntries());
   }, [getTodayEntries]);
-
-  useEffect(() => {
-    refreshTodayEntries();
-  }, [refreshTodayEntries]);
 
 
 

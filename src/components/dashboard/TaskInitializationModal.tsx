@@ -1,10 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, ChevronDown, Sun, Moon } from 'lucide-react';
+import { X, ChevronDown } from 'lucide-react';
 import { MOCK_PROJECTS, PRESET_ACCOUNTS } from '@/lib/constants';
 import { TaskItem, TaskType, TaskPriority, ProjectPhase } from '@/types';
-import { useTheme } from '@/lib/themeContext';
 
 interface TaskInitializationModalProps {
   isOpen: boolean;
@@ -51,7 +50,6 @@ export function TaskInitializationModal({
   onClose,
   onTaskCreated,
 }: TaskInitializationModalProps) {
-  const { themeMode, setThemeMode } = useTheme();
   const [taskName, setTaskName] = useState('');
   const [projectId, setProjectId] = useState(MOCK_PROJECTS[0]?.id || '');
   const [description, setDescription] = useState('');
@@ -132,48 +130,16 @@ export function TaskInitializationModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-md p-4 font-mono overflow-y-auto">
-      <div className="bg-[#262626] text-white border border-[#3F3F46] w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden my-8 transition-colors">
+      <div className="bg-surface-main text-text-main border border-border-main w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden my-8 transition-colors">
         {/* Modal Header */}
-        <div className="flex items-center justify-between px-7 py-5 border-b border-[#3F3F46]">
-          <div className="flex items-center space-x-4">
-            <h2 className="text-xs font-bold uppercase tracking-widest text-[#E4E4E7]">
-              TASK INITIALIZATION
-            </h2>
-
-            {/* Day Light / Night Light Mode Selector Switcher */}
-            <div className="flex items-center bg-[#18181B] border border-[#3F3F46] rounded-lg p-0.5 text-[10px] font-bold">
-              <button
-                type="button"
-                onClick={() => setThemeMode('light')}
-                className={`px-2 py-0.5 rounded-md flex items-center space-x-1 uppercase transition-all ${
-                  themeMode === 'light'
-                    ? 'bg-[#262626] text-white shadow-xs'
-                    : 'text-[#A1A1AA] hover:text-white'
-                }`}
-                title="Switch to Day Light"
-              >
-                <Sun className="w-3 h-3 text-amber-400" />
-                <span>DAY</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setThemeMode('dark')}
-                className={`px-2 py-0.5 rounded-md flex items-center space-x-1 uppercase transition-all ${
-                  themeMode === 'dark'
-                    ? 'bg-[#262626] text-white shadow-xs'
-                    : 'text-[#A1A1AA] hover:text-white'
-                }`}
-                title="Switch to Night Light"
-              >
-                <Moon className="w-3 h-3 text-cyan-400" />
-                <span>NIGHT</span>
-              </button>
-            </div>
-          </div>
+        <div className="flex items-center justify-between px-7 py-5 border-b border-border-main bg-surface-main">
+          <h2 className="text-xs font-bold uppercase tracking-widest text-text-main">
+            TASK INITIALIZATION
+          </h2>
 
           <button
             onClick={onClose}
-            className="p-1 text-[#A1A1AA] hover:text-white transition-colors"
+            className="p-1 text-muted-main hover:text-text-main transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -183,7 +149,7 @@ export function TaskInitializationModal({
         <div className="p-7 space-y-6 max-h-[75vh] overflow-y-auto">
           {/* TASK NAME */}
           <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-[#A1A1AA] uppercase tracking-wider block">
+            <label className="text-[10px] font-bold text-muted-main uppercase tracking-wider block">
               TASK NAME
             </label>
             <input
@@ -191,34 +157,34 @@ export function TaskInitializationModal({
               value={taskName}
               onChange={(e) => setTaskName(e.target.value)}
               placeholder="E.G. SITE SURVEY ANALYSIS"
-              className="w-full bg-[#18181B] border-2 border-[#0284C7] p-3 text-xs font-mono text-[#FAFAFA] rounded-xl focus:outline-none uppercase tracking-wider placeholder-[#52525B]"
+              className="w-full bg-surface-hover border-2 border-accent-cyan p-3 text-xs font-mono text-text-main rounded-xl focus:outline-none uppercase tracking-wider placeholder:text-muted-main/60"
             />
           </div>
 
           {/* PROJECT */}
           <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-[#A1A1AA] uppercase tracking-wider block">
+            <label className="text-[10px] font-bold text-muted-main uppercase tracking-wider block">
               PROJECT
             </label>
             <div className="relative">
               <select
                 value={projectId}
                 onChange={(e) => setProjectId(e.target.value)}
-                className="w-full bg-[#18181B] border border-[#3F3F46] focus:border-[#0284C7] p-3 text-xs font-mono text-[#FAFAFA] rounded-xl appearance-none pr-10 focus:outline-none uppercase font-bold"
+                className="w-full bg-surface-hover border border-border-main focus:border-accent-cyan p-3 text-xs font-mono text-text-main rounded-xl appearance-none pr-10 focus:outline-none uppercase font-bold"
               >
                 {MOCK_PROJECTS.map((p) => (
-                  <option key={p.id} value={p.id} className="bg-[#18181B] text-white">
+                  <option key={p.id} value={p.id} className="bg-surface-main text-text-main">
                     {p.name} ({p.code})
                   </option>
                 ))}
               </select>
-              <ChevronDown className="w-4 h-4 absolute right-3.5 top-3.5 text-[#A1A1AA] pointer-events-none" />
+              <ChevronDown className="w-4 h-4 absolute right-3.5 top-3.5 text-muted-main pointer-events-none" />
             </div>
           </div>
 
           {/* DESCRIPTION */}
           <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-[#A1A1AA] uppercase tracking-wider block">
+            <label className="text-[10px] font-bold text-muted-main uppercase tracking-wider block">
               DESCRIPTION
             </label>
             <textarea
@@ -226,7 +192,7 @@ export function TaskInitializationModal({
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Add details about the task..."
-              className="w-full bg-[#18181B] border border-[#3F3F46] focus:border-[#0284C7] p-3 text-xs font-mono text-[#FAFAFA] rounded-xl focus:outline-none resize-none placeholder-[#52525B]"
+              className="w-full bg-surface-hover border border-border-main focus:border-accent-cyan p-3 text-xs font-mono text-text-main rounded-xl focus:outline-none resize-none placeholder:text-muted-main/60"
             />
           </div>
 
@@ -234,35 +200,35 @@ export function TaskInitializationModal({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* PROJECT PHASE */}
             <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-[#A1A1AA] uppercase tracking-wider block">
+              <label className="text-[10px] font-bold text-muted-main uppercase tracking-wider block">
                 PROJECT PHASE
               </label>
               <div className="relative">
                 <select
                   value={projectPhase}
                   onChange={(e) => setProjectPhase(e.target.value as ProjectPhase)}
-                  className="w-full bg-[#18181B] border border-[#3F3F46] focus:border-[#0284C7] p-3 text-xs font-mono text-[#FAFAFA] rounded-xl appearance-none pr-10 focus:outline-none uppercase font-bold"
+                  className="w-full bg-surface-hover border border-border-main focus:border-accent-cyan p-3 text-xs font-mono text-text-main rounded-xl appearance-none pr-10 focus:outline-none uppercase font-bold"
                 >
                   {PROJECT_PHASES.map((phase) => (
-                    <option key={phase} value={phase} className="bg-[#18181B] text-white">
+                    <option key={phase} value={phase} className="bg-surface-main text-text-main">
                       {phase}
                     </option>
                   ))}
                 </select>
-                <ChevronDown className="w-4 h-4 absolute right-3.5 top-3.5 text-[#A1A1AA] pointer-events-none" />
+                <ChevronDown className="w-4 h-4 absolute right-3.5 top-3.5 text-muted-main pointer-events-none" />
               </div>
             </div>
 
             {/* DELIVERABLES (DROPDOWN MULTI-SELECT) */}
             <div className="space-y-1.5 relative">
               <div className="flex items-center justify-between">
-                <label className="text-[10px] font-bold text-[#A1A1AA] uppercase tracking-wider block">
+                <label className="text-[10px] font-bold text-muted-main uppercase tracking-wider block">
                   DELIVERABLES
                 </label>
                 <button
                   type="button"
                   onClick={handleCheckAllDeliverables}
-                  className="text-[10px] font-extrabold uppercase text-cyan-400 hover:underline"
+                  className="text-[10px] font-extrabold uppercase text-accent-cyan hover:underline"
                 >
                   CHECK ALL
                 </button>
@@ -271,29 +237,29 @@ export function TaskInitializationModal({
               <button
                 type="button"
                 onClick={() => setIsDeliverableDropdownOpen(!isDeliverableDropdownOpen)}
-                className="w-full bg-[#18181B] border border-[#3F3F46] p-3 text-xs font-mono text-[#FAFAFA] rounded-xl flex items-center justify-between font-bold"
+                className="w-full bg-surface-hover border border-border-main p-3 text-xs font-mono text-text-main rounded-xl flex items-center justify-between font-bold"
               >
                 <span className="truncate">
                   {selectedDeliverables.length > 0
                     ? `${selectedDeliverables.length} SELECTED`
                     : '-- CLICK TO TOGGLE SELECTION --'}
                 </span>
-                <ChevronDown className="w-4 h-4 shrink-0 text-[#A1A1AA]" />
+                <ChevronDown className="w-4 h-4 shrink-0 text-muted-main" />
               </button>
 
               {/* Multi-select dropdown popover */}
               {isDeliverableDropdownOpen && (
-                <div className="absolute left-0 right-0 top-full mt-1 bg-[#18181B] border border-[#3F3F46] z-20 max-h-48 overflow-y-auto p-2 shadow-2xl rounded-xl space-y-1">
+                <div className="absolute left-0 right-0 top-full mt-1 bg-surface-main border border-border-main z-20 max-h-48 overflow-y-auto p-2 shadow-2xl rounded-xl space-y-1">
                   {DELIVERABLE_OPTIONS.map((item) => (
                     <label
                       key={item}
-                      className="flex items-center space-x-2 text-[11px] font-bold p-2 hover:bg-[#262626] rounded-lg cursor-pointer uppercase text-white"
+                      className="flex items-center space-x-2 text-[11px] font-bold p-2 hover:bg-surface-hover rounded-lg cursor-pointer uppercase text-text-main"
                     >
                       <input
                         type="checkbox"
                         checked={selectedDeliverables.includes(item)}
                         onChange={() => toggleDeliverable(item)}
-                        className="rounded border-[#3F3F46] text-cyan-400 focus:ring-0"
+                        className="rounded border-border-main text-accent-cyan focus:ring-0"
                       />
                       <span className="truncate">{item}</span>
                     </label>
@@ -305,7 +271,7 @@ export function TaskInitializationModal({
 
           {/* SELECTED DELIVERABLES QUEUE (ONE PER LINE) */}
           <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-[#A1A1AA] uppercase tracking-wider block">
+            <label className="text-[10px] font-bold text-muted-main uppercase tracking-wider block">
               SELECTED DELIVERABLES QUEUE (ONE PER LINE)
             </label>
             <textarea
@@ -313,7 +279,7 @@ export function TaskInitializationModal({
               value={deliverablesQueueText}
               onChange={(e) => setDeliverablesQueueText(e.target.value)}
               placeholder="SELECT ITEMS FROM DROPDOWN ABOVE, OR TYPE CUSTOM ONES HERE..."
-              className="w-full bg-[#18181B] border border-[#3F3F46] focus:border-[#0284C7] p-3 text-xs font-mono text-[#FAFAFA] rounded-xl focus:outline-none resize-none placeholder-[#52525B]"
+              className="w-full bg-surface-hover border border-border-main focus:border-accent-cyan p-3 text-xs font-mono text-text-main rounded-xl focus:outline-none resize-none placeholder:text-muted-main/60"
             />
           </div>
 
@@ -321,7 +287,7 @@ export function TaskInitializationModal({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             {/* TASK TYPE GRID */}
             <div className="space-y-2">
-              <label className="text-[10px] font-bold text-[#A1A1AA] uppercase tracking-wider block">
+              <label className="text-[10px] font-bold text-muted-main uppercase tracking-wider block">
                 TASK TYPE
               </label>
               <div className="grid grid-cols-2 gap-2">
@@ -334,8 +300,8 @@ export function TaskInitializationModal({
                       onClick={() => setTaskType(t.id)}
                       className={`flex items-center space-x-2 px-3 py-2 border text-[10px] font-extrabold uppercase transition-all rounded-xl ${
                         isSelected
-                          ? 'border-[#0284C7] bg-[#0284C7]/20 text-white'
-                          : 'border-[#3F3F46] bg-[#18181B] text-[#A1A1AA] hover:text-white'
+                          ? 'border-accent-cyan bg-accent-cyan/15 text-text-main shadow-xs'
+                          : 'border-border-main bg-surface-hover text-muted-main hover:text-text-main'
                       }`}
                     >
                       <span className={`w-2 h-2 rounded-full shrink-0 ${t.color}`} />
@@ -348,7 +314,7 @@ export function TaskInitializationModal({
 
             {/* PRIORITY GRID */}
             <div className="space-y-2">
-              <label className="text-[10px] font-bold text-[#A1A1AA] uppercase tracking-wider block">
+              <label className="text-[10px] font-bold text-muted-main uppercase tracking-wider block">
                 PRIORITY
               </label>
               <div className="grid grid-cols-3 gap-2">
@@ -361,8 +327,8 @@ export function TaskInitializationModal({
                       onClick={() => setPriority(p.id)}
                       className={`flex items-center justify-center space-x-1.5 px-2 py-2 border text-[10px] font-extrabold uppercase transition-all rounded-xl ${
                         isSelected
-                          ? 'border-[#0284C7] bg-[#0284C7]/20 text-white'
-                          : 'border-[#3F3F46] bg-[#18181B] text-[#A1A1AA] hover:text-white'
+                          ? 'border-accent-cyan bg-accent-cyan/15 text-text-main shadow-xs'
+                          : 'border-border-main bg-surface-hover text-muted-main hover:text-text-main'
                       }`}
                     >
                       <span className={`w-2 h-2 rounded-full shrink-0 ${p.color}`} />
@@ -377,13 +343,13 @@ export function TaskInitializationModal({
           {/* ASSIGNED MEMBER */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <label className="text-[10px] font-bold text-[#A1A1AA] uppercase tracking-wider block">
+              <label className="text-[10px] font-bold text-muted-main uppercase tracking-wider block">
                 ASSIGNED MEMBER
               </label>
               <button
                 type="button"
                 onClick={handleAssignToMe}
-                className="text-[10px] font-extrabold uppercase text-cyan-400 hover:underline"
+                className="text-[10px] font-extrabold uppercase text-accent-cyan hover:underline"
               >
                 (ASSIGN TO ME)
               </button>
@@ -392,26 +358,26 @@ export function TaskInitializationModal({
               <select
                 value={assignedMember}
                 onChange={(e) => setAssignedMember(e.target.value)}
-                className="w-full bg-[#18181B] border border-[#3F3F46] focus:border-[#0284C7] p-3 text-xs font-mono text-[#FAFAFA] rounded-xl appearance-none pr-10 focus:outline-none uppercase font-bold"
+                className="w-full bg-surface-hover border border-border-main focus:border-accent-cyan p-3 text-xs font-mono text-text-main rounded-xl appearance-none pr-10 focus:outline-none uppercase font-bold"
               >
-                <option value="NONE ASSIGNED" className="bg-[#18181B] text-white">NONE ASSIGNED</option>
+                <option value="NONE ASSIGNED" className="bg-surface-main text-text-main">NONE ASSIGNED</option>
                 {PRESET_ACCOUNTS.map((acc) => (
-                  <option key={acc.email} value={acc.name.toUpperCase()} className="bg-[#18181B] text-white">
+                  <option key={acc.email} value={acc.name.toUpperCase()} className="bg-surface-main text-text-main">
                     {acc.name.toUpperCase()} ({acc.role.replace('_', ' ').toUpperCase()})
                   </option>
                 ))}
               </select>
-              <ChevronDown className="w-4 h-4 absolute right-3.5 top-3.5 text-[#A1A1AA] pointer-events-none" />
+              <ChevronDown className="w-4 h-4 absolute right-3.5 top-3.5 text-muted-main pointer-events-none" />
             </div>
           </div>
 
           {/* DATES CONFIGURATION */}
           <div className="space-y-2">
-            <div className="flex items-center justify-between border-b border-[#3F3F46] pb-1">
-              <label className="text-[10px] font-bold text-[#A1A1AA] uppercase tracking-wider block">
+            <div className="flex items-center justify-between border-b border-border-main pb-1">
+              <label className="text-[10px] font-bold text-muted-main uppercase tracking-wider block">
                 DATES CONFIGURATION
               </label>
-              <span className="text-[10px] font-bold border border-[#3F3F46] px-2 py-0.5 uppercase bg-[#18181B] text-[#A1A1AA] rounded-md">
+              <span className="text-[10px] font-bold border border-border-main px-2 py-0.5 uppercase bg-surface-hover text-muted-main rounded-md">
                 SINGLE DATE
               </span>
             </div>
@@ -419,40 +385,40 @@ export function TaskInitializationModal({
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
               {/* START DATE */}
               <div className="space-y-1">
-                <label className="text-[9px] font-bold text-[#A1A1AA] uppercase">
+                <label className="text-[9px] font-bold text-muted-main uppercase">
                   START DATE
                 </label>
                 <input
                   type="date"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
-                  className="w-full bg-[#18181B] border border-[#3F3F46] p-2.5 text-xs font-mono text-[#FAFAFA] rounded-xl focus:outline-none uppercase"
+                  className="w-full bg-surface-hover border border-border-main p-2.5 text-xs font-mono text-text-main rounded-xl focus:outline-none uppercase"
                 />
               </div>
 
               {/* END DATE (OPTIONAL) */}
               <div className="space-y-1">
-                <label className="text-[9px] font-bold text-[#A1A1AA] uppercase">
+                <label className="text-[9px] font-bold text-muted-main uppercase">
                   END DATE (OPTIONAL)
                 </label>
                 <input
                   type="date"
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
-                  className="w-full bg-[#18181B] border border-[#3F3F46] p-2.5 text-xs font-mono text-[#FAFAFA] rounded-xl focus:outline-none uppercase"
+                  className="w-full bg-surface-hover border border-border-main p-2.5 text-xs font-mono text-text-main rounded-xl focus:outline-none uppercase"
                 />
               </div>
 
               {/* TIME NEEDED */}
               <div className="space-y-1">
-                <label className="text-[9px] font-bold text-[#A1A1AA] uppercase">
+                <label className="text-[9px] font-bold text-muted-main uppercase">
                   TIME NEEDED
                 </label>
                 <input
                   type="time"
                   value={timeNeeded}
                   onChange={(e) => setTimeNeeded(e.target.value)}
-                  className="w-full bg-[#18181B] border border-[#3F3F46] p-2.5 text-xs font-mono text-[#FAFAFA] rounded-xl focus:outline-none uppercase"
+                  className="w-full bg-surface-hover border border-border-main p-2.5 text-xs font-mono text-text-main rounded-xl focus:outline-none uppercase"
                 />
               </div>
             </div>
@@ -460,16 +426,16 @@ export function TaskInitializationModal({
         </div>
 
         {/* Modal Actions Footer */}
-        <div className="p-6 border-t border-[#3F3F46] bg-[#262626] grid grid-cols-2 gap-4">
+        <div className="p-6 border-t border-border-main bg-surface-main grid grid-cols-2 gap-4">
           <button
             onClick={handleInitializeTask}
-            className="py-3 bg-white text-black font-extrabold text-xs uppercase tracking-widest rounded-xl hover:bg-zinc-200 transition-colors shadow-md"
+            className="py-3 bg-black text-white dark:bg-white dark:text-black font-extrabold text-xs uppercase tracking-widest rounded-xl hover:opacity-90 transition-opacity shadow-md"
           >
             CREATE
           </button>
           <button
             onClick={onClose}
-            className="py-3 bg-[#3F3F46]/60 border border-[#52525B] text-white font-extrabold text-xs uppercase tracking-widest rounded-xl hover:bg-[#3F3F46] transition-colors"
+            className="py-3 bg-surface-hover border border-border-main text-text-main font-extrabold text-xs uppercase tracking-widest rounded-xl hover:bg-border-main/40 transition-colors"
           >
             CANCEL
           </button>

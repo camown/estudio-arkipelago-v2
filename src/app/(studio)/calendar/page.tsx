@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   ChevronLeft,
   ChevronRight,
@@ -12,9 +13,10 @@ import {
   Calendar as CalendarIcon,
   RefreshCw,
   CheckCircle2,
+  Check
 } from 'lucide-react';
 import { TaskInitializationModal } from '@/components/dashboard/TaskInitializationModal';
-import { TaskItem } from '@/types';
+import { useTasks } from '@/lib/hooks/useTasks';
 
 interface SyncedEvent {
   id: string;
@@ -43,10 +45,12 @@ const MONTH_NAMES = [
 ];
 
 export default function CalendarPage() {
+  const router = useRouter();
+  const { tasks, addTask } = useTasks();
   const [activeTab, setActiveTab] = useState<'CALENDAR' | 'TASKS'>('CALENDAR');
   const [currentDate, setCurrentDate] = useState(new Date(2026, 8, 1)); // September 2026
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
-  const [tasks, setTasks] = useState<TaskItem[]>([]);
+  const [copiedLinkNotice, setCopiedLinkNotice] = useState(false);
   
   // Google Calendar Sync & Detail Modal states
   const [isGoogleSynced, setIsGoogleSynced] = useState(false);
@@ -92,32 +96,39 @@ export default function CalendarPage() {
   React.useEffect(() => {
     const isSyncedParam = typeof window !== 'undefined' && window.location.search.includes('synced=true');
     if (isSyncedParam) {
-      handleSyncGoogleCalendar();
+      const timer = setTimeout(() => {
+        handleSyncGoogleCalendar();
+      }, 0);
+      return () => clearTimeout(timer);
     }
   }, [handleSyncGoogleCalendar]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const eventParam = params.get('event');
+    const tabParam = params.get('tab');
+    if (tabParam === 'TASKS' || tabParam === 'tasks') {
+      setActiveTab('TASKS');
+    }
+    if (eventParam === 'studio-01' || eventParam) {
+      setSelectedEvent({
+        id: 'studio-01',
+        summary: 'SITE VISIT & CLIENT BRIEFING',
+        description: 'Architectural site inspection of Tagaytay Villa grounds and client brief meeting.',
+        day: 15,
+        location: 'Tagaytay Site / Studio HQ',
+        source: 'Estudio Arkipelago Task',
+      });
+    }
+  }, []);
+
   const handleConnectGmail = () => {
-    window.location.assign('/api/auth/google/login');
+    window.location.href = '/api/auth/google/login';
   };
 
-  const handleTaskCreated = (newTaskData: Partial<TaskItem>) => {
-    const created: TaskItem = {
-      id: 'task-' + Date.now(),
-      name: newTaskData.name || 'UNTITLED TASK',
-      projectId: newTaskData.projectId || '',
-      description: newTaskData.description || '',
-      projectPhase: newTaskData.projectPhase || 'SCHEMATIC',
-      deliverables: newTaskData.deliverables || [],
-      taskType: newTaskData.taskType || 'WORKSHOP',
-      priority: newTaskData.priority || 'MEDIUM',
-      assignedMember: newTaskData.assignedMember || 'UNASSIGNED',
-      startDate: newTaskData.startDate,
-      endDate: newTaskData.endDate,
-      timeNeeded: newTaskData.timeNeeded,
-      status: 'PENDING',
-      createdAt: new Date().toISOString(),
-    };
-    setTasks((prev) => [created, ...prev]);
+  const handleTaskCreated = (newTaskData: Parameters<typeof addTask>[0]) => {
+    addTask(newTaskData);
   };
 
   // Generate 35 cells for full month grid (with overflow previous/next days)
@@ -505,15 +516,33 @@ export default function CalendarPage() {
       )}
 
       {/* Floating Action Buttons Widget Stack (Bottom Right matching screenshot) */}
-      <div className="fixed bottom-6 right-6 z-40 flex flex-col space-y-2.5">
-        <button className="w-12 h-12 bg-surface-main border border-border-main rounded-xl shadow-lg flex items-center justify-center text-text-main hover:bg-surface-hover transition-colors">
-          <FileText className="w-5 h-5" />
+      <div className="fixed bottom-20 md:bottom-6 right-6 z-40 flex flex-col space-y-2.5">
+        <button
+          onClick={() => setIsTaskModalOpen(true)}
+          className="w-12 h-12 bg-surface-main border border-border-main rounded-xl shadow-lg flex items-center justify-center text-text-main hover:bg-surface-hover transition-colors"
+          title="Initialize New Task"
+        >
+          <FileText className="w-5 h-5 text-accent-cyan" />
         </button>
-        <button className="w-12 h-12 bg-surface-main border border-border-main rounded-xl shadow-lg flex items-center justify-center text-text-main hover:bg-surface-hover transition-colors">
-          <Link2 className="w-5 h-5" />
+        <button
+          onClick={() => {
+            if (typeof navigator !== 'undefined' && navigator.clipboard) {
+              navigator.clipboard.writeText(window.location.origin + '/calendar');
+              setCopiedLinkNotice(true);
+              setTimeout(() => setCopiedLinkNotice(false), 2500);
+            }
+          }}
+          className="w-12 h-12 bg-surface-main border border-border-main rounded-xl shadow-lg flex items-center justify-center text-text-main hover:bg-surface-hover transition-colors relative"
+          title="Copy Studio Calendar Link"
+        >
+          {copiedLinkNotice ? <Check className="w-5 h-5 text-emerald-500" /> : <Link2 className="w-5 h-5" />}
         </button>
-        <button className="w-12 h-12 bg-surface-main border border-border-main rounded-xl shadow-lg flex items-center justify-center text-text-main hover:bg-surface-hover transition-colors">
-          <MessageSquare className="w-5 h-5" />
+        <button
+          onClick={() => router.push('/chat')}
+          className="w-12 h-12 bg-surface-main border border-border-main rounded-xl shadow-lg flex items-center justify-center text-text-main hover:bg-surface-hover transition-colors"
+          title="Open Studio Comms & Chat"
+        >
+          <MessageSquare className="w-5 h-5 text-amber-500" />
         </button>
       </div>
     </div>

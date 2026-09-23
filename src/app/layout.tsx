@@ -47,9 +47,35 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <link rel="manifest" href="/manifest.json" />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  var prefs = localStorage.getItem('arkipelago_theme_prefs');
+                  if (prefs) {
+                    var parsed = JSON.parse(prefs);
+                    if (parsed.themeMode === 'light') {
+                      document.documentElement.classList.remove('dark');
+                      document.documentElement.classList.add('light');
+                      document.documentElement.setAttribute('data-theme', 'light');
+                    } else {
+                      document.documentElement.classList.remove('light');
+                      document.documentElement.classList.add('dark');
+                      document.documentElement.setAttribute('data-theme', 'dark');
+                    }
+                  } else {
+                    document.documentElement.classList.add('dark');
+                    document.documentElement.setAttribute('data-theme', 'dark');
+                  }
+                } catch(e) {}
+              })();
+            `,
+          }}
+        />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${jetbrainsMono.variable} ${jakartaDisplay.variable} antialiased min-h-screen bg-bg-main text-text-main`}

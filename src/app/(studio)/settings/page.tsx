@@ -16,10 +16,28 @@ export default function ProfileSettingsPage() {
 
   const [displayName, setDisplayName] = useState(() => user?.name || 'TESTING3');
   const [phoneNumber, setPhoneNumber] = useState('09173333333');
-  const [emailAddress, setEmailAddress] = useState(() => user?.email ? user.email.toUpperCase() : 'TESTING3@ESTUDIOARKIPELAGO.COM');
+  const emailAddress = user?.email ? user.email.toUpperCase() : 'TESTING3@ESTUDIOARKIPELAGO.COM';
   const [bgColor, setBgColor] = useState(() => customColors.bgColor);
   const [textColor, setTextColor] = useState(() => customColors.textColor);
   const [savedSuccess, setSavedSuccess] = useState(false);
+
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(() => {
+    if (typeof window === 'undefined') return null;
+    return localStorage.getItem('arkipelago_user_avatar');
+  });
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      const result = evt.target?.result as string;
+      setAvatarUrl(result);
+      localStorage.setItem('arkipelago_user_avatar', result);
+    };
+    reader.readAsDataURL(file);
+  };
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,6 +67,14 @@ export default function ProfileSettingsPage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 pb-12 font-mono">
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleAvatarChange}
+        accept="image/png, image/jpeg, image/webp"
+        className="hidden"
+      />
+
       {/* Header */}
       <div>
         <h1 className="text-3xl font-extrabold uppercase tracking-tight">PROFILE SETTINGS</h1>
@@ -61,9 +87,17 @@ export default function ProfileSettingsPage() {
         {/* Profile Picture */}
         <div className="bg-surface-main p-6 sm:p-8 rounded-xl border border-border-main space-y-4 shadow-sm">
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
-            <div className="w-20 h-20 rounded-full bg-surface-hover border-2 border-border-strong flex items-center justify-center text-muted-main relative overflow-hidden group">
-              <User className="w-10 h-10" />
-              <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              className="w-20 h-20 rounded-full bg-surface-hover border-2 border-border-strong flex items-center justify-center text-muted-main relative overflow-hidden group cursor-pointer"
+            >
+              {avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+              ) : (
+                <User className="w-10 h-10" />
+              )}
+              <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                 <Camera className="w-5 h-5 text-white" />
               </div>
             </div>
@@ -76,6 +110,7 @@ export default function ProfileSettingsPage() {
               </p>
               <button
                 type="button"
+                onClick={() => fileInputRef.current?.click()}
                 className="px-4 py-2 text-xs font-bold uppercase border-2 border-border-strong hover:border-text-main transition-colors bg-surface-main"
               >
                 CHANGE IMAGE

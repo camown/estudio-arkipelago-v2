@@ -96,19 +96,17 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const nextMode = themeMode === 'light' ? 'dark' : 'light';
     const nextColors = nextMode === 'light' ? DEFAULT_LIGHT_COLORS : DEFAULT_DARK_COLORS;
     setThemeModeState(nextMode);
-    if (!isCustomized) {
-      setCustomColorsState(nextColors);
-    }
-    savePrefs(nextMode, isCustomized ? customColors : nextColors, isCustomized);
+    setIsCustomized(false);
+    setCustomColorsState(nextColors);
+    savePrefs(nextMode, nextColors, false);
   };
 
   const setThemeMode = (mode: ThemeMode) => {
     const nextColors = mode === 'light' ? DEFAULT_LIGHT_COLORS : DEFAULT_DARK_COLORS;
     setThemeModeState(mode);
-    if (!isCustomized) {
-      setCustomColorsState(nextColors);
-    }
-    savePrefs(mode, isCustomized ? customColors : nextColors, isCustomized);
+    setIsCustomized(false);
+    setCustomColorsState(nextColors);
+    savePrefs(mode, nextColors, false);
   };
 
   const setCustomColors = (colors: UIColors) => {
