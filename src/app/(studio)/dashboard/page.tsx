@@ -8,7 +8,6 @@ import { useHRRequests } from '@/lib/hooks/useHRRequests';
 import { useWallPosts } from '@/lib/hooks/useWallPosts';
 import { useClockIn } from '@/lib/hooks/useClockIn';
 import { MOCK_PROJECTS } from '@/lib/constants';
-import Logo from '@/components/ui/Logo';
 import CalendarGrid from '@/components/dashboard/CalendarGrid';
 import { TaskInitializationModal } from '@/components/dashboard/TaskInitializationModal';
 import {
@@ -63,7 +62,7 @@ export default function DashboardPage() {
   const totalHoursFormatted = (totalSecondsLoggedToday / 3600).toFixed(1);
 
   return (
-    <div className="space-y-8 font-mono pb-12">
+    <div className="max-w-7xl mx-auto space-y-10 sm:space-y-12 font-sans pb-20">
       {/* Task Initialization Modal */}
       <TaskInitializationModal
         isOpen={isTaskModalOpen}
@@ -71,51 +70,49 @@ export default function DashboardPage() {
         onTaskCreated={handleTaskCreated}
       />
 
-      {/* 1. Header Banner with Studio Logo & Welcome Message */}
-      <div className="flex flex-col items-center justify-center text-center py-6 space-y-4 relative">
-        <Logo size={200} />
-        <div className="space-y-1">
-          <p className="text-sm sm:text-base font-semibold tracking-wide text-muted-main font-mono">
-            Welcome back, <span className="font-bold text-text-main">{displayName}</span>
-          </p>
-          <div className="flex items-center justify-center gap-2 text-xs text-emerald-600 dark:text-emerald-400 font-semibold tracking-wide">
-            <Radio className="w-3.5 h-3.5 animate-pulse text-emerald-500" />
-            <span>Studio Operations System Online • Real-Time Active</span>
+      {/* 1. Studio Header Strip (Spacious Architectural Welcome) */}
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-6 border-b border-border-main/60">
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-2 text-xs font-mono text-emerald-500 font-semibold tracking-wider uppercase">
+            <Radio className="w-3.5 h-3.5 animate-pulse text-emerald-400" />
+            <span>Studio Operations • Live Session</span>
           </div>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-text-main font-sans">
+            Studio Dashboard
+          </h1>
+          <p className="text-xs sm:text-sm text-muted-main font-sans leading-relaxed">
+            Welcome back, <span className="font-semibold text-text-main">{displayName}</span>. Overview of active schematics, team communications, and deliverables.
+          </p>
         </div>
-
-        {/* Task Initialization Quick Action Button */}
-        <button
-          onClick={() => setIsTaskModalOpen(true)}
-          className="mt-2 px-5 py-2.5 bg-black text-white dark:bg-white dark:text-black font-semibold text-xs tracking-wide flex items-center gap-2 rounded-lg shadow-sm hover:opacity-90 transition-all cursor-pointer"
-        >
-          <Plus className="w-4 h-4" />
-          Initialize Task
-        </button>
+        <div className="flex items-center gap-3 text-xs font-mono text-muted-main shrink-0">
+          <span className="px-3 py-1.5 rounded-lg bg-surface-main border border-border-main text-text-main font-medium shadow-2xs">
+            Phase: Active Production
+          </span>
+        </div>
       </div>
 
       {/* 1.5 Real-Time Operations Stream & Clearances Strip */}
       {(pendingClearances.length > 0 || activeGrievances.length > 0) && (
-        <div className="bg-surface-main border border-border-main p-4 sm:p-5 rounded-xl shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
+        <div className="bg-surface-main border border-border-main p-5 sm:p-6 rounded-xl shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5">
             <div className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-600 shrink-0">
               <AlertTriangle className="w-5 h-5" />
             </div>
             <div>
               <h3 className="text-xs font-bold text-text-main tracking-wide flex items-center gap-2">
                 <span>Operational Ledger Actions Pending</span>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-600 font-semibold">
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-600 font-semibold">
                   {pendingClearances.length + activeGrievances.length} Pending
                 </span>
               </h3>
-              <p className="text-xs text-muted-main mt-0.5">
+              <p className="text-xs text-muted-main mt-0.5 font-sans">
                 {pendingClearances.length} HR clearances awaiting verification • {activeGrievances.length} active grievance review(s).
               </p>
             </div>
           </div>
           <Link
             href="/hr"
-            className="px-4 py-2 bg-black text-white dark:bg-white dark:text-black rounded-lg text-xs font-semibold tracking-wide flex items-center gap-1.5 hover:opacity-90 shrink-0 shadow-xs"
+            className="px-4 py-2 bg-black text-white dark:bg-white dark:text-black rounded-lg text-xs font-semibold tracking-wide flex items-center gap-1.5 hover:opacity-90 shrink-0 shadow-xs font-mono"
           >
             <span>Open HR Ledger</span>
             <ArrowRight className="w-3.5 h-3.5" />
@@ -123,353 +120,382 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* 2. Central Studio Overview Widgets: Tasks Due, Recent Comms, & Workload Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Widget 1: Tasks Due & In-Progress */}
-        <div className="bg-surface-main border border-border-main p-5 rounded-xl shadow-sm flex flex-col justify-between space-y-4">
-          <div className="flex items-center justify-between border-b border-border-main/60 pb-3">
-            <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-accent-cyan" />
-              <h3 className="font-bold text-xs text-text-main tracking-wide">Tasks In Progress</h3>
-            </div>
-            <span className="text-[10px] font-bold px-2 py-0.5 bg-accent-cyan/10 text-accent-cyan rounded">
-              {inProgressTasks.length} Active
-            </span>
+      {/* 2. Section: Live Studio Pulse (3 Overview Widgets) */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between text-xs font-mono uppercase tracking-widest text-muted-main">
+          <div className="flex items-center gap-2">
+            <TrendingUp className="w-4 h-4 text-accent-cyan" />
+            <span className="font-semibold text-text-main">Live Studio Pulse</span>
           </div>
+          <span className="text-[11px] text-muted-main">Real-time status</span>
+        </div>
 
-          <div className="space-y-2.5 flex-1 max-h-56 overflow-y-auto pr-1">
-            {inProgressTasks.length > 0 ? (
-              inProgressTasks.slice(0, 4).map((task) => (
-                <div
-                  key={task.id}
-                  onClick={() => handleToggleTaskStatus(task.id, task.status)}
-                  className="flex items-start gap-2.5 p-2.5 rounded-lg border border-border-main/50 bg-surface-hover/50 hover:bg-surface-hover transition-colors cursor-pointer group"
-                >
-                  <button className="mt-0.5 text-muted-main group-hover:text-text-main transition-colors">
-                    {task.status === 'COMPLETED' ? (
-                      <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                    ) : (
-                      <Circle className="w-4 h-4" />
-                    )}
-                  </button>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold text-text-main truncate group-hover:text-accent-cyan transition-colors">
-                      {task.name}
-                    </p>
-                    <div className="flex items-center gap-2 text-[10px] text-muted-main mt-0.5">
-                      <span>{task.projectPhase}</span>
-                      <span>•</span>
-                      <span className="text-amber-600 dark:text-amber-400 font-medium">{task.priority}</span>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
+          {/* Widget 1: Tasks Due & In-Progress */}
+          <div className="bg-surface-main border border-border-main p-6 sm:p-7 rounded-xl shadow-sm flex flex-col justify-between space-y-5">
+            <div className="flex items-center justify-between border-b border-border-main/60 pb-3.5">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-accent-cyan" />
+                <h3 className="font-bold text-xs text-text-main tracking-wide uppercase font-mono">Tasks In Progress</h3>
+              </div>
+              <span className="text-[10px] font-mono font-bold px-2 py-0.5 bg-accent-cyan/10 text-accent-cyan rounded">
+                {inProgressTasks.length} Active
+              </span>
+            </div>
+
+            <div className="space-y-3 flex-1 max-h-60 overflow-y-auto pr-1">
+              {inProgressTasks.length > 0 ? (
+                inProgressTasks.slice(0, 4).map((task) => (
+                  <div
+                    key={task.id}
+                    onClick={() => handleToggleTaskStatus(task.id, task.status)}
+                    className="flex items-start gap-2.5 p-3 rounded-lg border border-border-main/50 bg-surface-hover/50 hover:bg-surface-hover transition-colors cursor-pointer group"
+                  >
+                    <button className="mt-0.5 text-muted-main group-hover:text-text-main transition-colors">
+                      {task.status === 'COMPLETED' ? (
+                        <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                      ) : (
+                        <Circle className="w-4 h-4" />
+                      )}
+                    </button>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-text-main truncate group-hover:text-accent-cyan transition-colors font-sans">
+                        {task.name}
+                      </p>
+                      <div className="flex items-center gap-2 text-[11px] font-mono text-text-main/80 mt-0.5">
+                        <span>{task.projectPhase}</span>
+                        <span>•</span>
+                        <span className="text-amber-600 dark:text-amber-400 font-semibold">{task.priority}</span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))
-            ) : (
-              <p className="text-xs text-muted-main italic py-4 text-center">All caught up! No pending tasks.</p>
-            )}
-          </div>
-
-          <button
-            onClick={() => setIsTaskModalOpen(true)}
-            className="w-full py-2 border border-dashed border-border-strong hover:border-text-main text-xs font-semibold rounded-lg text-text-main hover:bg-surface-hover transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Add New Task</span>
-          </button>
-        </div>
-
-        {/* Widget 2: Recent Studio Wall & Comms */}
-        <div className="bg-surface-main border border-border-main p-5 rounded-xl shadow-sm flex flex-col justify-between space-y-4">
-          <div className="flex items-center justify-between border-b border-border-main/60 pb-3">
-            <div className="flex items-center gap-2">
-              <MessageSquare className="w-4 h-4 text-amber-500" />
-              <h3 className="font-bold text-xs text-text-main tracking-wide">Studio Wall & Comms</h3>
-            </div>
-            <Link
-              href="/chat"
-              className="text-[11px] font-semibold text-accent-cyan hover:underline flex items-center gap-1"
-            >
-              <span>View All</span>
-              <ArrowRight className="w-3 h-3" />
-            </Link>
-          </div>
-
-          <div className="space-y-2.5 flex-1 max-h-56 overflow-y-auto pr-1">
-            {recentPosts.length > 0 ? (
-              recentPosts.map((post) => (
-                <Link
-                  key={post.id}
-                  href="/chat"
-                  className="block p-2.5 rounded-lg border border-border-main/50 bg-surface-hover/50 hover:bg-surface-hover transition-colors"
-                >
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs font-bold text-text-main truncate">{post.authorName}</span>
-                    <span className="text-[10px] text-muted-main">
-                      {new Date(post.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                    </span>
+                ))
+              ) : (
+                <div className="py-8 flex flex-col items-center justify-center text-center space-y-2">
+                  <div className="p-2 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-500">
+                    <CheckCircle2 className="w-4 h-4" />
                   </div>
-                  <p className="text-xs text-muted-main line-clamp-2">{post.content}</p>
-                </Link>
-              ))
-            ) : (
-              <p className="text-xs text-muted-main italic py-4 text-center">No recent studio posts.</p>
-            )}
-          </div>
-
-          <Link
-            href="/chat"
-            className="w-full py-2 bg-surface-hover hover:bg-surface-main border border-border-main text-xs font-semibold rounded-lg text-text-main transition-all flex items-center justify-center gap-1.5 text-center"
-          >
-            <span>Open Studio Wall</span>
-          </Link>
-        </div>
-
-        {/* Widget 3: Studio Operations & Time Logged */}
-        <div className="bg-surface-main border border-border-main p-5 rounded-xl shadow-sm flex flex-col justify-between space-y-4">
-          <div className="flex items-center justify-between border-b border-border-main/60 pb-3">
-            <div className="flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-emerald-500" />
-              <h3 className="font-bold text-xs text-text-main tracking-wide">Studio Metrics</h3>
-            </div>
-            <span className="text-[10px] font-semibold px-2 py-0.5 border border-emerald-500/40 text-emerald-600 dark:text-emerald-400 rounded">
-              Live
-            </span>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3 flex-1">
-            <div className="p-3 rounded-lg border border-border-main/60 bg-surface-hover/40 flex flex-col justify-center space-y-1">
-              <div className="flex items-center gap-1.5 text-muted-main text-[11px]">
-                <Briefcase className="w-3.5 h-3.5" />
-                <span>Active Projects</span>
-              </div>
-              <p className="text-xl font-bold text-text-main">{activeProjectsCount}</p>
-              <p className="text-[10px] text-muted-main">In design & construction</p>
+                  <p className="text-xs text-text-main font-semibold font-sans">All caught up!</p>
+                  <p className="text-[11px] text-muted-main font-sans max-w-xs">No pending tasks in your active queue.</p>
+                </div>
+              )}
             </div>
 
-            <div className="p-3 rounded-lg border border-border-main/60 bg-surface-hover/40 flex flex-col justify-center space-y-1">
-              <div className="flex items-center gap-1.5 text-muted-main text-[11px]">
-                <Clock className="w-3.5 h-3.5" />
-                <span>Hours Today</span>
-              </div>
-              <p className="text-xl font-bold text-text-main">
-                {isClocked ? elapsedTime : `${totalHoursFormatted}h`}
-              </p>
-              <p className="text-[10px] text-muted-main">
-                {isClocked ? 'Session in progress' : `${todayEntries.length} logged entries`}
-              </p>
-            </div>
-          </div>
-
-          <Link
-            href="/hr"
-            className="w-full py-2 bg-surface-hover hover:bg-surface-main border border-border-main text-xs font-semibold rounded-lg text-text-main transition-all flex items-center justify-center gap-1.5 text-center"
-          >
-            <span>View Timesheet & Logs</span>
-          </Link>
-        </div>
-      </div>
-
-      {/* 3. Quotation / Weekly Studio Inspiration Box */}
-      <div className="max-w-2xl mx-auto bg-surface-main border border-border-main p-6 sm:p-8 rounded-xl shadow-sm text-center space-y-3">
-        <p className="italic text-sm sm:text-base font-serif text-text-main leading-relaxed">
-          &quot;I am the master of my fate, I am the captain of my soul.&quot; — William Ernest Henley
-        </p>
-        <div className="text-[11px] font-semibold text-muted-main tracking-wide flex items-center justify-center gap-1.5 pt-2 border-t border-border-main/50">
-          <span>Weekly Studio Inspiration</span>
-          <Pencil className="w-3 h-3" />
-        </div>
-      </div>
-
-      {/* 4. Navigation Cards Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {/* Card 1: Dashboard */}
-        <Link href="/dashboard" className="block group">
-          <div className="bg-surface-main border border-border-main hover:border-text-main transition-all p-6 rounded-xl h-full flex flex-col justify-between shadow-sm space-y-4">
-            <div className="flex items-center justify-between">
-              <LayoutDashboard className="w-6 h-6 text-text-main" />
-              <span className="text-[10px] font-bold px-2 py-0.5 border border-border-strong text-muted-main rounded tracking-wider">
-                PROD
-              </span>
-            </div>
-            <div>
-              <h3 className="font-bold text-sm text-text-main mb-1">
-                Dashboard Overview
-              </h3>
-              <p className="text-xs text-muted-main leading-relaxed">
-                Review shared tasks, check the project calendar and studio schedules.
-              </p>
-            </div>
-            <div className="text-xs font-semibold text-text-main group-hover:text-accent-cyan transition-colors flex items-center gap-2 pt-2">
-              Access <ArrowRight className="w-3.5 h-3.5" />
-            </div>
-          </div>
-        </Link>
-
-        {/* Card 2: Projects Management */}
-        <Link href="/projects" className="block group">
-          <div className="bg-surface-main border border-border-main hover:border-text-main transition-all p-6 rounded-xl h-full flex flex-col justify-between shadow-sm space-y-4">
-            <div className="flex items-center justify-between">
-              <FolderKanban className="w-6 h-6 text-text-main" />
-              <span className="text-[10px] font-bold px-2 py-0.5 border border-emerald-500/50 text-emerald-600 dark:text-emerald-400 rounded tracking-wider">
-                ACTIVE
-              </span>
-            </div>
-            <div>
-              <h3 className="font-bold text-sm text-text-main mb-1">
-                Projects Management
-              </h3>
-              <p className="text-xs text-muted-main leading-relaxed">
-                Explore project folders, architectural schematics, and material boards.
-              </p>
-            </div>
-            <div className="text-xs font-semibold text-text-main group-hover:text-accent-cyan transition-colors flex items-center gap-2 pt-2">
-              Access <ArrowRight className="w-3.5 h-3.5" />
-            </div>
-          </div>
-        </Link>
-
-        {/* Card 3: Estudio Wall & Chat */}
-        <Link href="/chat" className="block group">
-          <div className="bg-surface-main border border-border-main hover:border-text-main transition-all p-6 rounded-xl h-full flex flex-col justify-between shadow-sm space-y-4">
-            <div className="flex items-center justify-between">
-              <MessageSquare className="w-6 h-6 text-text-main" />
-              <span className="text-[10px] font-bold px-2 py-0.5 border border-amber-500/50 text-amber-600 dark:text-amber-400 rounded tracking-wider">
-                COMMS
-              </span>
-            </div>
-            <div>
-              <h3 className="font-bold text-sm text-text-main mb-1">
-                Studio Wall & Chat
-              </h3>
-              <p className="text-xs text-muted-main leading-relaxed">
-                Connect with team members or start threads & group messages.
-              </p>
-            </div>
-            <div className="text-xs font-semibold text-text-main group-hover:text-accent-cyan transition-colors flex items-center gap-2 pt-2">
-              Access <ArrowRight className="w-3.5 h-3.5" />
-            </div>
-          </div>
-        </Link>
-
-        {/* Card 4: Specialty Directory */}
-        <Link href="/directory" className="block group">
-          <div className="bg-surface-main border border-border-main hover:border-text-main transition-all p-6 rounded-xl h-full flex flex-col justify-between shadow-sm space-y-4">
-            <div className="flex items-center justify-between">
-              <BookUser className="w-6 h-6 text-text-main" />
-              <span className="text-[10px] font-bold px-2 py-0.5 border border-rose-500/50 text-rose-600 dark:text-rose-400 rounded tracking-wider">
-                TEAM
-              </span>
-            </div>
-            <div>
-              <h3 className="font-bold text-sm text-text-main mb-1">
-                Specialty Directory
-              </h3>
-              <p className="text-xs text-muted-main leading-relaxed">
-                Find consultants, engineers, suppliers, and site builders.
-              </p>
-            </div>
-            <div className="text-xs font-semibold text-text-main group-hover:text-accent-cyan transition-colors flex items-center gap-2 pt-2">
-              Access <ArrowRight className="w-3.5 h-3.5" />
-            </div>
-          </div>
-        </Link>
-      </div>
-
-      {/* 5. Two-Column Calendar & Task Queue Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left Column (Calendar Preview - 7 cols) */}
-        <div className="lg:col-span-7">
-          <CalendarGrid />
-        </div>
-
-        {/* Right Column (Priority Task Queue - 5 cols) */}
-        <div className="lg:col-span-5 bg-surface-main border border-border-main rounded-xl p-6 shadow-sm flex flex-col justify-between space-y-4">
-          <div className="flex items-center justify-between border-b border-border-main pb-4">
-            <div className="flex items-center gap-2.5">
-              <Clock className="w-4 h-4 text-amber-500" />
-              <h3 className="font-bold text-xs text-text-main tracking-wide">
-                Priority Task Queue ({tasks.length})
-              </h3>
-            </div>
             <button
               onClick={() => setIsTaskModalOpen(true)}
-              className="text-xs font-semibold text-accent-cyan hover:underline transition-colors flex items-center gap-1 cursor-pointer"
+              className="w-full py-2.5 bg-surface-main hover:bg-surface-hover border border-border-strong hover:border-text-main text-xs font-semibold rounded-lg text-text-main transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs font-mono"
             >
-              + New Task
+              <Plus className="w-3.5 h-3.5" />
+              <span>Add New Task</span>
             </button>
           </div>
 
-          {tasks.length > 0 ? (
-            <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
-              {tasks.map((task) => (
-                <div
-                  key={task.id}
-                  className="p-3 border border-border-main bg-surface-hover/60 rounded-lg space-y-1.5"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-xs text-text-main truncate">
-                      {task.name}
-                    </span>
-                    <span
-                      className={`text-[9px] font-bold px-2 py-0.5 rounded tracking-wider ${
-                        task.priority === 'HIGH'
-                          ? 'bg-rose-500/20 text-rose-500 border border-rose-500/30'
-                          : task.priority === 'MEDIUM'
-                          ? 'bg-orange-500/20 text-orange-500 border border-orange-500/30'
-                          : 'bg-amber-500/20 text-amber-500 border border-amber-500/30'
-                      }`}
-                    >
-                      {task.priority}
-                    </span>
-                  </div>
-                  {task.description && (
-                    <p className="text-xs text-muted-main line-clamp-2">{task.description}</p>
-                  )}
-                  <div className="flex items-center justify-between text-[10px] text-muted-main font-semibold pt-1 border-t border-border-main/40">
-                    <span>Type: {task.taskType}</span>
-                    <span>Phase: {task.projectPhase}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="py-12 flex flex-col items-center justify-center text-center space-y-3">
-              <p className="text-xs text-muted-main italic tracking-wide">
-                No active high-priority tasks in your queue
-              </p>
-              <button
-                onClick={() => setIsTaskModalOpen(true)}
-                className="px-4 py-2 border border-border-strong hover:border-text-main text-xs font-semibold rounded-lg tracking-wide transition-all cursor-pointer"
+          {/* Widget 2: Recent Studio Wall & Comms */}
+          <div className="bg-surface-main border border-border-main p-6 sm:p-7 rounded-xl shadow-sm flex flex-col justify-between space-y-5">
+            <div className="flex items-center justify-between border-b border-border-main/60 pb-3.5">
+              <div className="flex items-center gap-2">
+                <MessageSquare className="w-4 h-4 text-amber-500" />
+                <h3 className="font-bold text-xs text-text-main tracking-wide uppercase font-mono">Studio Wall & Comms</h3>
+              </div>
+              <Link
+                href="/chat"
+                className="text-[11px] font-semibold text-accent-cyan hover:underline flex items-center gap-1 font-mono"
               >
-                + Initialize First Task
-              </button>
+                <span>View All</span>
+                <ArrowRight className="w-3 h-3" />
+              </Link>
             </div>
-          )}
+
+            <div className="space-y-3 flex-1 max-h-60 overflow-y-auto pr-1">
+              {recentPosts.length > 0 ? (
+                recentPosts.map((post) => (
+                  <Link
+                    key={post.id}
+                    href="/chat"
+                    className="block p-3 rounded-lg border border-border-main/50 bg-surface-hover/50 hover:bg-surface-hover transition-colors"
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-bold text-text-main truncate font-sans">{post.authorName}</span>
+                      <span className="text-[10px] font-mono text-muted-main">
+                        {new Date(post.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                      </span>
+                    </div>
+                    <p className="text-xs text-text-main/80 font-sans leading-relaxed line-clamp-2">{post.content}</p>
+                  </Link>
+                ))
+              ) : (
+                <p className="text-xs text-muted-main italic py-8 text-center font-sans">No recent studio posts.</p>
+              )}
+            </div>
+
+            <Link
+              href="/chat"
+              className="w-full py-2.5 bg-surface-main hover:bg-surface-hover border border-border-strong hover:border-text-main text-xs font-semibold rounded-lg text-text-main transition-all flex items-center justify-center gap-1.5 text-center shadow-2xs font-mono"
+            >
+              <span>Open Studio Wall</span>
+            </Link>
+          </div>
+
+          {/* Widget 3: Studio Operations & Time Logged */}
+          <div className="bg-surface-main border border-border-main p-6 sm:p-7 rounded-xl shadow-sm flex flex-col justify-between space-y-5">
+            <div className="flex items-center justify-between border-b border-border-main/60 pb-3.5">
+              <div className="flex items-center gap-2">
+                <TrendingUp className="w-4 h-4 text-emerald-500" />
+                <h3 className="font-bold text-xs text-text-main tracking-wide uppercase font-mono">Studio Metrics</h3>
+              </div>
+              <span className="text-[10px] font-mono font-semibold px-2 py-0.5 border border-emerald-500/40 text-emerald-600 dark:text-emerald-400 rounded">
+                Live
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3.5 flex-1">
+              <div className="p-3.5 rounded-lg border border-border-main/60 bg-surface-hover/40 flex flex-col justify-center space-y-1">
+                <div className="flex items-center gap-1.5 text-muted-main text-[11px] font-sans">
+                  <Briefcase className="w-3.5 h-3.5" />
+                  <span>Active Projects</span>
+                </div>
+                <p className="text-2xl font-bold font-mono text-text-main">{activeProjectsCount}</p>
+                <p className="text-[10px] text-muted-main font-sans">In design & build</p>
+              </div>
+
+              <div className="p-3.5 rounded-lg border border-border-main/60 bg-surface-hover/40 flex flex-col justify-center space-y-1">
+                <div className="flex items-center gap-1.5 text-muted-main text-[11px] font-sans">
+                  <Clock className="w-3.5 h-3.5" />
+                  <span>Hours Today</span>
+                </div>
+                <p className="text-2xl font-bold font-mono text-text-main">
+                  {isClocked ? elapsedTime : `${totalHoursFormatted}h`}
+                </p>
+                <p className="text-[10px] text-muted-main font-sans">
+                  {isClocked ? 'Session in progress' : `${todayEntries.length} logged entries`}
+                </p>
+              </div>
+            </div>
+
+            <Link
+              href="/hr"
+              className="w-full py-2.5 bg-surface-main hover:bg-surface-hover border border-border-strong hover:border-text-main text-xs font-semibold rounded-lg text-text-main transition-all flex items-center justify-center gap-1.5 text-center shadow-2xs font-mono"
+            >
+              <span>View Timesheet & Logs</span>
+            </Link>
+          </div>
         </div>
       </div>
 
-      {/* 6. Gmail Inbox Section */}
+      {/* 3. Section: Department Access Portals (4 Navigation Cards) */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between text-xs font-mono uppercase tracking-widest text-muted-main">
+          <div className="flex items-center gap-2">
+            <LayoutDashboard className="w-4 h-4 text-text-main" />
+            <span className="font-semibold text-text-main">Studio Hubs & Portals</span>
+          </div>
+          <span className="text-[11px] text-muted-main">4 Main Departments</span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
+          {/* Card 1: Dashboard */}
+          <Link href="/dashboard" className="block group">
+            <div className="bg-surface-main border border-border-main hover:border-text-main transition-all p-6 sm:p-7 rounded-xl h-full flex flex-col justify-between shadow-sm space-y-4">
+              <div className="flex items-center justify-between">
+                <LayoutDashboard className="w-6 h-6 text-text-main" />
+                <span className="text-[10px] font-mono font-medium px-2 py-0.5 rounded-md bg-surface-hover/80 text-text-main/90 border border-border-main tracking-wider uppercase">
+                  PROD
+                </span>
+              </div>
+              <div>
+                <h3 className="font-bold text-sm text-text-main mb-1 font-sans">
+                  Dashboard Overview
+                </h3>
+                <p className="text-xs text-muted-main font-sans leading-relaxed">
+                  Review shared tasks, check the project calendar and studio schedules.
+                </p>
+              </div>
+              <div className="text-xs font-semibold text-text-main group-hover:text-accent-cyan font-sans transition-colors flex items-center gap-1.5 pt-2">
+                <span>Access</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </div>
+            </div>
+          </Link>
+
+          {/* Card 2: Projects Management */}
+          <Link href="/projects" className="block group">
+            <div className="bg-surface-main border border-border-main hover:border-text-main transition-all p-6 sm:p-7 rounded-xl h-full flex flex-col justify-between shadow-sm space-y-4">
+              <div className="flex items-center justify-between">
+                <FolderKanban className="w-6 h-6 text-text-main" />
+                <span className="text-[10px] font-mono font-medium px-2 py-0.5 rounded-md bg-surface-hover/80 text-text-main/80 border border-border-main tracking-wider uppercase">
+                  ACTIVE
+                </span>
+              </div>
+              <div>
+                <h3 className="font-bold text-sm text-text-main mb-1 font-sans">
+                  Projects Management
+                </h3>
+                <p className="text-xs text-muted-main font-sans leading-relaxed">
+                  Explore project folders, architectural schematics, and material boards.
+                </p>
+              </div>
+              <div className="text-xs font-semibold text-text-main group-hover:text-accent-cyan font-sans transition-colors flex items-center gap-1.5 pt-2">
+                <span>Access</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </div>
+            </div>
+          </Link>
+
+          {/* Card 3: Estudio Wall & Chat */}
+          <Link href="/chat" className="block group">
+            <div className="bg-surface-main border border-border-main hover:border-text-main transition-all p-6 sm:p-7 rounded-xl h-full flex flex-col justify-between shadow-sm space-y-4">
+              <div className="flex items-center justify-between">
+                <MessageSquare className="w-6 h-6 text-text-main" />
+                <span className="text-[10px] font-mono font-medium px-2 py-0.5 rounded-md bg-surface-hover/80 text-text-main/70 border border-border-main tracking-wider uppercase">
+                  COMMS
+                </span>
+              </div>
+              <div>
+                <h3 className="font-bold text-sm text-text-main mb-1 font-sans">
+                  Studio Wall & Chat
+                </h3>
+                <p className="text-xs text-muted-main font-sans leading-relaxed">
+                  Connect with team members or start threads & group messages.
+                </p>
+              </div>
+              <div className="text-xs font-semibold text-text-main group-hover:text-accent-cyan font-sans transition-colors flex items-center gap-1.5 pt-2">
+                <span>Access</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </div>
+            </div>
+          </Link>
+
+          {/* Card 4: Specialty Directory */}
+          <Link href="/directory" className="block group">
+            <div className="bg-surface-main border border-border-main hover:border-text-main transition-all p-6 sm:p-7 rounded-xl h-full flex flex-col justify-between shadow-sm space-y-4">
+              <div className="flex items-center justify-between">
+                <BookUser className="w-6 h-6 text-text-main" />
+                <span className="text-[10px] font-mono font-medium px-2 py-0.5 rounded-md bg-surface-hover/80 text-text-main/60 border border-border-main tracking-wider uppercase">
+                  TEAM
+                </span>
+              </div>
+              <div>
+                <h3 className="font-bold text-sm text-text-main mb-1 font-sans">
+                  Specialty Directory
+                </h3>
+                <p className="text-xs text-muted-main font-sans leading-relaxed">
+                  Find consultants, engineers, suppliers, and site builders.
+                </p>
+              </div>
+              <div className="text-xs font-semibold text-text-main group-hover:text-accent-cyan font-sans transition-colors flex items-center gap-1.5 pt-2">
+                <span>Access</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </div>
+            </div>
+          </Link>
+        </div>
+      </div>
+
+      {/* 4. Section: Production Schedule & Task Queue */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between text-xs font-mono uppercase tracking-widest text-muted-main">
+          <div className="flex items-center gap-2">
+            <Clock className="w-4 h-4 text-amber-500" />
+            <span className="font-semibold text-text-main">Production Schedule & Task Queue</span>
+          </div>
+          <span className="text-[11px] text-muted-main">Synced with Master Calendar</span>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8">
+          {/* Left Column (Calendar Preview - 7 cols) */}
+          <div className="lg:col-span-7">
+            <CalendarGrid />
+          </div>
+
+          {/* Right Column (Priority Task Queue - 5 cols) */}
+          <div className="lg:col-span-5 bg-surface-main border border-border-main rounded-xl p-6 sm:p-7 shadow-sm flex flex-col justify-between space-y-4">
+            <div className="flex items-center justify-between border-b border-border-main/70 pb-4">
+              <div className="flex items-center gap-2.5">
+                <Clock className="w-4 h-4 text-amber-500" />
+                <h3 className="font-bold text-xs uppercase tracking-wider text-text-main font-mono">
+                  Priority Task Queue ({tasks.length})
+                </h3>
+              </div>
+              <button
+                onClick={() => setIsTaskModalOpen(true)}
+                className="text-xs font-mono font-semibold text-accent-cyan hover:underline transition-colors flex items-center gap-1 cursor-pointer"
+              >
+                + New Task
+              </button>
+            </div>
+
+            {tasks.length > 0 ? (
+              <div className="space-y-3.5 max-h-80 overflow-y-auto pr-1">
+                {tasks.map((task) => (
+                  <div
+                    key={task.id}
+                    className="p-3.5 border border-border-main bg-surface-hover/60 rounded-lg space-y-2"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-xs text-text-main truncate font-sans">
+                        {task.name}
+                      </span>
+                      <span
+                        className={`text-[9px] font-mono font-bold px-2 py-0.5 rounded tracking-wider ${
+                          task.priority === 'HIGH'
+                            ? 'bg-rose-500/20 text-rose-500 border border-rose-500/30'
+                            : task.priority === 'MEDIUM'
+                            ? 'bg-orange-500/20 text-orange-500 border border-orange-500/30'
+                            : 'bg-amber-500/20 text-amber-500 border border-amber-500/30'
+                        }`}
+                      >
+                        {task.priority}
+                      </span>
+                    </div>
+                    {task.description && (
+                      <p className="text-xs text-text-main/80 font-sans leading-relaxed line-clamp-2">{task.description}</p>
+                    )}
+                    <div className="flex items-center justify-between text-[11px] font-mono text-text-main/85 font-medium pt-1.5 border-t border-border-main/50">
+                      <span>Type: <strong className="text-text-main font-semibold">{task.taskType}</strong></span>
+                      <span>Phase: <strong className="text-text-main font-semibold">{task.projectPhase}</strong></span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="py-12 flex flex-col items-center justify-center text-center space-y-3">
+                <p className="text-xs text-muted-main italic font-sans">
+                  No active high-priority tasks in your queue
+                </p>
+                <button
+                  onClick={() => setIsTaskModalOpen(true)}
+                  className="px-4 py-2 border border-border-strong hover:border-text-main bg-surface-main hover:bg-surface-hover text-xs font-semibold rounded-lg tracking-wide transition-all cursor-pointer font-mono"
+                >
+                  + Initialize First Task
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* 5. Section: Gmail Integration & Studio Communications */}
       <div className="bg-surface-main border border-border-main rounded-xl p-6 sm:p-8 shadow-sm">
-        <div className="flex items-center gap-2.5 border-b border-border-main pb-4 mb-6">
+        <div className="flex items-center gap-2.5 border-b border-border-main/70 pb-4 mb-6">
           <Mail className="w-4 h-4 text-text-main" />
-          <h3 className="font-bold text-xs text-text-main tracking-wide">
+          <h3 className="font-bold text-xs uppercase tracking-wider text-text-main font-mono">
             Gmail Integration
           </h3>
         </div>
 
-        <div className="flex flex-col items-center justify-center text-center py-8 space-y-4 max-w-md mx-auto">
+        <div className="flex flex-col items-center justify-center text-center py-6 sm:py-8 space-y-4 max-w-md mx-auto">
           <div className="p-3 rounded-full bg-surface-hover border border-border-main text-muted-main">
-            <Mail className="w-8 h-8" strokeWidth={1.5} />
+            <Mail className="w-7 h-7" strokeWidth={1.5} />
           </div>
           <div className="space-y-1">
-            <h4 className="text-sm font-bold text-text-main">Connect your Studio Gmail</h4>
-            <p className="text-xs text-muted-main leading-relaxed">
+            <h4 className="text-sm font-bold text-text-main font-sans">Connect your Studio Gmail</h4>
+            <p className="text-xs text-muted-main font-sans leading-relaxed">
               Link your architectural studio account to view client communications and notifications directly from the dashboard.
             </p>
           </div>
           <a
             href="/api/auth/google/login"
-            className="px-5 py-2.5 border border-border-strong hover:border-text-main bg-surface-hover hover:bg-surface-main transition-all font-semibold text-xs tracking-wide flex items-center gap-2.5 rounded-lg shadow-xs text-text-main cursor-pointer"
+            className="px-5 py-2.5 border border-border-strong hover:border-text-main bg-surface-main hover:bg-surface-hover transition-all font-semibold text-xs tracking-wide flex items-center gap-2.5 rounded-lg shadow-2xs text-text-main cursor-pointer font-mono"
           >
             <svg className="w-4 h-4" viewBox="0 0 24 24">
               <path
@@ -493,6 +519,22 @@ export default function DashboardPage() {
           </a>
         </div>
       </div>
+
+      {/* 6. Repositioned Studio Inspiration Quote Footer (Delicate Architectural Card) */}
+      <footer className="pt-4 border-t border-border-main/60 text-center">
+        <div className="max-w-2xl mx-auto p-5 sm:p-6 bg-surface-main/60 border border-border-main/70 rounded-xl space-y-2">
+          <p className="italic text-sm font-serif text-text-main/90 leading-relaxed">
+            &quot;I am the master of my fate, I am the captain of my soul.&quot;
+          </p>
+          <div className="text-[10px] font-mono text-muted-main tracking-wider uppercase flex items-center justify-center gap-2">
+            <span>William Ernest Henley</span>
+            <span>•</span>
+            <span className="flex items-center gap-1.5">
+              <Pencil className="w-3 h-3 text-muted-main" /> Studio Inspiration
+            </span>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

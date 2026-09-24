@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { Calendar as CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react';
+import Link from 'next/link';
+import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, ArrowRight } from 'lucide-react';
 
 function getDaysInMonth(year: number, month: number) {
   return new Date(year, month + 1, 0).getDate();
@@ -15,6 +16,36 @@ const MONTH_NAMES = [
   'JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE',
   'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'
 ];
+
+interface CalendarEvent {
+  title: string;
+  type: 'deliverable' | 'survey' | 'review';
+  color: string;
+}
+
+// Studio deliverables and survey milestones for the current calendar
+const SCHEDULED_EVENTS: Record<number, CalendarEvent[]> = {
+  3: [
+    { title: 'Casa Verde Concept Review', type: 'review', color: 'bg-amber-500' },
+  ],
+  8: [
+    { title: 'BGC Pavilion Structural Survey', type: 'survey', color: 'bg-teal-500' },
+  ],
+  15: [
+    { title: 'Makati Tower Schematic Set Due', type: 'deliverable', color: 'bg-rose-500' },
+    { title: 'Engineering Coordination Call', type: 'review', color: 'bg-amber-500' },
+  ],
+  22: [
+    { title: 'Casa Verde Material Board Submission', type: 'deliverable', color: 'bg-rose-500' },
+  ],
+  25: [
+    { title: 'Makati Tower Site Inspection', type: 'survey', color: 'bg-teal-500' },
+    { title: 'Client Milestone Presentation', type: 'review', color: 'bg-amber-500' },
+  ],
+  28: [
+    { title: 'BGC Pavilion Permit Package Due', type: 'deliverable', color: 'bg-rose-500' },
+  ],
+};
 
 export default function CalendarGrid() {
   const today = useMemo(() => new Date(), []);
@@ -72,35 +103,48 @@ export default function CalendarGrid() {
   }, [year, month, today]);
 
   return (
-    <div className="flex flex-col bg-surface-main border border-border-main rounded-xl p-6 shadow-sm h-full font-mono">
+    <div className="flex flex-col bg-surface-main border border-border-main rounded-xl p-5 sm:p-6 shadow-sm h-full font-mono">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-border-main pb-4 mb-4">
-        <div className="flex items-center gap-2.5">
+      <div className="flex items-center justify-between border-b border-border-main/70 pb-4 mb-4">
+        <div className="flex items-center gap-2 sm:gap-2.5">
           <CalendarIcon className="w-4 h-4 text-accent-cyan" />
           <h3 className="font-extrabold text-xs uppercase tracking-wider text-text-main">
             CALENDAR PREVIEW
           </h3>
-          <span className="bg-surface-hover text-accent-cyan border border-accent-cyan/40 text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider">
+          <span className="bg-surface-hover text-accent-cyan border border-accent-cyan/40 text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider hidden sm:inline-block">
             SYNCED
           </span>
         </div>
 
         <div className="flex items-center gap-3">
-          <button
-            onClick={handlePrevMonth}
-            className="p-1 rounded hover:bg-surface-hover text-muted-main hover:text-text-main transition-colors"
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <button
+              onClick={handlePrevMonth}
+              className="p-1 rounded-md hover:bg-surface-hover text-muted-main hover:text-text-main transition-colors"
+              title="Previous Month"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <span className="font-bold text-xs tracking-wider min-w-[120px] sm:min-w-[130px] text-center text-text-main">
+              {MONTH_NAMES[month]} {year}
+            </span>
+            <button
+              onClick={handleNextMonth}
+              className="p-1 rounded-md hover:bg-surface-hover text-muted-main hover:text-text-main transition-colors"
+              title="Next Month"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+
+          <Link
+            href="/calendar"
+            className="text-[11px] font-semibold text-accent-cyan hover:underline flex items-center gap-1 pl-2 border-l border-border-main/60 hidden md:flex"
+            title="Open Full Calendar View"
           >
-            <ChevronLeft className="w-4 h-4" />
-          </button>
-          <span className="font-bold text-xs tracking-widest min-w-[130px] text-center text-text-main">
-            {MONTH_NAMES[month]} {year}
-          </span>
-          <button
-            onClick={handleNextMonth}
-            className="p-1 rounded hover:bg-surface-hover text-muted-main hover:text-text-main transition-colors"
-          >
-            <ChevronRight className="w-4 h-4" />
-          </button>
+            <span>Full View</span>
+            <ArrowRight className="w-3 h-3" />
+          </Link>
         </div>
       </div>
 
@@ -115,23 +159,65 @@ export default function CalendarGrid() {
           ))}
         </div>
 
-        {/* Days Cells matching Image 3 (rounded light pills/rectangles) */}
-        <div className="grid grid-cols-7 gap-2">
-          {days.map((d, i) => (
-            <div
-              key={i}
-              className={`h-9 sm:h-11 rounded-lg flex items-center justify-center text-xs font-bold transition-colors ${
-                !d.isCurrentMonth
-                  ? 'text-muted-main/40 bg-surface-hover/30'
-                  : d.isToday
-                  ? 'bg-black text-white dark:bg-white dark:text-black border-2 border-accent-cyan shadow-sm font-extrabold'
-                  : 'bg-surface-hover/80 text-text-main hover:bg-surface-hover'
-              }`}
-            >
-              {d.day}
-            </div>
-          ))}
+        {/* Days Cells with Deliverable & Survey Indicators */}
+        <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
+          {days.map((d, i) => {
+            const dayEvents = d.isCurrentMonth ? SCHEDULED_EVENTS[d.day] || [] : [];
+            const hasEvents = dayEvents.length > 0;
+
+            return (
+              <div
+                key={i}
+                title={hasEvents ? dayEvents.map((e) => e.title).join(' • ') : undefined}
+                className={`h-10 sm:h-12 rounded-lg flex flex-col items-center justify-center p-1 relative text-xs font-bold transition-all cursor-pointer group ${
+                  !d.isCurrentMonth
+                    ? 'text-muted-main/30 bg-surface-hover/20 cursor-default'
+                    : d.isToday
+                    ? 'bg-black text-white dark:bg-white dark:text-black border-2 border-accent-cyan shadow-sm font-extrabold'
+                    : 'bg-surface-hover/70 text-text-main hover:bg-surface-hover hover:border-border-strong/70 border border-transparent'
+                }`}
+              >
+                <span className={d.isToday ? '' : 'group-hover:text-accent-cyan transition-colors'}>
+                  {d.day}
+                </span>
+
+                {/* Event Indicator Dots */}
+                {hasEvents && (
+                  <div className="flex items-center gap-1 mt-0.5">
+                    {dayEvents.map((evt, idx) => (
+                      <span
+                        key={idx}
+                        className={`w-1.5 h-1.5 rounded-full ${evt.color} shadow-xs`}
+                        title={evt.title}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
+      </div>
+
+      {/* Micro-Legend */}
+      <div className="pt-3 mt-3 border-t border-border-main/60 flex flex-wrap items-center justify-between gap-2 text-[10px] font-mono text-muted-main">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-rose-500 inline-block shadow-2xs" />
+            <span className="font-medium text-text-main/90">Deliverable Due</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-teal-500 inline-block shadow-2xs" />
+            <span className="font-medium text-text-main/90">Site Survey</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-amber-500 inline-block shadow-2xs" />
+            <span className="font-medium text-text-main/90">Client Review</span>
+          </div>
+        </div>
+        <span className="text-[9px] text-muted-main hidden sm:inline">
+          Hover date for schedule details
+        </span>
       </div>
     </div>
   );

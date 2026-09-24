@@ -6,9 +6,8 @@ import { usePathname, useRouter } from 'next/navigation';
 import { NAV_ITEMS, MOCK_PROJECTS } from '@/lib/constants';
 import { User } from '@/types';
 import { cn } from '@/lib/utils';
-import { LogOut, Sun, Moon } from 'lucide-react';
+import { LogOut } from 'lucide-react';
 import { useClockIn } from '@/lib/hooks/useClockIn';
-import { useTheme } from '@/lib/themeContext';
 import Logo from '@/components/ui/Logo';
 
 interface SidebarProps {
@@ -18,7 +17,6 @@ interface SidebarProps {
 export function Sidebar({ user }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const { themeMode, toggleThemeMode } = useTheme();
 
   const {
     isClockedIn,
@@ -32,24 +30,11 @@ export function Sidebar({ user }: SidebarProps) {
   return (
     <div className="hidden md:flex flex-col fixed left-0 top-0 w-64 h-screen border-r border-border-main bg-surface-main z-50 text-text-main font-mono shadow-sm">
       <div className="flex-1 flex flex-col overflow-y-auto">
-        {/* Top Studio Brand Header */}
-        <div className="p-6 border-b border-border-main flex items-center justify-between">
-          <Link href="/dashboard" className="flex items-center group">
-            <Logo size={140} />
+        {/* Top Studio Brand Header - Centered */}
+        <div className="py-6 px-4 border-b border-border-main flex items-center justify-center text-center">
+          <Link href="/dashboard" className="flex items-center justify-center group w-full">
+            <Logo size={135} />
           </Link>
-
-          {/* Theme Toggle Button (Day Light / Night Light) */}
-          <button
-            onClick={toggleThemeMode}
-            className="p-2 rounded-lg hover:bg-surface-hover transition-colors text-muted-main hover:text-text-main"
-            title={themeMode === 'light' ? 'Switch to Night Mode' : 'Switch to Day Light'}
-          >
-            {themeMode === 'light' ? (
-              <Moon className="w-4 h-4" />
-            ) : (
-              <Sun className="w-4 h-4 text-amber-400" />
-            )}
-          </button>
         </div>
 
         {/* Navigation Items */}

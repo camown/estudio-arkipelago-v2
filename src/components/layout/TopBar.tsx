@@ -1,13 +1,16 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { User } from '@/types';
 import { useTheme } from '@/lib/themeContext';
+import { useTasks } from '@/lib/hooks/useTasks';
 import Logo from '@/components/ui/Logo';
+import { TaskInitializationModal } from '@/components/dashboard/TaskInitializationModal';
 import { 
   Sun, Moon, LogOut, Bell, MessageSquare, Clock, Search,
-  FolderKanban, BookUser, PenTool, LayoutDashboard, X, ArrowRight, Command
+  FolderKanban, BookUser, PenTool, LayoutDashboard, X, ArrowRight, Command, Plus
 } from 'lucide-react';
 import { MOCK_PROJECTS } from '@/lib/constants';
 import { cn } from '@/lib/utils';
@@ -24,11 +27,14 @@ interface NotificationItem {
 
 interface TopBarProps {
   user: User | null;
+  onInitializeTask?: () => void;
 }
 
-export function TopBar({ user }: TopBarProps) {
+export function TopBar({ user, onInitializeTask }: TopBarProps) {
   const router = useRouter();
-  const [currentDate, setCurrentDate] = useState<Date | null>(() => new Date());
+  const { addTask } = useTasks();
+  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
+  const [currentDate, setCurrentDate] = useState<Date | null>(null);
   const { themeMode, toggleThemeMode } = useTheme();
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -70,7 +76,27 @@ export function TopBar({ user }: TopBarProps) {
     setNotifications((prev) => prev.map((n) => ({ ...n, unread: false })));
   };
 
+  const handleOpenTaskModal = () => {
+    if (onInitializeTask) {
+      onInitializeTask();
+    } else {
+      setIsTaskModalOpen(true);
+    }
+  };
+
+  const handleTaskCreated = (newTaskData: Parameters<typeof addTask>[0]) => {
+    addTask(newTaskData);
+    setIsTaskModalOpen(false);
+  };
+
   useEffect(() => {
+    const handleExternalOpen = () => setIsTaskModalOpen(true);
+    window.addEventListener('open-task-modal', handleExternalOpen);
+    return () => window.removeEventListener('open-task-modal', handleExternalOpen);
+  }, []);
+
+  useEffect(() => {
+    setCurrentDate(new Date());
     const interval = setInterval(() => setCurrentDate(new Date()), 1000);
     return () => clearInterval(interval);
   }, []);
@@ -190,15 +216,24 @@ export function TopBar({ user }: TopBarProps) {
 
   return (
     <>
-      <header className="w-full h-16 bg-surface-main border-b border-border-main flex items-center justify-between px-4 sm:px-6 text-text-main font-mono shrink-0 mb-6 rounded-2xl shadow-2xs relative z-40">
-        {/* Left side: Logo on mobile, Timestamp + Global Search trigger on desktop */}
-        <div className="flex items-center gap-4 flex-1 max-w-xl">
-          {/* Mobile only logo */}
-          <div className="flex items-center gap-3 md:hidden">
+      <header className="w-full h-16 bg-surface-main border-b border-border-main flex items-center justify-between px-3 sm:px-6 text-text-main font-mono shrink-0 mb-6 rounded-2xl shadow-2xs relative z-40">
+        {/* Left side: Studio Logo (mobile), System Online status, Timestamp, and Search */}
+        <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0 max-w-2xl">
+          {/* Studio Brand & Logo (Mobile only, desktop uses centered sidebar logo) */}
+          <Link href="/dashboard" className="flex md:hidden items-center gap-2.5 shrink-0 group">
             <Logo size={28} />
-            <span className="font-bold text-xs tracking-wide">
+            <span className="font-bold text-xs tracking-wider uppercase text-text-main group-hover:text-accent-cyan transition-colors">
               Estudio Arkipelago
             </span>
+          </Link>
+
+          {/* System Online Status Indicator */}
+          <div className="flex items-center gap-2 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/25 text-[11px] font-mono text-emerald-600 dark:text-emerald-400 font-semibold tracking-wide shrink-0">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
+            <span className="hidden sm:inline">System Online</span>
           </div>
 
           {/* Desktop live timestamp */}
@@ -222,8 +257,19 @@ export function TopBar({ user }: TopBarProps) {
           </button>
         </div>
 
-        {/* Right side: Greeting, Role Badge, Notifications Bell, Theme Switcher, Sign Out */}
-        <div className="flex items-center space-x-3 sm:space-x-4">
+        {/* Right side: Initialize Task CTA, Greeting, Role Badge, Notifications, Theme Switcher, Sign Out */}
+        <div className="flex items-center space-x-2 sm:space-x-3 shrink-0">
+          {/* Initialize Task Primary Action Button */}
+          <button
+            onClick={handleOpenTaskModal}
+            className="px-3 sm:px-3.5 py-1.5 sm:py-2 bg-black text-white dark:bg-white dark:text-black font-semibold text-xs tracking-wide flex items-center gap-1.5 rounded-lg shadow-xs hover:opacity-90 active:scale-95 transition-all cursor-pointer shrink-0"
+            title="Initialize New Studio Task"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Initialize Task</span>
+            <span className="sm:hidden">Task</span>
+          </button>
+
           {/* Mobile search button */}
           <button
             onClick={() => setIsSearchOpen(true)}
@@ -233,8 +279,8 @@ export function TopBar({ user }: TopBarProps) {
             <Search className="w-4 h-4" />
           </button>
 
-          <div className="flex items-center gap-2.5 text-xs">
-            <span className="hidden sm:inline text-muted-main font-medium">
+          <div className="hidden lg:flex items-center gap-2.5 text-xs">
+            <span className="text-muted-main font-medium">
               {getGreeting()}, <strong className="text-text-main font-semibold">{user?.name || 'Testing3'}</strong>
             </span>
             <span className="bg-surface-hover border border-border-strong px-2.5 py-1 text-[11px] capitalize font-medium text-text-main rounded-lg shadow-2xs">
@@ -458,6 +504,13 @@ export function TopBar({ user }: TopBarProps) {
           </div>
         </div>
       )}
+
+      {/* Global Task Initialization Modal */}
+      <TaskInitializationModal
+        isOpen={isTaskModalOpen}
+        onClose={() => setIsTaskModalOpen(false)}
+        onTaskCreated={handleTaskCreated}
+      />
     </>
   );
 }

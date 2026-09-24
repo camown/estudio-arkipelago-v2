@@ -39,7 +39,7 @@ export default function StudioLayout({
       <ErrorBoundary>
         <div className="min-h-screen bg-bg-main text-text-main flex flex-col md:flex-row transition-colors">
           <Sidebar user={user} />
-          <main className="flex-1 ml-0 md:ml-64 pt-6 pb-24 md:pb-10 px-6 md:px-10 w-full max-w-none font-mono transition-colors relative">
+          <main className="flex-1 ml-0 md:ml-64 pt-6 pb-24 md:pb-10 px-6 md:px-10 w-full max-w-none font-sans antialiased transition-colors relative">
             <TopBar user={user} />
             <ErrorBoundary>{children}</ErrorBoundary>
             <TimeTrackingNudge />
