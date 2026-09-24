@@ -53,8 +53,19 @@ export function Sidebar({ user }: SidebarProps) {
         </div>
 
         {/* Navigation Items */}
-        <nav className="p-4 space-y-1.5">
-          {NAV_ITEMS.map((item) => {
+        <nav className="p-4 space-y-1">
+          {NAV_ITEMS.filter((item) => {
+            if (!item.minRole) return true;
+            const roleRank: Record<string, number> = {
+              contractor: 1,
+              junior_architect: 2,
+              senior_architect: 3,
+              partner: 4,
+            };
+            const userRank = roleRank[user?.role || 'junior_architect'] || 2;
+            const requiredRank = roleRank[item.minRole] || 1;
+            return userRank >= requiredRank;
+          }).map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.href;
             return (
@@ -62,13 +73,13 @@ export function Sidebar({ user }: SidebarProps) {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  'flex items-center space-x-3 px-3.5 py-2.5 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all',
+                  'flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs font-medium tracking-normal transition-all',
                   isActive
-                    ? 'bg-black text-white dark:bg-white dark:text-black shadow-sm'
+                    ? 'bg-black text-white dark:bg-white dark:text-black font-semibold shadow-sm'
                     : 'text-muted-main hover:text-text-main hover:bg-surface-hover'
                 )}
               >
-                <Icon className="w-4 h-4" />
+                <Icon className="w-4 h-4 shrink-0" />
                 <span>{item.label}</span>
               </Link>
             );
@@ -76,77 +87,85 @@ export function Sidebar({ user }: SidebarProps) {
         </nav>
 
         {/* Active Work Tracking Widget */}
-        <div className="p-4 mt-auto">
-          <div className="border border-border-main rounded-xl p-4 bg-surface-hover/50 space-y-3">
-            <h2 className="text-[11px] text-muted-main uppercase font-bold tracking-wider">
-              ACTIVE WORK TRACKING
-            </h2>
+        {(() => {
+          const availableProjects = user?.role === 'contractor' && user?.assignedProjectCodes
+            ? MOCK_PROJECTS.filter((p) => user.assignedProjectCodes?.includes(p.code))
+            : MOCK_PROJECTS;
+          const defaultProjectId = availableProjects[0]?.id || '';
 
-            <div className="text-xs">
-              {isClockedIn ? (
-                <div className="flex flex-col">
-                  <span className="text-accent-cyan font-bold truncate">
-                    {MOCK_PROJECTS.find((p) => p.id === selectedProjectId)?.name || 'UNKNOWN PROJECT'}
+          return (
+            <div className="p-4 mt-auto">
+              <div className="border border-border-main rounded-xl p-4 bg-surface-hover/50 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-[11px] text-muted-main font-semibold tracking-wide">
+                    Active Time Tracking
+                  </h2>
+                  <span className={cn(
+                    "text-[9px] font-bold px-1.5 py-0.5 rounded tracking-wider uppercase",
+                    isClockedIn ? "bg-accent-cyan/15 text-accent-cyan" : "bg-surface-hover text-muted-main"
+                  )}>
+                    {isClockedIn ? "CLOCKED IN" : "OFFLINE"}
                   </span>
-                  <span className="text-lg font-bold font-mono">{elapsedTime}</span>
                 </div>
-              ) : (
-                <div className="text-accent-red italic">NO SESSION ACTIVE</div>
-              )}
-            </div>
 
-            <div className="flex flex-col space-y-1">
-              <label className="text-[10px] text-muted-main uppercase font-semibold">
-                ACTIVE PROJECT
-              </label>
-              <select
-                value={selectedProjectId || MOCK_PROJECTS[0]?.id}
-                onChange={(e) => setSelectedProjectId(e.target.value)}
-                disabled={isClockedIn}
-                className="bg-surface-main border border-border-main text-text-main p-2 text-xs font-mono focus:outline-none focus:border-accent-cyan rounded-md disabled:opacity-50 uppercase"
-              >
-                {MOCK_PROJECTS.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+                <div className="text-xs">
+                  {isClockedIn ? (
+                    <div className="flex flex-col">
+                      <span className="text-accent-cyan font-bold truncate">
+                        {availableProjects.find((p) => p.id === selectedProjectId)?.name || 'Unknown Project'}
+                      </span>
+                      <span className="text-xl font-bold font-mono tracking-tight">{elapsedTime}</span>
+                    </div>
+                  ) : (
+                    <div className="text-muted-main italic text-[11px]">No active session</div>
+                  )}
+                </div>
 
-            <button
-              onClick={isClockedIn ? () => clockOut() : () => clockIn(selectedProjectId || MOCK_PROJECTS[0]?.id)}
-              className={cn(
-                'w-full py-2 border font-bold text-xs uppercase rounded-md transition-all',
-                isClockedIn
-                  ? 'border-accent-red text-accent-red hover:bg-accent-red hover:text-white'
-                  : 'border-accent-cyan text-accent-cyan hover:bg-accent-cyan hover:text-black'
-              )}
-            >
-              {isClockedIn ? 'CLOCK-OUT' : 'CLOCK-IN'}
-            </button>
+                <div className="flex flex-col space-y-1">
+                  <label className="text-[10px] text-muted-main font-medium">
+                    Project Attribution
+                  </label>
+                  <select
+                    value={selectedProjectId || defaultProjectId}
+                    onChange={(e) => setSelectedProjectId(e.target.value)}
+                    disabled={isClockedIn}
+                    className="bg-surface-main border border-border-main text-text-main p-2 text-xs font-mono focus:outline-none focus:border-accent-cyan rounded-lg disabled:opacity-50"
+                  >
+                    {availableProjects.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name} ({p.code})
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-            <div className="text-[10px] font-bold uppercase text-center pt-1">
-              STATUS:{' '}
-              {isClockedIn ? (
-                <span className="text-accent-cyan">CLOCKED IN</span>
-              ) : (
-                <span className="text-accent-red">NOT CLOCKED IN</span>
-              )}
+                <button
+                  onClick={isClockedIn ? () => clockOut() : () => clockIn(selectedProjectId || defaultProjectId)}
+                  className={cn(
+                    'w-full py-2.5 border font-semibold text-xs rounded-lg transition-all shadow-xs',
+                    isClockedIn
+                      ? 'border-accent-red text-accent-red hover:bg-accent-red hover:text-white'
+                      : 'border-accent-cyan text-accent-cyan hover:bg-accent-cyan hover:text-black'
+                  )}
+                >
+                  {isClockedIn ? 'Clock Out' : 'Clock In'}
+                </button>
+              </div>
             </div>
-          </div>
-        </div>
+          );
+        })()}
       </div>
 
       {/* User Footer Profile */}
-      <div className="border-t border-border-main p-4 bg-surface-main flex items-center justify-between">
+      <div className="border-t border-border-main p-4 bg-surface-main flex items-center justify-between relative z-20">
         <div className="flex items-center space-x-3 overflow-hidden">
           <div className="w-9 h-9 shrink-0 rounded-full border border-border-strong flex items-center justify-center font-bold text-xs bg-surface-hover text-text-main">
             {user?.name?.charAt(0) || 'U'}
           </div>
           <div className="flex flex-col overflow-hidden">
-            <span className="text-xs font-bold uppercase truncate">{user?.name || 'GUEST'}</span>
-            <span className="text-[10px] text-muted-main uppercase truncate">
-              {user?.role?.replace('_', ' ') || 'VIEWER'}
+            <span className="text-xs font-semibold truncate text-text-main">{user?.name || 'Guest'}</span>
+            <span className="text-[10px] text-muted-main capitalize truncate">
+              {user?.role?.replace('_', ' ') || 'Viewer'}
             </span>
           </div>
         </div>
@@ -155,7 +174,7 @@ export function Sidebar({ user }: SidebarProps) {
             localStorage.removeItem('arkipelago_user');
             router.push('/login');
           }}
-          className="text-muted-main hover:text-accent-red transition-colors p-1 rounded"
+          className="text-muted-main hover:text-accent-red transition-colors p-1.5 rounded-lg hover:bg-surface-hover"
           title="Sign Out"
         >
           <LogOut className="w-4 h-4" />

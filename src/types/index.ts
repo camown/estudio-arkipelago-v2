@@ -8,6 +8,7 @@ export interface User {
   name: string;
   role: Role;
   avatarUrl?: string;
+  assignedProjectCodes?: string[]; // Scoped projects for contractors
 }
 
 export interface Project {
@@ -53,20 +54,26 @@ export type HRRequestType =
   | 'submit_complaint';
 
 export type HRRequestStatus = 'pending' | 'approved' | 'rejected';
+export type ComplaintStatus = 'submitted' | 'under_review' | 'investigating' | 'resolved' | 'dismissed';
 
 export interface HRRequest {
   id: string;
   type: HRRequestType;
   userId: string;
   userName: string;
-  calendarDate: string;
+  calendarDate?: string;
   clockIn?: string;
   clockOut?: string;
   reason: string;
   status: HRRequestStatus;
+  complaintStatus?: ComplaintStatus;
   createdAt: string;
   reviewedBy?: string;
   reviewedAt?: string;
+  resolutionNotes?: string;
+  investigatorNotes?: string;
+  isConfidential?: boolean;
+  details?: Record<string, unknown>;
   // Leave-specific
   leaveType?: 'vacation' | 'sick' | 'personal' | 'emergency';
   dateFrom?: string;
@@ -109,6 +116,7 @@ export interface PresetAccount {
   role: Role;
   description: string;
   accessLevel: string;
+  assignedProjectCodes?: string[];
 }
 
 // ============================================================

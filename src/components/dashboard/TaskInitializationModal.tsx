@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { X, ChevronDown } from 'lucide-react';
 import { MOCK_PROJECTS, PRESET_ACCOUNTS } from '@/lib/constants';
 import { TaskItem, TaskType, TaskPriority, ProjectPhase } from '@/types';
+import { useAuth } from '@/lib/hooks/useAuth';
 
 interface TaskInitializationModalProps {
   isOpen: boolean;
@@ -50,8 +51,13 @@ export function TaskInitializationModal({
   onClose,
   onTaskCreated,
 }: TaskInitializationModalProps) {
+  const { user } = useAuth();
+  const availableProjects = user?.role === 'contractor' && user?.assignedProjectCodes
+    ? MOCK_PROJECTS.filter((p) => user.assignedProjectCodes?.includes(p.code))
+    : MOCK_PROJECTS;
+
   const [taskName, setTaskName] = useState('');
-  const [projectId, setProjectId] = useState(MOCK_PROJECTS[0]?.id || '');
+  const [projectId, setProjectId] = useState(() => availableProjects[0]?.id || '');
   const [description, setDescription] = useState('');
   const [projectPhase, setProjectPhase] = useState<ProjectPhase>('SCHEMATIC');
   const [selectedDeliverables, setSelectedDeliverables] = useState<string[]>([]);
@@ -172,7 +178,7 @@ export function TaskInitializationModal({
                 onChange={(e) => setProjectId(e.target.value)}
                 className="w-full bg-surface-hover border border-border-main focus:border-accent-cyan p-3 text-xs font-mono text-text-main rounded-xl appearance-none pr-10 focus:outline-none uppercase font-bold"
               >
-                {MOCK_PROJECTS.map((p) => (
+                {availableProjects.map((p) => (
                   <option key={p.id} value={p.id} className="bg-surface-main text-text-main">
                     {p.name} ({p.code})
                   </option>

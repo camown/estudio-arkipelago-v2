@@ -61,7 +61,7 @@ export const NAV_ITEMS: NavItem[] = [
     href: '/hr',
     icon: Clock,
     iconName: 'Clock',
-    minRole: ROLES.CONTRACTOR,
+    minRole: ROLES.JUNIOR_ARCHITECT,
   },
   {
     label: 'Sketch Studio',
@@ -150,22 +150,23 @@ export const PRESET_ACCOUNTS: PresetAccount[] = [
     email: 'senior@arkipelago.com',
     name: 'Arch. Testing2',
     role: 'senior_architect',
-    description: 'Senior Architect / Lead — HR requests, wall posting, team oversight',
+    description: 'Senior Architect / Lead — HR review, team oversight, project lead',
     accessLevel: 'LEAD',
   },
   {
     email: 'junior@arkipelago.com',
     name: 'Arch. Testing3',
     role: 'junior_architect',
-    description: 'Junior Architect / Staff — Clock-in, wall posting, assigned projects',
+    description: 'Junior Architect / Staff — Clock-in, wall posting, own HR requests',
     accessLevel: 'STAFF',
   },
   {
     email: 'contractor@arkipelago.com',
     name: 'Engr. Testing4',
     role: 'contractor',
-    description: 'Consultant / External — Clock-in, assigned project chat only',
+    description: 'Consultant / External — Scoped strictly to assigned projects (CV-2024, BCP-2024)',
     accessLevel: 'EXTERNAL',
+    assignedProjectCodes: ['CV-2024', 'BCP-2024'],
   },
 ];
 

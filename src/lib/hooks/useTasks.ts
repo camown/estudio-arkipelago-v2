@@ -80,7 +80,6 @@ export function useTasks() {
   }, []);
 
   useEffect(() => {
-    syncTasks();
     const handleStorage = (e: StorageEvent) => {
       if (e.key === STORAGE_KEY) syncTasks();
     };

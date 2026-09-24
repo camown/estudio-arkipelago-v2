@@ -19,9 +19,9 @@
   --text-main: #18181B;
   --surface-main: #FFFFFF;
   --surface-hover: #F1F5F9;
-  --border-main: #D1D5DB;
-  --border-strong: #9CA3AF;
-  --muted-main: #64748B;
+  --border-main: #CBD5E1;
+  --border-strong: #94A3B8;
+  --muted-main: #475569; /* Darker, high-contrast readable text for light theme */
   --accent-cyan: #0284C7; /* Refined cyan accent for light mode */
   --accent-yellow: #D97706;
   --accent-red: #DC2626;
@@ -36,7 +36,7 @@
   --surface-hover: #1E1E1E;
   --border-main: #2A2A2A;
   --border-strong: #444444;
-  --muted-main: #94A3B8;
+  --muted-main: #A1A1AA; /* Crisp high-contrast readable text for dark theme */
   --accent-cyan: #00FFE0;
   --accent-yellow: #FFE000;
   --accent-red: #FF3333;
