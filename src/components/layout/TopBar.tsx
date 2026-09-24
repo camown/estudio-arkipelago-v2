@@ -10,8 +10,9 @@ import Logo from '@/components/ui/Logo';
 import { TaskInitializationModal } from '@/components/dashboard/TaskInitializationModal';
 import { 
   Sun, Moon, LogOut, Bell, MessageSquare, Clock, Search,
-  FolderKanban, BookUser, PenTool, LayoutDashboard, X, ArrowRight, Command, Plus
+  FolderKanban, BookUser, PenTool, LayoutDashboard, X, ArrowRight, Command, Plus, PanelLeft
 } from 'lucide-react';
+import { useSidebar } from '@/lib/sidebarContext';
 import { MOCK_PROJECTS } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 
@@ -34,11 +35,12 @@ export function TopBar({ user, onInitializeTask }: TopBarProps) {
   const router = useRouter();
   const { addTask } = useTasks();
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
-  const [currentDate, setCurrentDate] = useState<Date | null>(null);
+  const [currentDate, setCurrentDate] = useState<Date | null>(() => (typeof window !== 'undefined' ? new Date() : null));
   const { themeMode, toggleThemeMode } = useTheme();
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const { isCollapsed: isSidebarCollapsed, toggleSidebar } = useSidebar();
   
   const [notifications, setNotifications] = useState<NotificationItem[]>([
     {
@@ -96,7 +98,6 @@ export function TopBar({ user, onInitializeTask }: TopBarProps) {
   }, []);
 
   useEffect(() => {
-    setCurrentDate(new Date());
     const interval = setInterval(() => setCurrentDate(new Date()), 1000);
     return () => clearInterval(interval);
   }, []);
@@ -130,13 +131,6 @@ export function TopBar({ user, onInitializeTask }: TopBarProps) {
     const year = date.getFullYear();
 
     return `${timeStr} — ${dayName}, ${monthName} ${dayNum}, ${year}`;
-  };
-
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return 'Good morning';
-    if (hour < 18) return 'Good afternoon';
-    return 'Good evening';
   };
 
   // Search Results aggregation
@@ -217,8 +211,18 @@ export function TopBar({ user, onInitializeTask }: TopBarProps) {
   return (
     <>
       <header className="w-full h-16 bg-surface-main border-b border-border-main flex items-center justify-between px-3 sm:px-6 text-text-main font-mono shrink-0 mb-6 rounded-2xl shadow-2xs relative z-40">
-        {/* Left side: Studio Logo (mobile), System Online status, Timestamp, and Search */}
-        <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0 max-w-2xl">
+        {/* Left side: Sidebar Toggle (Desktop), Studio Logo (mobile), Timestamp, and Search */}
+        <div className="flex items-center gap-2.5 sm:gap-3 flex-1 min-w-0 max-w-2xl">
+          {/* Desktop Sidebar Toggle Button */}
+          <button
+            onClick={toggleSidebar}
+            className="hidden md:flex items-center justify-center p-2 rounded-xl border border-border-main bg-surface-main hover:bg-surface-hover text-muted-main hover:text-text-main transition-colors cursor-pointer shrink-0 shadow-2xs"
+            title={isSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+            aria-label="Toggle Sidebar"
+          >
+            <PanelLeft className="w-4 h-4" />
+          </button>
+
           {/* Studio Brand & Logo (Mobile only, desktop uses centered sidebar logo) */}
           <Link href="/dashboard" className="flex md:hidden items-center gap-2.5 shrink-0 group">
             <Logo size={28} />
@@ -227,24 +231,16 @@ export function TopBar({ user, onInitializeTask }: TopBarProps) {
             </span>
           </Link>
 
-          {/* System Online Status Indicator */}
-          <div className="flex items-center gap-2 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/25 text-[11px] font-mono text-emerald-600 dark:text-emerald-400 font-semibold tracking-wide shrink-0">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-            </span>
-            <span className="hidden sm:inline">System Online</span>
-          </div>
-
           {/* Desktop live timestamp */}
-          <div className="hidden lg:block text-xs font-medium text-muted-main tracking-normal shrink-0">
-            {currentDate ? formatFullTimestamp(currentDate) : '--:--:--'}
+          <div className="hidden lg:flex items-center gap-2 text-xs font-medium text-muted-main tracking-normal shrink-0">
+            <Clock className="w-3.5 h-3.5 text-muted-main/70" />
+            <span>{currentDate ? formatFullTimestamp(currentDate) : '--:--:--'}</span>
           </div>
 
           {/* Persistent Global Search Bar Input Trigger */}
           <button
             onClick={() => setIsSearchOpen(true)}
-            className="hidden md:flex items-center justify-between w-full max-w-xs px-3.5 py-1.5 rounded-xl border border-border-main bg-surface-hover/50 hover:bg-surface-hover hover:border-border-strong text-muted-main hover:text-text-main transition-all text-xs"
+            className="hidden md:flex items-center justify-between w-full max-w-xs px-3.5 py-1.5 rounded-xl border border-border-main bg-surface-hover/50 hover:bg-surface-hover hover:border-border-strong text-muted-main hover:text-text-main transition-all text-xs cursor-pointer"
             title="Global Search (Cmd/Ctrl + K)"
           >
             <div className="flex items-center gap-2">
@@ -257,7 +253,7 @@ export function TopBar({ user, onInitializeTask }: TopBarProps) {
           </button>
         </div>
 
-        {/* Right side: Initialize Task CTA, Greeting, Role Badge, Notifications, Theme Switcher, Sign Out */}
+        {/* Right side: Initialize Task CTA, Role Badge, Notifications, Theme Switcher, Sign Out */}
         <div className="flex items-center space-x-2 sm:space-x-3 shrink-0">
           {/* Initialize Task Primary Action Button */}
           <button
@@ -273,16 +269,14 @@ export function TopBar({ user, onInitializeTask }: TopBarProps) {
           {/* Mobile search button */}
           <button
             onClick={() => setIsSearchOpen(true)}
-            className="md:hidden p-2 rounded-xl border border-border-main bg-surface-main hover:bg-surface-hover text-muted-main"
+            className="md:hidden p-2 rounded-xl border border-border-main bg-surface-main hover:bg-surface-hover text-muted-main cursor-pointer"
             title="Search"
           >
             <Search className="w-4 h-4" />
           </button>
 
-          <div className="hidden lg:flex items-center gap-2.5 text-xs">
-            <span className="text-muted-main font-medium">
-              {getGreeting()}, <strong className="text-text-main font-semibold">{user?.name || 'Testing3'}</strong>
-            </span>
+          {/* User Role Badge */}
+          <div className="hidden lg:flex items-center">
             <span className="bg-surface-hover border border-border-strong px-2.5 py-1 text-[11px] capitalize font-medium text-text-main rounded-lg shadow-2xs">
               {user?.role ? user.role.replace('_', ' ') : 'Junior Architect'}
             </span>

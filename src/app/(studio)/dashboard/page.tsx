@@ -8,6 +8,7 @@ import { useHRRequests } from '@/lib/hooks/useHRRequests';
 import { useWallPosts } from '@/lib/hooks/useWallPosts';
 import { useClockIn } from '@/lib/hooks/useClockIn';
 import { MOCK_PROJECTS } from '@/lib/constants';
+import Logo from '@/components/ui/Logo';
 import CalendarGrid from '@/components/dashboard/CalendarGrid';
 import { TaskInitializationModal } from '@/components/dashboard/TaskInitializationModal';
 import {
@@ -70,24 +71,46 @@ export default function DashboardPage() {
         onTaskCreated={handleTaskCreated}
       />
 
-      {/* 1. Studio Header Strip (Spacious Architectural Welcome) */}
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-6 border-b border-border-main/60">
-        <div className="space-y-1.5">
-          <div className="flex items-center gap-2 text-xs font-mono text-emerald-500 font-semibold tracking-wider uppercase">
-            <Radio className="w-3.5 h-3.5 animate-pulse text-emerald-400" />
-            <span>Studio Operations • Live Session</span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-text-main font-sans">
-            Studio Dashboard
-          </h1>
-          <p className="text-xs sm:text-sm text-muted-main font-sans leading-relaxed">
-            Welcome back, <span className="font-semibold text-text-main">{displayName}</span>. Overview of active schematics, team communications, and deliverables.
-          </p>
-        </div>
-        <div className="flex items-center gap-3 text-xs font-mono text-muted-main shrink-0">
-          <span className="px-3 py-1.5 rounded-lg bg-surface-main border border-border-main text-text-main font-medium shadow-2xs">
+      {/* 1. Header Hero Banner with Centered Studio Logo, Welcome Message, and Live Status */}
+      <div className="relative flex flex-col items-center justify-center text-center py-10 sm:py-12 px-6 rounded-3xl border border-border-main/70 bg-gradient-to-b from-surface-main/80 via-surface-main/40 to-transparent backdrop-blur-xs shadow-xs space-y-4 overflow-hidden">
+        {/* Subtle Ambient Radial Lighting */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-36 bg-accent-cyan/5 rounded-full blur-3xl pointer-events-none" />
+
+        {/* Phase Pill (Corner Meta) */}
+        <div className="absolute top-4 right-4 hidden sm:block">
+          <span className="text-[10px] font-mono px-2.5 py-1 rounded-md bg-surface-hover/80 border border-border-main text-muted-main shadow-2xs">
             Phase: Active Production
           </span>
+        </div>
+
+        {/* Centered Estudio Arkipelago Mark */}
+        <div className="relative z-10">
+          <Logo size={155} className="hover:scale-[1.02] transition-transform duration-300" />
+        </div>
+
+        {/* Welcome Typography & Subtitle */}
+        <div className="space-y-1.5 relative z-10 max-w-xl mx-auto">
+          <h1 className="text-sm sm:text-base font-semibold tracking-wide text-muted-main font-mono">
+            Welcome back, <span className="font-bold text-text-main">{displayName}</span>
+          </h1>
+          <div className="flex items-center justify-center gap-2 text-xs font-mono text-emerald-600 dark:text-emerald-400 font-semibold tracking-wide">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
+            <span>Studio Operations System Online • Real-Time Active</span>
+          </div>
+        </div>
+
+        {/* Task Initialization Quick Action Button */}
+        <div className="pt-1 relative z-10">
+          <button
+            onClick={() => setIsTaskModalOpen(true)}
+            className="px-6 py-2.5 bg-black text-white dark:bg-white dark:text-black font-semibold text-xs tracking-wide flex items-center gap-2 rounded-xl shadow-xs hover:opacity-90 active:scale-95 transition-all cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Initialize Task</span>
+          </button>
         </div>
       </div>
 
