@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, ArrowRight } from 'lucide-react';
 
 function getDaysInMonth(year: number, month: number) {
@@ -48,6 +49,7 @@ const SCHEDULED_EVENTS: Record<number, CalendarEvent[]> = {
 };
 
 export default function CalendarGrid() {
+  const router = useRouter();
   const today = useMemo(() => new Date(), []);
   const [currentDate, setCurrentDate] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
 
@@ -106,7 +108,11 @@ export default function CalendarGrid() {
     <div className="flex flex-col bg-surface-main border border-border-main rounded-xl p-5 sm:p-6 shadow-sm h-full font-mono">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border-main/70 pb-4 mb-4">
-        <div className="flex items-center gap-2 sm:gap-2.5">
+        <Link
+          href="/calendar"
+          className="flex items-center gap-2 sm:gap-2.5 hover:opacity-80 transition-opacity cursor-pointer"
+          title="Open Full Studio Calendar"
+        >
           <CalendarIcon className="w-4 h-4 text-accent-cyan" />
           <h3 className="font-extrabold text-xs uppercase tracking-wider text-text-main">
             CALENDAR PREVIEW
@@ -114,13 +120,13 @@ export default function CalendarGrid() {
           <span className="bg-surface-hover text-accent-cyan border border-accent-cyan/40 text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider hidden sm:inline-block">
             SYNCED
           </span>
-        </div>
+        </Link>
 
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1.5 sm:gap-2">
             <button
               onClick={handlePrevMonth}
-              className="p-1 rounded-md hover:bg-surface-hover text-muted-main hover:text-text-main transition-colors"
+              className="p-1 rounded-md hover:bg-surface-hover text-muted-main hover:text-text-main transition-colors cursor-pointer"
               title="Previous Month"
             >
               <ChevronLeft className="w-4 h-4" />
@@ -130,7 +136,7 @@ export default function CalendarGrid() {
             </span>
             <button
               onClick={handleNextMonth}
-              className="p-1 rounded-md hover:bg-surface-hover text-muted-main hover:text-text-main transition-colors"
+              className="p-1 rounded-md hover:bg-surface-hover text-muted-main hover:text-text-main transition-colors cursor-pointer"
               title="Next Month"
             >
               <ChevronRight className="w-4 h-4" />
@@ -139,7 +145,7 @@ export default function CalendarGrid() {
 
           <Link
             href="/calendar"
-            className="text-[11px] font-semibold text-accent-cyan hover:underline flex items-center gap-1 pl-2 border-l border-border-main/60 hidden md:flex"
+            className="text-[11px] font-semibold text-accent-cyan hover:underline flex items-center gap-1 pl-2 border-l border-border-main/60"
             title="Open Full Calendar View"
           >
             <span>Full View</span>
@@ -168,13 +174,18 @@ export default function CalendarGrid() {
             return (
               <div
                 key={i}
-                title={hasEvents ? dayEvents.map((e) => e.title).join(' • ') : undefined}
-                className={`h-10 sm:h-12 rounded-lg flex flex-col items-center justify-center p-1 relative text-xs font-bold transition-all cursor-pointer group ${
+                onClick={() => {
+                  if (d.isCurrentMonth) {
+                    router.push('/calendar');
+                  }
+                }}
+                title={hasEvents ? dayEvents.map((e) => e.title).join(' • ') : (d.isCurrentMonth ? `Day ${d.day} — Click to view in calendar` : undefined)}
+                className={`h-10 sm:h-12 rounded-lg flex flex-col items-center justify-center p-1 relative text-xs font-bold transition-all group ${
                   !d.isCurrentMonth
                     ? 'text-muted-main/30 bg-surface-hover/20 cursor-default'
                     : d.isToday
-                    ? 'bg-black text-white dark:bg-white dark:text-black border-2 border-accent-cyan shadow-sm font-extrabold'
-                    : 'bg-surface-hover/70 text-text-main hover:bg-surface-hover hover:border-border-strong/70 border border-transparent'
+                    ? 'bg-black text-white dark:bg-white dark:text-black border-2 border-accent-cyan shadow-sm font-extrabold cursor-pointer hover:opacity-90'
+                    : 'bg-surface-hover/70 text-text-main hover:bg-surface-hover hover:border-border-strong/70 border border-transparent cursor-pointer'
                 }`}
               >
                 <span className={d.isToday ? '' : 'group-hover:text-accent-cyan transition-colors'}>

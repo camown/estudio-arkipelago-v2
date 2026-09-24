@@ -26,7 +26,8 @@ import {
   CheckCircle2,
   Circle,
   Briefcase,
-  TrendingUp
+  TrendingUp,
+  CalendarDays
 } from 'lucide-react';
 
 export default function DashboardPage() {
@@ -316,21 +317,21 @@ export default function DashboardPage() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
-          {/* Card 1: Dashboard */}
-          <Link href="/dashboard" className="block group">
+          {/* Card 1: Master Calendar & Schedule */}
+          <Link href="/calendar" className="block group">
             <div className="bg-surface-main border border-border-main hover:border-text-main transition-all p-6 sm:p-7 rounded-xl h-full flex flex-col justify-between shadow-sm space-y-4">
               <div className="flex items-center justify-between">
-                <LayoutDashboard className="w-6 h-6 text-text-main" />
-                <span className="text-[10px] font-mono font-medium px-2 py-0.5 rounded-md bg-surface-hover/80 text-text-main/90 border border-border-main tracking-wider uppercase">
-                  PROD
+                <CalendarDays className="w-6 h-6 text-accent-cyan" />
+                <span className="text-[10px] font-mono font-medium px-2 py-0.5 rounded-md bg-surface-hover/80 text-accent-cyan border border-border-main tracking-wider uppercase">
+                  SCHEDULE
                 </span>
               </div>
               <div>
                 <h3 className="font-bold text-sm text-text-main mb-1 font-sans">
-                  Dashboard Overview
+                  Calendar & Schedules
                 </h3>
                 <p className="text-xs text-muted-main font-sans leading-relaxed">
-                  Review shared tasks, check the project calendar and studio schedules.
+                  Review deliverable milestones, project site surveys, and Google Calendar sync.
                 </p>
               </div>
               <div className="text-xs font-semibold text-text-main group-hover:text-accent-cyan font-sans transition-colors flex items-center gap-1.5 pt-2">

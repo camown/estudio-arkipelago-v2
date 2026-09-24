@@ -1,6 +1,7 @@
 import {
   Home,
   LayoutDashboard,
+  CalendarDays,
   Clock,
   FolderKanban,
   MessageSquare,
@@ -22,17 +23,17 @@ export enum ROLES {
 
 export const NAV_ITEMS: NavItem[] = [
   {
-    label: 'Homepage',
+    label: 'Dashboard',
     href: '/dashboard',
-    icon: Home,
-    iconName: 'Home',
+    icon: LayoutDashboard,
+    iconName: 'LayoutDashboard',
     minRole: ROLES.CONTRACTOR,
   },
   {
-    label: 'Dashboard',
+    label: 'Calendar',
     href: '/calendar',
-    icon: LayoutDashboard,
-    iconName: 'LayoutDashboard',
+    icon: CalendarDays,
+    iconName: 'CalendarDays',
     minRole: ROLES.CONTRACTOR,
   },
   {
