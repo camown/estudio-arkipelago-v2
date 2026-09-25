@@ -10,10 +10,19 @@ interface GoogleCalendarEventItem {
   location?: string;
 }
 
+export const dynamic = 'force-static';
+
 export async function GET() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get('gcal_access_token')?.value;
-  const userEmail = cookieStore.get('gcal_user_email')?.value || 'Gmail User';
+  let token: string | undefined;
+  let userEmail: string = 'Gmail User';
+
+  try {
+    const cookieStore = await cookies();
+    token = cookieStore.get('gcal_access_token')?.value;
+    userEmail = cookieStore.get('gcal_user_email')?.value || 'Gmail User';
+  } catch {
+    // In static export or when cookies are unavailable, fall back to mock data
+  }
 
   // If live Google OAuth token exists, fetch REAL live events from Google Calendar API!
   if (token) {
