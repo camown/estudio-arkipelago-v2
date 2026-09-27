@@ -88,7 +88,7 @@ export function Sidebar({ user }: SidebarProps) {
 
         {/* Navigation Items */}
         {!isCollapsed ? (
-          <nav className="p-3 space-y-1">
+          <nav className="p-3 space-y-1.5">
             {filteredNavItems.map((item) => {
               const Icon = item.icon;
               const isActive = pathname === item.href;
@@ -97,13 +97,13 @@ export function Sidebar({ user }: SidebarProps) {
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    'flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs font-medium tracking-normal transition-all',
+                    'flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-sm font-medium tracking-normal transition-all',
                     isActive
                       ? 'bg-black text-white dark:bg-white dark:text-black font-semibold shadow-sm'
                       : 'text-muted-main hover:text-text-main hover:bg-surface-hover'
                   )}
                 >
-                  <Icon className="w-4 h-4 shrink-0" />
+                  <Icon className="w-5 h-5 shrink-0" />
                   <span className="truncate">{item.label}</span>
                 </Link>
               );
@@ -126,9 +126,9 @@ export function Sidebar({ user }: SidebarProps) {
                   )}
                   aria-label={item.label}
                 >
-                  <Icon className="w-4 h-4 shrink-0" />
+                  <Icon className="w-5 h-5 shrink-0" />
                   {/* Floating Tooltip */}
-                  <div className="absolute left-full ml-3 px-2.5 py-1 bg-surface-main border border-border-main text-text-main text-[11px] font-medium font-sans rounded-lg shadow-xl opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity z-50 whitespace-nowrap">
+                  <div className="absolute left-full ml-3 px-3 py-1.5 bg-surface-main border border-border-main text-text-main text-xs font-medium font-sans rounded-lg shadow-xl opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity z-50 whitespace-nowrap">
                     {item.label}
                   </div>
                 </Link>
@@ -238,12 +238,12 @@ export function Sidebar({ user }: SidebarProps) {
       {!isCollapsed ? (
         <div className="border-t border-border-main p-4 bg-surface-main flex items-center justify-between relative z-20">
           <div className="flex items-center space-x-3 overflow-hidden">
-            <div className="w-9 h-9 shrink-0 rounded-full border border-border-strong flex items-center justify-center font-bold text-xs bg-surface-hover text-text-main">
+            <div className="w-10 h-10 shrink-0 rounded-full border border-border-strong flex items-center justify-center font-bold text-sm bg-surface-hover text-text-main">
               {user?.name?.charAt(0) || 'U'}
             </div>
             <div className="flex flex-col overflow-hidden">
-              <span className="text-xs font-semibold truncate text-text-main">{user?.name || 'Guest'}</span>
-              <span className="text-[10px] text-muted-main capitalize truncate">
+              <span className="text-sm font-semibold truncate text-text-main">{user?.name || 'Guest'}</span>
+              <span className="text-xs text-muted-main capitalize truncate">
                 {user?.role?.replace('_', ' ') || 'Viewer'}
               </span>
             </div>

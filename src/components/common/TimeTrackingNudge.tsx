@@ -48,12 +48,13 @@ export function TimeTrackingNudge() {
   }, [pathname]);
 
   useEffect(() => {
-    if (isClockedIn) return;
+    // Never show floating nudge on dashboard where the Studio Time Engine is prominent
+    if (isClockedIn || pathname === '/dashboard' || pathname === '/') return;
     const cleanup = detectContextualProject();
     return () => {
       if (cleanup) cleanup();
     };
-  }, [isClockedIn, detectContextualProject]);
+  }, [isClockedIn, pathname, detectContextualProject]);
 
   const handleAccept = () => {
     if (suggestedProject) {

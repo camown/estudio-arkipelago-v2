@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import type { TimeEntry } from '@/types';
 import { MOCK_PROJECTS } from '@/lib/constants';
+import { useAuth } from '@/lib/hooks/useAuth';
 
 const CLOCKIN_STATE_KEY = 'arkipelago_clockin_state';
 const TIME_ENTRIES_KEY = 'arkipelago_time_entries';
@@ -11,6 +12,7 @@ interface StoredClockInState {
   isClocked: boolean;
   startTime: string;
   selectedProjectId: string | null;
+  userId?: string;
 }
 
 export interface ActiveSession {
@@ -29,14 +31,18 @@ export function formatElapsed(seconds: number): string {
     .join(':');
 }
 
-function getInitialClockInState() {
+function getStoredClockInState(userId?: string) {
   if (typeof window === 'undefined') {
     return { isClocked: false, startTime: null, elapsed: 0, selectedProjectId: null };
   }
   try {
-    const rawState = localStorage.getItem(CLOCKIN_STATE_KEY);
+    const userKey = userId ? `${CLOCKIN_STATE_KEY}_${userId}` : null;
+    const rawState = (userKey && localStorage.getItem(userKey)) || localStorage.getItem(CLOCKIN_STATE_KEY);
     if (rawState) {
       const parsed: StoredClockInState = JSON.parse(rawState);
+      if (parsed.userId && userId && parsed.userId !== userId) {
+        return { isClocked: false, startTime: null, elapsed: 0, selectedProjectId: null };
+      }
       if (parsed.isClocked && parsed.startTime) {
         const start = new Date(parsed.startTime);
         const now = new Date();
@@ -56,6 +62,13 @@ function getInitialClockInState() {
 }
 
 export function useClockIn() {
+  const { user } = useAuth();
+  const userId = user?.id;
+
+  const userClockKey = useMemo(() => {
+    return userId ? `${CLOCKIN_STATE_KEY}_${userId}` : CLOCKIN_STATE_KEY;
+  }, [userId]);
+
   const getEntries = useCallback((): TimeEntry[] => {
     if (typeof window === 'undefined') {
       return [];
@@ -82,16 +95,26 @@ export function useClockIn() {
 
     return entries.filter((entry) => {
       const entryDate = new Date(entry.startTime).toDateString();
-      return entryDate === today;
+      const matchesUser = !entry.userId || entry.userId === 'current' || (userId ? entry.userId === userId : true);
+      return entryDate === today && matchesUser;
     });
-  }, [getEntries]);
+  }, [getEntries, userId]);
 
-  const [initialState] = useState(getInitialClockInState);
-  const [isClocked, setIsClocked] = useState<boolean>(initialState.isClocked);
-  const [startTime, setStartTime] = useState<Date | null>(initialState.startTime);
-  const [elapsed, setElapsed] = useState<number>(initialState.elapsed);
-  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(initialState.selectedProjectId);
+  const [isClocked, setIsClocked] = useState<boolean>(() => getStoredClockInState(userId).isClocked);
+  const [startTime, setStartTime] = useState<Date | null>(() => getStoredClockInState(userId).startTime);
+  const [elapsed, setElapsed] = useState<number>(() => getStoredClockInState(userId).elapsed);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(() => getStoredClockInState(userId).selectedProjectId);
   const [todayEntries, setTodayEntries] = useState<TimeEntry[]>([]);
+
+  const [prevUserId, setPrevUserId] = useState<string | undefined>(userId);
+  if (userId !== prevUserId) {
+    setPrevUserId(userId);
+    const stored = getStoredClockInState(userId);
+    setIsClocked(stored.isClocked);
+    setStartTime(stored.startTime);
+    setElapsed(stored.elapsed);
+    setSelectedProjectId(stored.selectedProjectId);
+  }
 
   const refreshTodayEntries = useCallback(() => {
     setTodayEntries(getTodayEntries());
@@ -99,10 +122,7 @@ export function useClockIn() {
 
   useEffect(() => {
     setTodayEntries(getTodayEntries());
-  }, [getTodayEntries]);
-
-
-
+  }, [getTodayEntries, userId]);
   // Tick elapsed duration every second while clocked in
   useEffect(() => {
     if (!isClocked || !startTime) {
@@ -133,12 +153,13 @@ export function useClockIn() {
         isClocked: true,
         startTime: now.toISOString(),
         selectedProjectId: projectId,
+        userId,
       };
-      localStorage.setItem(CLOCKIN_STATE_KEY, JSON.stringify(stateToStore));
+      localStorage.setItem(userClockKey, JSON.stringify(stateToStore));
     } catch (error) {
       console.error('Failed to persist clock-in state:', error);
     }
-  }, []);
+  }, [userClockKey, userId]);
 
   const clockOut = useCallback((): TimeEntry | null => {
     if (!isClocked || !startTime) {
@@ -162,7 +183,7 @@ export function useClockIn() {
 
     const newEntry: TimeEntry = {
       id: entryId,
-      userId: 'current',
+      userId: userId || 'current',
       projectId: activeProjectId,
       projectName,
       startTime: start.toISOString(),
@@ -176,6 +197,7 @@ export function useClockIn() {
       const existingEntries: TimeEntry[] = existingEntriesRaw ? JSON.parse(existingEntriesRaw) : [];
       const updatedEntries = [newEntry, ...existingEntries];
       localStorage.setItem(TIME_ENTRIES_KEY, JSON.stringify(updatedEntries));
+      localStorage.removeItem(userClockKey);
       localStorage.removeItem(CLOCKIN_STATE_KEY);
     } catch (error) {
       console.error('Failed to persist time entry:', error);
@@ -189,7 +211,7 @@ export function useClockIn() {
     refreshTodayEntries();
 
     return newEntry;
-  }, [isClocked, startTime, selectedProjectId, refreshTodayEntries]);
+  }, [isClocked, startTime, selectedProjectId, userId, userClockKey, refreshTodayEntries]);
 
   const activeSession: ActiveSession | null =
     isClocked && startTime

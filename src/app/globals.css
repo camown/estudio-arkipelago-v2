@@ -131,23 +131,8 @@ body {
   }
 }
 
-@keyframes pulseGlow {
-  0%, 100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.55;
-    transform: scale(1.08);
-  }
-}
-
 .animate-fade-in-up {
   animation: fadeInUp 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
-.animate-pulse-glow {
-  animation: pulseGlow 2.4s ease-in-out infinite;
 }
 
 .bg-architectural-grid {

@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
-import type { WallPost, User } from '@/types';
+import type { WallPost, WallComment, User } from '@/types';
 import { SEED_WALL_POSTS } from '@/lib/constants';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase/client';
 
@@ -10,11 +10,24 @@ function getInitialPosts(): WallPost[] {
   if (typeof window === 'undefined') return SEED_WALL_POSTS;
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(SEED_WALL_POSTS));
     return SEED_WALL_POSTS;
   } catch {
     return SEED_WALL_POSTS;
+  }
+}
+
+function persistPosts(posts: WallPost[]) {
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(posts));
+    } catch {
+      // Ignore storage quotas
+    }
   }
 }
 
@@ -40,16 +53,23 @@ export function useWallPosts() {
           authorRole: item.author_role,
           content: item.content,
           createdAt: item.created_at,
+          updatedAt: item.updated_at || undefined,
+          attachments: item.attachments || undefined,
+          likes: typeof item.likes === 'number' ? item.likes : 0,
+          likedBy: Array.isArray(item.liked_by) ? item.liked_by : [],
+          comments: Array.isArray(item.comments) ? item.comments : [],
         }));
         setPosts(mapped);
+        persistPosts(mapped);
       }
     };
 
     fetchPosts();
 
     // 2. Real-time subscription
+    const channelId = `wall_posts_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
     const channel = supabase
-      .channel('wall_posts_realtime')
+      .channel(channelId)
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'wall_posts' },
@@ -62,15 +82,53 @@ export function useWallPosts() {
             authorRole: newItem.author_role,
             content: newItem.content,
             createdAt: newItem.created_at,
+            updatedAt: newItem.updated_at || undefined,
+            attachments: newItem.attachments || undefined,
+            likes: typeof newItem.likes === 'number' ? newItem.likes : 0,
+            likedBy: Array.isArray(newItem.liked_by) ? newItem.liked_by : [],
+            comments: Array.isArray(newItem.comments) ? newItem.comments : [],
           };
-          setPosts((prev) => [mappedPost, ...prev.filter((p) => p.id !== mappedPost.id)]);
+          setPosts((prev) => {
+            const updated = [mappedPost, ...prev.filter((p) => p.id !== mappedPost.id)];
+            persistPosts(updated);
+            return updated;
+          });
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'wall_posts' },
+        (payload) => {
+          const updatedItem = payload.new;
+          const mappedPost: WallPost = {
+            id: updatedItem.id,
+            authorId: updatedItem.author_id,
+            authorName: updatedItem.author_name,
+            authorRole: updatedItem.author_role,
+            content: updatedItem.content,
+            createdAt: updatedItem.created_at,
+            updatedAt: updatedItem.updated_at || undefined,
+            attachments: updatedItem.attachments || undefined,
+            likes: typeof updatedItem.likes === 'number' ? updatedItem.likes : 0,
+            likedBy: Array.isArray(updatedItem.liked_by) ? updatedItem.liked_by : [],
+            comments: Array.isArray(updatedItem.comments) ? updatedItem.comments : [],
+          };
+          setPosts((prev) => {
+            const updated = prev.map((p) => (p.id === mappedPost.id ? mappedPost : p));
+            persistPosts(updated);
+            return updated;
+          });
         }
       )
       .on(
         'postgres_changes',
         { event: 'DELETE', schema: 'public', table: 'wall_posts' },
         (payload) => {
-          setPosts((prev) => prev.filter((p) => p.id !== payload.old.id));
+          setPosts((prev) => {
+            const updated = prev.filter((p) => p.id !== payload.old.id);
+            persistPosts(updated);
+            return updated;
+          });
         }
       )
       .subscribe();
@@ -84,7 +142,7 @@ export function useWallPosts() {
     setPosts(getInitialPosts());
   }, []);
 
-  const addPost = useCallback(async (content: string, author: User) => {
+  const addPost = useCallback(async (content: string, author: User, attachments?: string[]) => {
     const newPost: WallPost = {
       id: crypto.randomUUID?.() || `post-${Date.now()}`,
       authorId: author.id,
@@ -92,43 +150,198 @@ export function useWallPosts() {
       authorRole: author.role,
       content,
       createdAt: new Date().toISOString(),
+      attachments: attachments && attachments.length > 0 ? attachments : undefined,
+      likes: 0,
+      likedBy: [],
+      comments: [],
     };
 
-    // Update local state immediately for instant feedback
     setPosts((prev) => {
       const updated = [newPost, ...prev];
-      if (typeof window !== 'undefined') {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-      }
+      persistPosts(updated);
       return updated;
     });
 
-    // Write to Supabase if configured
     if (isSupabaseConfigured && supabase) {
-      await supabase.from('wall_posts').insert({
-        id: newPost.id,
-        author_id: newPost.authorId,
-        author_name: newPost.authorName,
-        author_role: newPost.authorRole,
-        content: newPost.content,
-        created_at: newPost.createdAt,
+      try {
+        await supabase.from('wall_posts').insert({
+          id: newPost.id,
+          author_id: newPost.authorId,
+          author_name: newPost.authorName,
+          author_role: newPost.authorRole,
+          content: newPost.content,
+          created_at: newPost.createdAt,
+          attachments: newPost.attachments,
+          likes: 0,
+          liked_by: [],
+          comments: [],
+        });
+      } catch {
+        // graceful fallback
+      }
+    }
+  }, []);
+
+  const editPost = useCallback(async (id: string, newContent: string) => {
+    const now = new Date().toISOString();
+    setPosts((prev) => {
+      const updated = prev.map((p) => {
+        if (p.id === id) {
+          return { ...p, content: newContent, updatedAt: now };
+        }
+        return p;
       });
+      persistPosts(updated);
+      return updated;
+    });
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase.from('wall_posts').update({
+          content: newContent,
+          updated_at: now,
+        }).eq('id', id);
+      } catch {
+        // graceful fallback
+      }
     }
   }, []);
 
   const deletePost = useCallback(async (id: string) => {
     setPosts((prev) => {
       const updated = prev.filter((p) => p.id !== id);
-      if (typeof window !== 'undefined') {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-      }
+      persistPosts(updated);
       return updated;
     });
 
     if (isSupabaseConfigured && supabase) {
-      await supabase.from('wall_posts').delete().eq('id', id);
+      try {
+        await supabase.from('wall_posts').delete().eq('id', id);
+      } catch {
+        // graceful fallback
+      }
     }
   }, []);
 
-  return { posts, addPost, deletePost, refreshPosts: loadPosts };
+  const toggleLike = useCallback(async (postId: string, userId: string) => {
+    let updatedPost: WallPost | null = null;
+
+    setPosts((prev) => {
+      const updated = prev.map((p) => {
+        if (p.id === postId) {
+          const likedBy = p.likedBy || [];
+          const isLiked = likedBy.includes(userId);
+          const newLikedBy = isLiked
+            ? likedBy.filter((uid) => uid !== userId)
+            : [...likedBy, userId];
+          const newLikes = newLikedBy.length;
+          const modPost: WallPost = {
+            ...p,
+            likes: newLikes,
+            likedBy: newLikedBy,
+          };
+          updatedPost = modPost;
+          return modPost;
+        }
+        return p;
+      });
+      persistPosts(updated);
+      return updated;
+    });
+
+    if (isSupabaseConfigured && supabase && updatedPost) {
+      try {
+        await supabase.from('wall_posts').update({
+          likes: (updatedPost as WallPost).likes,
+          liked_by: (updatedPost as WallPost).likedBy,
+        }).eq('id', postId);
+      } catch {
+        // graceful fallback
+      }
+    }
+  }, []);
+
+  const addComment = useCallback(async (postId: string, content: string, author: User) => {
+    if (!content.trim()) return;
+
+    const newComment: WallComment = {
+      id: crypto.randomUUID?.() || `comment-${Date.now()}`,
+      authorId: author.id,
+      authorName: author.name,
+      authorRole: author.role,
+      content: content.trim(),
+      createdAt: new Date().toISOString(),
+    };
+
+    let updatedPost: WallPost | null = null;
+
+    setPosts((prev) => {
+      const updated = prev.map((p) => {
+        if (p.id === postId) {
+          const currentComments = p.comments || [];
+          const modPost: WallPost = {
+            ...p,
+            comments: [...currentComments, newComment],
+          };
+          updatedPost = modPost;
+          return modPost;
+        }
+        return p;
+      });
+      persistPosts(updated);
+      return updated;
+    });
+
+    if (isSupabaseConfigured && supabase && updatedPost) {
+      try {
+        await supabase.from('wall_posts').update({
+          comments: (updatedPost as WallPost).comments,
+        }).eq('id', postId);
+      } catch {
+        // graceful fallback
+      }
+    }
+  }, []);
+
+  const deleteComment = useCallback(async (postId: string, commentId: string) => {
+    let updatedPost: WallPost | null = null;
+
+    setPosts((prev) => {
+      const updated = prev.map((p) => {
+        if (p.id === postId) {
+          const currentComments = p.comments || [];
+          const modPost: WallPost = {
+            ...p,
+            comments: currentComments.filter((c) => c.id !== commentId),
+          };
+          updatedPost = modPost;
+          return modPost;
+        }
+        return p;
+      });
+      persistPosts(updated);
+      return updated;
+    });
+
+    if (isSupabaseConfigured && supabase && updatedPost) {
+      try {
+        await supabase.from('wall_posts').update({
+          comments: (updatedPost as WallPost).comments,
+        }).eq('id', postId);
+      } catch {
+        // graceful fallback
+      }
+    }
+  }, []);
+
+  return {
+    posts,
+    addPost,
+    editPost,
+    deletePost,
+    toggleLike,
+    addComment,
+    deleteComment,
+    refreshPosts: loadPosts,
+  };
 }

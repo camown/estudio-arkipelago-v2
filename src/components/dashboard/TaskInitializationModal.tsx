@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, ChevronDown } from 'lucide-react';
 import { MOCK_PROJECTS, PRESET_ACCOUNTS } from '@/lib/constants';
 import { TaskItem, TaskType, TaskPriority, ProjectPhase } from '@/types';
 import { useAuth } from '@/lib/hooks/useAuth';
+import { cn } from '@/lib/utils';
 
 interface TaskInitializationModalProps {
   isOpen: boolean;
@@ -57,6 +58,7 @@ export function TaskInitializationModal({
     : MOCK_PROJECTS;
 
   const [taskName, setTaskName] = useState('');
+  const [nameError, setNameError] = useState('');
   const [projectId, setProjectId] = useState(() => availableProjects[0]?.id || '');
   const [description, setDescription] = useState('');
   const [projectPhase, setProjectPhase] = useState<ProjectPhase>('SCHEMATIC');
@@ -72,6 +74,16 @@ export function TaskInitializationModal({
   const [endDate, setEndDate] = useState('');
   const [timeNeeded, setTimeNeeded] = useState('');
   const [isDeliverableDropdownOpen, setIsDeliverableDropdownOpen] = useState(false);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    if (isOpen) {
+      window.addEventListener('keydown', handleKeyDown);
+      return () => window.removeEventListener('keydown', handleKeyDown);
+    }
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -111,8 +123,14 @@ export function TaskInitializationModal({
   };
 
   const handleInitializeTask = () => {
+    if (!taskName.trim()) {
+      setNameError('Task name is required.');
+      return;
+    }
+    setNameError('');
+
     const newTask: Partial<TaskItem> = {
-      name: taskName || 'UNTITLED TASK',
+      name: taskName.trim(),
       projectId,
       description,
       projectPhase,
@@ -135,36 +153,54 @@ export function TaskInitializationModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-md p-4 font-mono overflow-y-auto">
-      <div className="bg-surface-main text-text-main border border-border-main w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden my-8 transition-colors">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-md p-4 font-mono overflow-y-auto cursor-pointer animate-in fade-in duration-150"
+      onClick={onClose}
+    >
+      <div
+        className="bg-surface-main text-text-main border border-border-main w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden my-8 transition-colors cursor-default"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Modal Header */}
-        <div className="flex items-center justify-between px-7 py-5 border-b border-border-main bg-surface-main">
-          <h2 className="text-xs font-bold uppercase tracking-widest text-text-main">
-            TASK INITIALIZATION
+        <div className="flex items-center justify-between px-6 py-4.5 border-b border-border-main bg-surface-main">
+          <h2 className="text-sm font-serif font-bold text-text-main">
+            New Task
           </h2>
 
           <button
             onClick={onClose}
-            className="p-1 text-muted-main hover:text-text-main transition-colors"
+            className="p-1 rounded-lg text-muted-main hover:text-text-main hover:bg-surface-hover transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Modal Body */}
-        <div className="p-7 space-y-6 max-h-[75vh] overflow-y-auto">
+        <div className="p-6 space-y-5 max-h-[75vh] overflow-y-auto">
           {/* TASK NAME */}
           <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-muted-main uppercase tracking-wider block">
-              TASK NAME
+            <label className="text-[11px] font-bold text-muted-main uppercase tracking-wider block">
+              Task Name *
             </label>
             <input
               type="text"
+              autoFocus
               value={taskName}
-              onChange={(e) => setTaskName(e.target.value)}
-              placeholder="E.G. SITE SURVEY ANALYSIS"
-              className="w-full bg-surface-hover border-2 border-accent-cyan p-3 text-xs font-mono text-text-main rounded-xl focus:outline-none uppercase tracking-wider placeholder:text-muted-main/60"
+              onChange={(e) => {
+                setTaskName(e.target.value);
+                if (nameError) setNameError('');
+              }}
+              placeholder="e.g. Schematic design review..."
+              className={cn(
+                "w-full bg-surface-hover border p-3 text-xs font-mono text-text-main rounded-xl focus:outline-none placeholder:text-muted-main/60 transition-colors",
+                nameError ? "border-rose-500 focus:border-rose-500" : "border-border-main focus:border-accent-cyan"
+              )}
             />
+            {nameError && (
+              <p className="text-[11px] text-rose-500 font-sans font-medium flex items-center gap-1 mt-1">
+                <span>⚠</span> {nameError}
+              </p>
+            )}
           </div>
 
           {/* PROJECT */}
@@ -432,18 +468,18 @@ export function TaskInitializationModal({
         </div>
 
         {/* Modal Actions Footer */}
-        <div className="p-6 border-t border-border-main bg-surface-main grid grid-cols-2 gap-4">
+        <div className="p-5 border-t border-border-main bg-surface-main grid grid-cols-2 gap-3">
           <button
             onClick={handleInitializeTask}
-            className="py-3 bg-black text-white dark:bg-white dark:text-black font-extrabold text-xs uppercase tracking-widest rounded-xl hover:opacity-90 transition-opacity shadow-md"
+            className="py-2.5 bg-black text-white dark:bg-white dark:text-black font-semibold text-xs tracking-wider uppercase rounded-xl hover:opacity-90 active:scale-[0.98] transition-all shadow-xs cursor-pointer"
           >
-            CREATE
+            Create Task
           </button>
           <button
             onClick={onClose}
-            className="py-3 bg-surface-hover border border-border-main text-text-main font-extrabold text-xs uppercase tracking-widest rounded-xl hover:bg-border-main/40 transition-colors"
+            className="py-2.5 bg-surface-hover border border-border-main text-text-main font-semibold text-xs tracking-wider uppercase rounded-xl hover:bg-surface-hover/80 active:scale-[0.98] transition-all cursor-pointer"
           >
-            CANCEL
+            Cancel
           </button>
         </div>
       </div>

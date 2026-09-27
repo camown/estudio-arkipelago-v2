@@ -8,6 +8,7 @@ import { TopBar } from '@/components/layout/TopBar';
 import { ThemeProvider } from '@/lib/themeContext';
 import { SidebarProvider, useSidebar } from '@/lib/sidebarContext';
 import { TimeTrackingNudge } from '@/components/common/TimeTrackingNudge';
+import { CommandPalette } from '@/components/common/CommandPalette';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { User } from '@/types';
 import { cn } from '@/lib/utils';
@@ -64,6 +65,7 @@ function StudioLayoutContent({
           <TopBar user={user} />
           <ErrorBoundary>{children}</ErrorBoundary>
           <TimeTrackingNudge />
+          <CommandPalette />
         </main>
 
         <BottomNav />

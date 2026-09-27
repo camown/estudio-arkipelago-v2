@@ -7,7 +7,7 @@ import {
   Upload, Save, FileDown, Info, Eraser, 
   Square, Circle, MoveRight, Type, Grid3X3,
   MessageSquare, Check, Sparkles, Layers,
-  Eye, EyeOff, Plus
+  Eye, EyeOff, Plus, ImagePlus
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/lib/hooks/useAuth';
@@ -87,10 +87,11 @@ export default function SketchingStudioPage() {
   const [layers, setLayers] = useState<SketchLayer[]>(INITIAL_LAYERS);
   const [activeLayerId, setActiveLayerId] = useState<string>('layer-1');
 
-  // Background Tracing Image
+  // Background Tracing Image & Drag-and-Drop
   const [bgImage, setBgImage] = useState<HTMLImageElement | null>(null);
   const [bgImageUrl, setBgImageUrl] = useState<string | null>(null);
   const [bgOpacity, setBgOpacity] = useState(60);
+  const [isDraggingOverCanvas, setIsDraggingOverCanvas] = useState(false);
 
   // Drawing History & Stacks
   const [shapes, setShapes] = useState<ShapeItem[]>([]);
@@ -102,8 +103,12 @@ export default function SketchingStudioPage() {
   // Text Tool Modal / Input
   const [isTextModalOpen, setIsTextModalOpen] = useState(false);
   const [textInput, setTextInput] = useState('');
+  const [textError, setTextError] = useState('');
   const [textCoord, setTextCoord] = useState<Point | null>(null);
   const [textFontSize, setTextFontSize] = useState(16);
+
+  // Clear Canvas Confirmation Modal
+  const [isClearModalOpen, setIsClearModalOpen] = useState(false);
 
   // Saved Sketches Archive
   const [savedSketches, setSavedSketches] = useState<SavedSketch[]>(() => {
@@ -474,7 +479,12 @@ export default function SketchingStudioPage() {
   }, [isDrawing, startPoint, currentPoints, activeTool, color, size, opacity, activeLayerId, shapes, redrawCanvas]);
 
   const handleAddTextAnnotation = () => {
-    if (!textInput.trim() || !textCoord) return;
+    if (!textInput.trim()) {
+      setTextError('Callout text cannot be empty.');
+      return;
+    }
+    if (!textCoord) return;
+    setTextError('');
 
     const newShape: ShapeItem = {
       id: 'text-' + Date.now(),
@@ -499,7 +509,7 @@ export default function SketchingStudioPage() {
     showNotice('Text callout placed');
   };
 
-  const handleUndo = () => {
+  const handleUndo = useCallback(() => {
     if (shapes.length === 0) return;
     const next = [...shapes];
     const popped = next.pop();
@@ -508,25 +518,141 @@ export default function SketchingStudioPage() {
       setRedoStack([popped, ...redoStack]);
       redrawCanvas(next);
     }
-  };
+  }, [shapes, redoStack, redrawCanvas]);
 
-  const handleRedo = () => {
+  const handleRedo = useCallback(() => {
     if (redoStack.length === 0) return;
     const [first, ...rest] = redoStack;
     const next = [...shapes, first];
     setShapes(next);
     setRedoStack(rest);
     redrawCanvas(next);
-  };
+  }, [shapes, redoStack, redrawCanvas]);
 
   const handleClear = () => {
-    if (confirm('Clear entire canvas and all drawings?')) {
-      setShapes([]);
-      setRedoStack([]);
-      setBgImage(null);
-      setBgImageUrl(null);
-      redrawCanvas([]);
-      showNotice('Canvas cleared');
+    setIsClearModalOpen(true);
+  };
+
+  const confirmClearCanvas = () => {
+    setShapes([]);
+    setRedoStack([]);
+    setBgImage(null);
+    setBgImageUrl(null);
+    redrawCanvas([]);
+    setIsClearModalOpen(false);
+    showNotice('Canvas cleared');
+  };
+
+  // Keyboard shortcut listener for Canvas Drafting Hotkeys (P, L, R, C, T, E, O, G, Ctrl+Z, Ctrl+Y, Escape)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // 1. Modals Escape handling
+      if (e.key === 'Escape') {
+        if (isTextModalOpen) {
+          setIsTextModalOpen(false);
+          setTextError('');
+        }
+        if (isClearModalOpen) {
+          setIsClearModalOpen(false);
+        }
+        return;
+      }
+
+      // 2. Undo / Redo (works anywhere unless typing inside input/textarea)
+      const target = e.target as HTMLElement | null;
+      const isInput = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable);
+
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') {
+        if (!isInput) {
+          e.preventDefault();
+          if (e.shiftKey) {
+            handleRedo();
+          } else {
+            handleUndo();
+          }
+        }
+        return;
+      }
+
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'y') {
+        if (!isInput) {
+          e.preventDefault();
+          handleRedo();
+        }
+        return;
+      }
+
+      // If user is currently typing in an input or modal, do NOT trigger single-key tool hotkeys!
+      if (isInput || isTextModalOpen || isClearModalOpen) return;
+
+      const key = e.key.toLowerCase();
+      if (key === 'p') {
+        e.preventDefault();
+        setActiveTool('pen');
+        showNotice('Tool: Freehand Pen [P]');
+      } else if (key === 'l') {
+        e.preventDefault();
+        setActiveTool('line');
+        showNotice('Tool: Line [L]');
+      } else if (key === 'r') {
+        e.preventDefault();
+        setActiveTool('rectangle');
+        showNotice('Tool: Rectangle [R]');
+      } else if (key === 'c') {
+        e.preventDefault();
+        setActiveTool('circle');
+        showNotice('Tool: Circle [C]');
+      } else if (key === 't') {
+        e.preventDefault();
+        setActiveTool('text');
+        setTextCoord({ x: 400, y: 300 });
+        setIsTextModalOpen(true);
+      } else if (key === 'e') {
+        e.preventDefault();
+        setActiveTool('eraser');
+        showNotice('Tool: Eraser [E]');
+      } else if (key === 'o') {
+        e.preventDefault();
+        setOrthoLock((prev) => {
+          showNotice(!prev ? 'Ortho Lock ON [O]' : 'Ortho Lock OFF [O]');
+          return !prev;
+        });
+      } else if (key === 'g') {
+        e.preventDefault();
+        setGridType((prev) => {
+          const next = prev === 'none' ? 'square' : prev === 'square' ? 'isometric' : 'none';
+          showNotice(`Grid: ${next.toUpperCase()} [G]`);
+          return next;
+        });
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isTextModalOpen, isClearModalOpen, handleUndo, handleRedo]);
+
+  const handleCanvasDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDraggingOverCanvas(false);
+    if (!e.dataTransfer.files || e.dataTransfer.files.length === 0) return;
+
+    const file = e.dataTransfer.files[0];
+    if (file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const dataUrl = event.target?.result as string;
+        const img = new Image();
+        img.onload = () => {
+          setBgImage(img);
+          setBgImageUrl(dataUrl);
+          redrawCanvas(shapes);
+          showNotice(`Loaded "${file.name}" as tracing blueprint`);
+        };
+        img.src = dataUrl;
+      };
+      reader.readAsDataURL(file);
+    } else {
+      showNotice('Please drop an image file (PNG, JPG, WebP) to trace.');
     }
   };
 
@@ -688,15 +814,26 @@ export default function SketchingStudioPage() {
 
       {/* Text Annotation Placement Modal */}
       {isTextModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-surface-main border border-border-main rounded-2xl p-6 max-w-md w-full space-y-4 shadow-2xl">
+        <div
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setIsTextModalOpen(false);
+              setTextError('');
+            }
+          }}
+          className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 cursor-pointer animate-in fade-in duration-150"
+        >
+          <div className="bg-surface-main border border-border-main rounded-2xl p-6 max-w-md w-full space-y-4 shadow-2xl cursor-default">
             <div className="flex items-center justify-between border-b border-border-main pb-3">
               <h3 className="text-xs font-bold text-text-main flex items-center gap-2">
                 <Type className="w-4 h-4 text-accent-cyan" />
                 <span>Add Text Callout</span>
               </h3>
               <button
-                onClick={() => setIsTextModalOpen(false)}
+                onClick={() => {
+                  setIsTextModalOpen(false);
+                  setTextError('');
+                }}
                 className="text-muted-main hover:text-text-main text-xs font-bold cursor-pointer"
               >
                 ✕
@@ -712,10 +849,20 @@ export default function SketchingStudioPage() {
                   type="text"
                   placeholder="e.g. Living Area 4.50m x 6.20m, El. +3.50m..."
                   value={textInput}
-                  onChange={(e) => setTextInput(e.target.value)}
-                  className="w-full bg-surface-hover border border-border-main rounded-xl px-4 py-2.5 text-xs font-mono text-text-main focus:outline-none"
+                  onChange={(e) => {
+                    setTextInput(e.target.value);
+                    if (textError) setTextError('');
+                  }}
+                  className={`w-full bg-surface-hover border rounded-xl px-4 py-2.5 text-xs font-mono text-text-main focus:outline-none transition-colors ${
+                    textError ? 'border-rose-500 ring-1 ring-rose-500/20' : 'border-border-main focus:border-text-main'
+                  }`}
                   autoFocus
                 />
+                {textError && (
+                  <p className="text-[11px] text-rose-500 font-sans mt-1.5 flex items-center gap-1 animate-in fade-in duration-150">
+                    <span>⚠</span> {textError}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -735,16 +882,60 @@ export default function SketchingStudioPage() {
 
             <div className="flex justify-end gap-2 pt-2">
               <button
-                onClick={() => setIsTextModalOpen(false)}
-                className="px-4 py-2 border border-border-main rounded-lg text-xs font-semibold hover:bg-surface-hover cursor-pointer"
+                onClick={() => {
+                  setIsTextModalOpen(false);
+                  setTextError('');
+                }}
+                className="px-4 py-2 border border-border-main rounded-xl text-xs font-semibold hover:bg-surface-hover active:scale-[0.98] transition-all cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 onClick={handleAddTextAnnotation}
-                className="px-5 py-2 bg-black text-white dark:bg-white dark:text-black rounded-lg text-xs font-semibold hover:opacity-90 shadow-sm cursor-pointer"
+                className="px-5 py-2 bg-black text-white dark:bg-white dark:text-black rounded-xl text-xs font-semibold hover:opacity-90 active:scale-[0.98] transition-all shadow-sm cursor-pointer"
               >
                 Place Callout
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Clear Canvas Confirmation Modal */}
+      {isClearModalOpen && (
+        <div
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setIsClearModalOpen(false);
+          }}
+          className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 cursor-pointer animate-in fade-in duration-150"
+        >
+          <div className="bg-surface-main border border-border-main rounded-2xl p-6 max-w-sm w-full space-y-4 shadow-2xl cursor-default animate-in zoom-in-95 duration-150">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-rose-500/10 text-rose-600 flex items-center justify-center shrink-0">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-text-main">Clear Canvas?</h3>
+                <p className="text-xs text-muted-main">This action cannot be undone.</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-muted-main leading-relaxed">
+              Are you sure you want to clear the entire canvas? All unsaved markup, drawings, and loaded sheets will be permanently removed.
+            </p>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                onClick={() => setIsClearModalOpen(false)}
+                className="px-4 py-2 border border-border-main rounded-xl text-xs font-semibold hover:bg-surface-hover active:scale-[0.98] transition-all cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmClearCanvas}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-semibold active:scale-[0.98] transition-all shadow-sm cursor-pointer"
+              >
+                Confirm & Clear
               </button>
             </div>
           </div>
@@ -812,10 +1003,11 @@ export default function SketchingStudioPage() {
                 ? 'bg-black text-white dark:bg-white dark:text-black border-text-main shadow-xs'
                 : 'bg-surface-main border-border-main text-muted-main hover:text-text-main'
             )}
-            title="Freehand Pen"
+            title="Freehand Pen (Hotkey: P)"
           >
             <PenTool className="w-3.5 h-3.5" />
             <span className="hidden md:inline">Pen</span>
+            <kbd className="text-[9px] font-mono opacity-50 ml-0.5 hidden sm:inline">P</kbd>
           </button>
 
           <button
@@ -826,10 +1018,11 @@ export default function SketchingStudioPage() {
                 ? 'bg-black text-white dark:bg-white dark:text-black border-text-main shadow-xs'
                 : 'bg-surface-main border-border-main text-muted-main hover:text-text-main'
             )}
-            title="Straight Line Tool"
+            title="Straight Line Tool (Hotkey: L)"
           >
             <MoveRight className="w-3.5 h-3.5" />
             <span className="hidden md:inline">Line</span>
+            <kbd className="text-[9px] font-mono opacity-50 ml-0.5 hidden sm:inline">L</kbd>
           </button>
 
           <button
@@ -840,10 +1033,11 @@ export default function SketchingStudioPage() {
                 ? 'bg-black text-white dark:bg-white dark:text-black border-text-main shadow-xs'
                 : 'bg-surface-main border-border-main text-muted-main hover:text-text-main'
             )}
-            title="Rectangle / Wall Tool"
+            title="Rectangle / Wall Tool (Hotkey: R)"
           >
             <Square className="w-3.5 h-3.5" />
             <span className="hidden md:inline">Rect</span>
+            <kbd className="text-[9px] font-mono opacity-50 ml-0.5 hidden sm:inline">R</kbd>
           </button>
 
           <button
@@ -854,10 +1048,11 @@ export default function SketchingStudioPage() {
                 ? 'bg-black text-white dark:bg-white dark:text-black border-text-main shadow-xs'
                 : 'bg-surface-main border-border-main text-muted-main hover:text-text-main'
             )}
-            title="Circle / Column Tool"
+            title="Circle / Column Tool (Hotkey: C)"
           >
             <Circle className="w-3.5 h-3.5" />
             <span className="hidden md:inline">Circle</span>
+            <kbd className="text-[9px] font-mono opacity-50 ml-0.5 hidden sm:inline">C</kbd>
           </button>
 
           <button
@@ -882,10 +1077,11 @@ export default function SketchingStudioPage() {
                 ? 'bg-black text-white dark:bg-white dark:text-black border-text-main shadow-xs'
                 : 'bg-surface-main border-border-main text-muted-main hover:text-text-main'
             )}
-            title="Text Callout"
+            title="Text Callout (Hotkey: T)"
           >
             <Type className="w-3.5 h-3.5" />
             <span className="hidden md:inline">Text</span>
+            <kbd className="text-[9px] font-mono opacity-50 ml-0.5 hidden sm:inline">T</kbd>
           </button>
 
           <button
@@ -896,24 +1092,26 @@ export default function SketchingStudioPage() {
                 ? 'bg-rose-600 text-white border-rose-600 shadow-xs'
                 : 'bg-surface-main border-border-main text-muted-main hover:text-text-main'
             )}
-            title="Eraser"
+            title="Eraser (Hotkey: E)"
           >
             <Eraser className="w-3.5 h-3.5" />
             <span className="hidden md:inline">Eraser</span>
+            <kbd className="text-[9px] font-mono opacity-50 ml-0.5 hidden sm:inline">E</kbd>
           </button>
 
           {/* Ortho Lock Toggle */}
           <button
             onClick={() => setOrthoLock(!orthoLock)}
             className={cn(
-              'ml-2 px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-all cursor-pointer',
+              'ml-2 px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-all cursor-pointer flex items-center gap-1',
               orthoLock
                 ? 'bg-accent-cyan/20 border-accent-cyan text-accent-cyan'
                 : 'bg-surface-main border-border-main text-muted-main'
             )}
-            title="Snap angles to 0°, 45°, 90°"
+            title="Snap angles to 0°, 45°, 90° (Hotkey: O)"
           >
-            Ortho: {orthoLock ? 'On' : 'Off'}
+            <span>Ortho: {orthoLock ? 'On' : 'Off'}</span>
+            <kbd className="text-[9px] font-mono opacity-50">O</kbd>
           </button>
         </div>
 
@@ -1087,7 +1285,20 @@ export default function SketchingStudioPage() {
 
         {/* Center Panel (Interactive Canvas) */}
         <div className="flex-1 flex flex-col relative bg-surface-main overflow-hidden">
-          <div ref={containerRef} className="flex-1 w-full h-full relative bg-white cursor-crosshair">
+          <div
+            ref={containerRef}
+            onDragOver={(e) => {
+              e.preventDefault();
+              setIsDraggingOverCanvas(true);
+            }}
+            onDragLeave={(e) => {
+              if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                setIsDraggingOverCanvas(false);
+              }
+            }}
+            onDrop={handleCanvasDrop}
+            className="flex-1 w-full h-full relative bg-white cursor-crosshair"
+          >
             <canvas
               ref={canvasRef}
               onMouseDown={startDrawing}
@@ -1098,6 +1309,21 @@ export default function SketchingStudioPage() {
               onTouchEnd={stopDrawing}
               className="absolute inset-0 touch-none"
             />
+
+            {/* Canvas Drag-and-Drop Overlay */}
+            {isDraggingOverCanvas && (
+              <div className="absolute inset-0 z-30 bg-black/70 backdrop-blur-xs border-4 border-dashed border-accent-cyan flex flex-col items-center justify-center p-8 text-white pointer-events-none animate-in fade-in duration-150">
+                <div className="p-6 rounded-2xl bg-surface-main text-text-main shadow-2xl flex flex-col items-center gap-3 border border-accent-cyan/60 text-center">
+                  <div className="w-12 h-12 rounded-2xl bg-accent-cyan/10 flex items-center justify-center text-accent-cyan">
+                    <ImagePlus className="w-6 h-6 animate-pulse" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold font-sans">Drop blueprint or sketch to trace</p>
+                    <p className="text-xs text-muted-main font-mono mt-0.5">Supports PNG, JPG, or WebP drawings</p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Floating Palette & Brush Customizer */}
             <div className="absolute top-4 right-4 bg-surface-main/95 backdrop-blur-md border border-border-main p-4 rounded-2xl shadow-2xl w-64 space-y-3.5 z-20 font-mono text-text-main">

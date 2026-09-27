@@ -1,5 +1,4 @@
 import {
-  Home,
   LayoutDashboard,
   CalendarDays,
   Clock,
@@ -141,6 +140,7 @@ export const HR_REQUEST_TYPES: HRRequestTypeOption[] = [
 
 export const PRESET_ACCOUNTS: PresetAccount[] = [
   {
+    id: 'usr-partner-001',
     email: 'partner@arkipelago.com',
     name: 'Arch. Testing1',
     role: 'partner',
@@ -148,6 +148,7 @@ export const PRESET_ACCOUNTS: PresetAccount[] = [
     accessLevel: 'ADMIN',
   },
   {
+    id: 'usr-senior-002',
     email: 'senior@arkipelago.com',
     name: 'Arch. Testing2',
     role: 'senior_architect',
@@ -155,6 +156,7 @@ export const PRESET_ACCOUNTS: PresetAccount[] = [
     accessLevel: 'LEAD',
   },
   {
+    id: 'usr-junior-003',
     email: 'junior@arkipelago.com',
     name: 'Arch. Testing3',
     role: 'junior_architect',
@@ -162,6 +164,7 @@ export const PRESET_ACCOUNTS: PresetAccount[] = [
     accessLevel: 'STAFF',
   },
   {
+    id: 'usr-contractor-004',
     email: 'contractor@arkipelago.com',
     name: 'Engr. Testing4',
     role: 'contractor',
@@ -178,10 +181,10 @@ export const PRESET_ACCOUNTS: PresetAccount[] = [
 export const SEED_WALL_POSTS: WallPost[] = [
   {
     id: 'wall-seed-001',
-    authorId: 'system',
-    authorName: 'Arch. Testing1',
+    authorId: 'usr-partner-001',
+    authorName: 'Arch. Leandro Locsin',
     authorRole: 'partner',
-    content: `Thursday Office Activity & Design Review (Testing Chat Announcement):
+    content: `Thursday Office Activity & Design Review:
 
 We live worried about our deadlines and submissions, but as architects, we should never lose our dream of making the world a better place to live!
 
@@ -195,19 +198,51 @@ Thursday 25:
 05:00 PM - Concept presentations (20 mins each team)
 07:00 PM - Wrap up and decide direction
 
-It will be a full day activity. Meanwhile, Arch. Testing2 and Arch. Testing1 will be doing evaluations. We expect everyone to be at the studio on time!
+It will be a full day activity. Meanwhile, Arch. Carlos and I will be doing evaluations. We expect everyone to be at the studio on time!
 
 Thanks!`,
     createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+    likes: 4,
+    likedBy: ['usr-senior-002', 'usr-junior-003', 'usr-contractor-004'],
+    comments: [
+      {
+        id: 'c-001',
+        authorId: 'usr-senior-002',
+        authorName: 'Arch. Carlos Mendoza',
+        authorRole: 'senior_architect',
+        content: 'Looking forward to this! I will prepare the presentation templates and criteria sheets.',
+        createdAt: new Date(Date.now() - 36 * 60 * 60 * 1000).toISOString(),
+      },
+      {
+        id: 'c-002',
+        authorId: 'usr-junior-003',
+        authorName: 'Arch. Sofia Reyes',
+        authorRole: 'junior_architect',
+        content: 'Excited for the charette! Will set up the studio plotters and sample boards.',
+        createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+      }
+    ],
   },
   {
     id: 'wall-seed-002',
-    authorId: 'system',
-    authorName: 'Arch. Testing2',
+    authorId: 'usr-senior-002',
+    authorName: 'Arch. Carlos Mendoza',
     authorRole: 'senior_architect',
-    content: `Testing Chat Discussion: Quick reminder team — all Makati Tower Phase 2 site visit photos need to be uploaded to the project folder by EOD Friday. Please include geo-tagged shots of the structural work on floors 12-15. 
+    content: `Quick reminder team — all Makati Tower Phase 2 site visit photos need to be uploaded to the project folder by EOD Friday. Please include geo-tagged shots of the structural work on floors 12-15. 
 
-Also, the client requested an updated material board for the lobby. @Arch. Testing3 can you handle this? Let me know if you need the supplier contacts from the Directory.`,
+Also, the client requested an updated material board for the lobby. @Arch. Sofia Reyes can you handle this? Let me know if you need the supplier contacts from the Directory.`,
     createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+    likes: 2,
+    likedBy: ['usr-partner-001'],
+    comments: [
+      {
+        id: 'c-003',
+        authorId: 'usr-junior-003',
+        authorName: 'Arch. Sofia Reyes',
+        authorRole: 'junior_architect',
+        content: 'Got it Arch. Carlos. I have already reached out to the Carrara stone supplier and will put together the board tomorrow morning.',
+        createdAt: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(),
+      }
+    ],
   },
 ];

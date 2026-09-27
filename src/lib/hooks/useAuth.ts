@@ -52,12 +52,13 @@ export function useAuth() {
   const login = useCallback(async (email: string, password: string) => {
     if (password !== 'admin') return { success: false, error: 'Invalid credentials' };
     const preset = PRESET_ACCOUNTS.find(a => a.email === email.toLowerCase());
+    const role = preset?.role || getRoleFromEmail(email);
     const mockUser: User = {
-      id: crypto.randomUUID?.() || `user-${Date.now()}`,
+      id: preset?.id || (crypto.randomUUID?.() || `user-${Date.now()}`),
       email,
       name: getNameFromEmail(email),
-      role: getRoleFromEmail(email),
-      assignedProjectCodes: preset?.assignedProjectCodes || (getRoleFromEmail(email) === 'contractor' ? ['CV-2024', 'BCP-2024'] : undefined),
+      role,
+      assignedProjectCodes: preset?.assignedProjectCodes || (role === 'contractor' ? ['CV-2024', 'BCP-2024'] : undefined),
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(mockUser));
     setUser(mockUser);
