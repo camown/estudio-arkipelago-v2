@@ -43,3 +43,7 @@ next-env.d.ts
 # test screenshots
 /*.png
 /tests/screenshots/
+
+# desktop app build artifacts & portable bundles
+/dist-portable/
+*.zip
