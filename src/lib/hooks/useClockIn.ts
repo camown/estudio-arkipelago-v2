@@ -91,9 +91,13 @@ export function useClockIn() {
   const [startTime, setStartTime] = useState<Date | null>(initialState.startTime);
   const [elapsed, setElapsed] = useState<number>(initialState.elapsed);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(initialState.selectedProjectId);
-  const [todayEntries, setTodayEntries] = useState<TimeEntry[]>(getTodayEntries);
+  const [todayEntries, setTodayEntries] = useState<TimeEntry[]>([]);
 
   const refreshTodayEntries = useCallback(() => {
+    setTodayEntries(getTodayEntries());
+  }, [getTodayEntries]);
+
+  useEffect(() => {
     setTodayEntries(getTodayEntries());
   }, [getTodayEntries]);
 
