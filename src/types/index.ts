@@ -95,6 +95,15 @@ export interface HRRequestTypeOption {
 // Estudio Wall Types
 // ============================================================
 
+export interface WallComment {
+  id: string;
+  authorId: string;
+  authorName: string;
+  authorRole: Role;
+  content: string;
+  createdAt: string;
+}
+
 export interface WallPost {
   id: string;
   authorId: string;
@@ -102,8 +111,11 @@ export interface WallPost {
   authorRole: Role;
   content: string;
   createdAt: string;
+  updatedAt?: string;
   attachments?: string[];
   likes?: number;
+  likedBy?: string[];
+  comments?: WallComment[];
 }
 
 // ============================================================
@@ -111,6 +123,7 @@ export interface WallPost {
 // ============================================================
 
 export interface PresetAccount {
+  id?: string;
   email: string;
   name: string;
   role: Role;

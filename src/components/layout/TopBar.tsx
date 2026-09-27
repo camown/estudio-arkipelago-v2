@@ -10,7 +10,8 @@ import Logo from '@/components/ui/Logo';
 import { TaskInitializationModal } from '@/components/dashboard/TaskInitializationModal';
 import { 
   Sun, Moon, LogOut, Bell, MessageSquare, Clock, Search,
-  FolderKanban, BookUser, PenTool, LayoutDashboard, X, ArrowRight, Command, Plus, PanelLeft
+  FolderKanban, BookUser, PenTool, LayoutDashboard, X, ArrowRight, Command, Plus, PanelLeft,
+  FileText
 } from 'lucide-react';
 import { useSidebar } from '@/lib/sidebarContext';
 import { MOCK_PROJECTS } from '@/lib/constants';
@@ -78,13 +79,13 @@ export function TopBar({ user, onInitializeTask }: TopBarProps) {
     setNotifications((prev) => prev.map((n) => ({ ...n, unread: false })));
   };
 
-  const handleOpenTaskModal = () => {
+  const handleOpenTaskModal = useCallback(() => {
     if (onInitializeTask) {
       onInitializeTask();
     } else {
       setIsTaskModalOpen(true);
     }
-  };
+  }, [onInitializeTask]);
 
   const handleTaskCreated = (newTaskData: Parameters<typeof addTask>[0]) => {
     addTask(newTaskData);
@@ -102,16 +103,218 @@ export function TopBar({ user, onInitializeTask }: TopBarProps) {
     return () => clearInterval(interval);
   }, []);
 
-  // Keyboard shortcut listener (Cmd+K / Ctrl+K / Escape)
-  const handleKeyDown = useCallback((e: KeyboardEvent) => {
-    if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-      e.preventDefault();
-      setIsSearchOpen((prev) => !prev);
-    } else if (e.key === 'Escape') {
-      setIsSearchOpen(false);
-      setIsNotifOpen(false);
+  const [selectedIndex, setSelectedIndex] = useState(0);
+
+  // Search Results aggregation
+  const searchResults = useMemo(() => {
+    const q = searchQuery.toLowerCase().trim();
+
+    const items: Array<{
+      id: string;
+      category: 'Drawing Sheets' | 'Projects' | 'Chat Rooms' | 'Quick Actions' | 'Directory' | 'Navigation';
+      title: string;
+      code?: string;
+      subtitle: string;
+      icon: React.ComponentType<{ className?: string }>;
+      href?: string;
+      action?: () => void;
+    }> = [];
+
+    // Quick Actions (always accessible or matched by query)
+    const quickActions = [
+      {
+        id: 'act-new-task',
+        category: 'Quick Actions' as const,
+        title: 'New Studio Task',
+        subtitle: 'Create a deliverable or assignment task',
+        icon: Plus,
+        action: () => handleOpenTaskModal(),
+      },
+      {
+        id: 'act-toggle-theme',
+        category: 'Quick Actions' as const,
+        title: themeMode === 'light' ? 'Switch to Night Mode (Dark)' : 'Switch to Day Mode (Light)',
+        subtitle: 'Toggle studio light / dark color system',
+        icon: themeMode === 'light' ? Moon : Sun,
+        action: () => toggleThemeMode(),
+      },
+      {
+        id: 'act-sketch-canvas',
+        category: 'Quick Actions' as const,
+        title: 'Open Sketching & Redline Canvas',
+        subtitle: 'Direct drawing board, layers & markups',
+        icon: PenTool,
+        href: '/sketch',
+      },
+      {
+        id: 'act-timesheet',
+        category: 'Quick Actions' as const,
+        title: 'View Timesheets & Time Logs',
+        subtitle: 'Studio attendance and project hour tracking',
+        icon: Clock,
+        href: '/hr',
+      },
+    ];
+
+    quickActions.forEach((act) => {
+      if (!q || act.title.toLowerCase().includes(q) || act.subtitle.toLowerCase().includes(q)) {
+        items.push(act);
+      }
+    });
+
+    // Search Drawing Sheets
+    const DRAWING_SHEETS = [
+      { number: 'A-101', title: 'Ground Floor & Reflected Ceiling Plan', project: 'Makati Luxury Tower', code: 'PRJ-001', rev: 'REV 03' },
+      { number: 'A-102', title: 'Second Floor Architectural Layout', project: 'Makati Luxury Tower', code: 'PRJ-001', rev: 'REV 02' },
+      { number: 'SEC-01', title: 'Transverse & Longitudinal Sections', project: 'Makati Luxury Tower', code: 'PRJ-001', rev: 'REV 01' },
+      { number: 'MAT-01', title: 'Interior Finishes & Material Schedule', project: 'BGC Cultural Pavilion', code: 'PRJ-002', rev: 'REV 04' },
+      { number: 'E-101', title: 'Lighting & Power Distribution Plan', project: 'BGC Cultural Pavilion', code: 'PRJ-002', rev: 'REV 02' },
+      { number: 'STR-01', title: 'Foundation & Shear Wall Coordination', project: 'Cebu Resort & Spa', code: 'PRJ-003', rev: 'REV 01' },
+      { number: 'DET-01', title: 'Curtain Wall & Mullion Junction Details', project: 'Makati Luxury Tower', code: 'PRJ-001', rev: 'REV 03' },
+    ];
+    DRAWING_SHEETS.forEach((s, idx) => {
+      const matchNum = s.number.toLowerCase().includes(q);
+      const matchTitle = s.title.toLowerCase().includes(q);
+      const matchProj = s.project.toLowerCase().includes(q);
+      const matchRev = s.rev.toLowerCase().includes(q);
+      if (q && (matchNum || matchTitle || matchProj || matchRev)) {
+        items.push({
+          id: `sheet-${idx}`,
+          category: 'Drawing Sheets',
+          title: s.title,
+          code: s.number,
+          subtitle: `${s.project} [${s.code}] • ${s.rev}`,
+          icon: FileText,
+          href: `/projects?sheet=${s.number}`,
+        });
+      }
+    });
+
+    // Search Projects
+    MOCK_PROJECTS.forEach((p) => {
+      const matchName = p.name.toLowerCase().includes(q);
+      const matchCode = p.code.toLowerCase().includes(q);
+      const matchClient = p.clientName ? p.clientName.toLowerCase().includes(q) : false;
+      if (q && (matchName || matchCode || matchClient)) {
+        items.push({
+          id: `proj-${p.id}`,
+          category: 'Projects',
+          title: p.name,
+          code: p.code,
+          subtitle: `${p.clientName || 'Studio Project'} • Phase: ${p.status}`,
+          icon: FolderKanban,
+          href: '/projects',
+        });
+      }
+    });
+
+    // Search Chat Rooms & Topic Threads
+    const CHAT_ROOMS = [
+      { id: 'thread-001', name: '[PRJ-001] Structural Coordination & Slab Review', project: 'Makati Luxury Tower' },
+      { id: 'thread-002', name: '[PRJ-002] 3D Massing & Façade Material Board', project: 'BGC Cultural Pavilion' },
+      { id: 'thread-003', name: '[PRJ-003] Interior Finishes & Tile Specs', project: 'Cebu Resort & Spa' },
+      { id: 'thread-004', name: '[GENERAL] Studio All-Hands & Weekly Review', project: 'Studio Arkipelago' },
+    ];
+    CHAT_ROOMS.forEach((c) => {
+      const matchName = c.name.toLowerCase().includes(q);
+      const matchProj = c.project.toLowerCase().includes(q);
+      if (q && (matchName || matchProj)) {
+        items.push({
+          id: `chat-${c.id}`,
+          category: 'Chat Rooms',
+          title: c.name,
+          subtitle: `Project Topic • ${c.project}`,
+          icon: MessageSquare,
+          href: `/chat?thread=${c.id}`,
+        });
+      }
+    });
+
+    // Search Directory Contacts
+    const directoryItems = [
+      { name: 'AMJ Structural Engineering', cat: 'Engineers', contact: 'Engr. Aris Mendoza' },
+      { name: 'Pacific Glass & Aluminum Tech', cat: 'Suppliers', contact: 'Luis Tan' },
+      { name: 'BuildCore General Contractors', cat: 'Contractors', contact: 'Engr. Ramon Santos' },
+      { name: 'Metro Environmental Legal & Permits', cat: 'Allied Services', contact: 'Atty. Clara Reyes' },
+    ];
+    directoryItems.forEach((d, idx) => {
+      if (q && (d.name.toLowerCase().includes(q) || d.contact.toLowerCase().includes(q) || d.cat.toLowerCase().includes(q))) {
+        items.push({
+          id: `dir-${idx}`,
+          category: 'Directory',
+          title: d.name,
+          subtitle: `${d.cat} • ${d.contact}`,
+          icon: BookUser,
+          href: '/directory',
+        });
+      }
+    });
+
+    // Search Navigation & Modules
+    const navEntries = [
+      { name: 'Homepage & Workspace', href: '/dashboard', cat: 'Navigation' as const, icon: LayoutDashboard },
+      { name: 'Projects Blueprint Vault', href: '/projects', cat: 'Navigation' as const, icon: FolderKanban },
+      { name: 'Calendar & Google Sync', href: '/calendar', cat: 'Navigation' as const, icon: Clock },
+      { name: 'Sketching Studio & Layers', href: '/sketch', cat: 'Navigation' as const, icon: PenTool },
+      { name: 'Human Resources & Attendance', href: '/hr', cat: 'Navigation' as const, icon: Clock },
+      { name: 'Estudio Wall & Chat Threads', href: '/chat', cat: 'Navigation' as const, icon: MessageSquare },
+      { name: 'Directory & Consultants Index', href: '/directory', cat: 'Navigation' as const, icon: BookUser },
+    ];
+    navEntries.forEach((n, idx) => {
+      if (q && n.name.toLowerCase().includes(q)) {
+        items.push({
+          id: `nav-${idx}`,
+          category: 'Navigation',
+          title: n.name,
+          subtitle: `Go to ${n.name}`,
+          icon: n.icon,
+          href: n.href,
+        });
+      }
+    });
+
+    return items;
+  }, [searchQuery, themeMode, handleOpenTaskModal, toggleThemeMode]);
+
+  const handleExecuteItem = useCallback((item: (typeof searchResults)[0]) => {
+    setIsSearchOpen(false);
+    setSearchQuery('');
+    if (item.action) {
+      item.action();
+    } else if (item.href) {
+      router.push(item.href);
     }
-  }, []);
+  }, [router]);
+
+  // Keyboard shortcut listener (Cmd+K / Ctrl+K / ArrowDown / ArrowUp / Enter / Escape)
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setIsSearchOpen((prev) => !prev);
+        return;
+      }
+
+      if (!isSearchOpen) return;
+
+      if (e.key === 'Escape') {
+        setIsSearchOpen(false);
+        setIsNotifOpen(false);
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setSelectedIndex((prev) => (searchResults.length > 0 ? (prev + 1) % searchResults.length : 0));
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setSelectedIndex((prev) => (searchResults.length > 0 ? (prev - 1 + searchResults.length) % searchResults.length : 0));
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (searchResults.length > 0 && searchResults[selectedIndex]) {
+          handleExecuteItem(searchResults[selectedIndex]);
+        }
+      }
+    },
+    [isSearchOpen, searchResults, selectedIndex, handleExecuteItem]
+  );
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown);
@@ -133,81 +336,6 @@ export function TopBar({ user, onInitializeTask }: TopBarProps) {
     return `${timeStr} — ${dayName}, ${monthName} ${dayNum}, ${year}`;
   };
 
-  // Search Results aggregation
-  const searchResults = useMemo(() => {
-    if (!searchQuery.trim()) return [];
-    const q = searchQuery.toLowerCase();
-
-    const items: Array<{
-      id: string;
-      category: 'Projects' | 'Directory' | 'Navigation' | 'Chat';
-      title: string;
-      subtitle: string;
-      icon: React.ComponentType<{ className?: string }>;
-      href: string;
-    }> = [];
-
-    // Search Projects
-    MOCK_PROJECTS.forEach((p) => {
-      const matchName = p.name.toLowerCase().includes(q);
-      const matchCode = p.code.toLowerCase().includes(q);
-      const matchClient = p.clientName ? p.clientName.toLowerCase().includes(q) : false;
-      if (matchName || matchCode || matchClient) {
-        items.push({
-          id: `proj-${p.id}`,
-          category: 'Projects',
-          title: p.name,
-          subtitle: `${p.code} • ${p.clientName || 'Project'}`,
-          icon: FolderKanban,
-          href: '/projects',
-        });
-      }
-    });
-
-    // Search Directory Contacts
-    const directoryItems = [
-      { name: 'AMJ Structural Engineering', cat: 'Engineers', contact: 'Engr. Aris Mendoza' },
-      { name: 'Pacific Glass & Aluminum Tech', cat: 'Suppliers', contact: 'Luis Tan' },
-      { name: 'BuildCore General Contractors', cat: 'Contractors', contact: 'Engr. Ramon Santos' },
-      { name: 'Metro Environmental Legal & Permits', cat: 'Allied Services', contact: 'Atty. Clara Reyes' },
-    ];
-    directoryItems.forEach((d, idx) => {
-      if (d.name.toLowerCase().includes(q) || d.contact.toLowerCase().includes(q) || d.cat.toLowerCase().includes(q)) {
-        items.push({
-          id: `dir-${idx}`,
-          category: 'Directory',
-          title: d.name,
-          subtitle: `${d.cat} • ${d.contact}`,
-          icon: BookUser,
-          href: '/directory',
-        });
-      }
-    });
-
-    // Search Navigation & Modules
-    const navEntries = [
-      { name: 'Homepage & Workspace', href: '/dashboard', cat: 'Navigation', icon: LayoutDashboard },
-      { name: 'Calendar & Google Sync', href: '/calendar', cat: 'Navigation', icon: Clock },
-      { name: 'Sketching Studio & Layers', href: '/sketch', cat: 'Navigation', icon: PenTool },
-      { name: 'Human Resources & Attendance', href: '/hr', cat: 'Navigation', icon: Clock },
-      { name: 'Estudio Wall & Chat Threads', href: '/chat', cat: 'Chat', icon: MessageSquare },
-    ];
-    navEntries.forEach((n, idx) => {
-      if (n.name.toLowerCase().includes(q)) {
-        items.push({
-          id: `nav-${idx}`,
-          category: 'Navigation',
-          title: n.name,
-          subtitle: `Go to ${n.name}`,
-          icon: n.icon,
-          href: n.href,
-        });
-      }
-    });
-
-    return items;
-  }, [searchQuery]);
-
   return (
     <>
       <header className="w-full h-16 bg-surface-main border-b border-border-main flex items-center justify-between px-3 sm:px-6 text-text-main font-mono shrink-0 mb-6 rounded-2xl shadow-2xs relative z-40">
@@ -224,10 +352,13 @@ export function TopBar({ user, onInitializeTask }: TopBarProps) {
           </button>
 
           {/* Studio Brand & Logo (Mobile only, desktop uses centered sidebar logo) */}
-          <Link href="/dashboard" className="flex md:hidden items-center gap-2.5 shrink-0 group">
-            <Logo size={28} />
-            <span className="font-bold text-xs tracking-wider uppercase text-text-main group-hover:text-accent-cyan transition-colors">
+          <Link href="/dashboard" className="flex md:hidden items-center gap-2 shrink-0 group">
+            <Logo size={26} />
+            <span className="font-bold text-xs tracking-wider uppercase text-text-main group-hover:text-accent-cyan transition-colors hidden xs:inline sm:inline">
               Estudio Arkipelago
+            </span>
+            <span className="font-bold text-xs tracking-wider uppercase text-text-main group-hover:text-accent-cyan transition-colors xs:hidden">
+              Arkipelago
             </span>
           </Link>
 
@@ -254,16 +385,15 @@ export function TopBar({ user, onInitializeTask }: TopBarProps) {
         </div>
 
         {/* Right side: Initialize Task CTA, Role Badge, Notifications, Theme Switcher, Sign Out */}
-        <div className="flex items-center space-x-2 sm:space-x-3 shrink-0">
-          {/* Initialize Task Primary Action Button */}
+        <div className="flex items-center space-x-1.5 sm:space-x-2.5 shrink-0">
+          {/* Add Task Primary Action Button */}
           <button
             onClick={handleOpenTaskModal}
-            className="px-3 sm:px-3.5 py-1.5 sm:py-2 bg-black text-white dark:bg-white dark:text-black font-semibold text-xs tracking-wide flex items-center gap-1.5 rounded-lg shadow-xs hover:opacity-90 active:scale-95 transition-all cursor-pointer shrink-0"
-            title="Initialize New Studio Task"
+            className="px-2.5 sm:px-3.5 py-1.5 sm:py-2 bg-black text-white dark:bg-white dark:text-black font-semibold text-xs tracking-wide flex items-center gap-1.5 rounded-lg shadow-xs hover:opacity-90 active:scale-95 transition-all cursor-pointer shrink-0"
+            title="Add Task"
           >
             <Plus className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Initialize Task</span>
-            <span className="sm:hidden">Task</span>
+            <span>Task</span>
           </button>
 
           {/* Mobile search button */}
@@ -286,7 +416,7 @@ export function TopBar({ user, onInitializeTask }: TopBarProps) {
           <div className="relative">
             <button
               onClick={() => setIsNotifOpen(!isNotifOpen)}
-              className="p-2 rounded-xl border border-border-main bg-surface-main hover:bg-surface-hover transition-colors text-muted-main hover:text-text-main relative shadow-2xs"
+              className="p-2 rounded-xl border border-border-main bg-surface-main hover:bg-surface-hover active:scale-[0.95] transition-all text-muted-main hover:text-text-main relative shadow-2xs cursor-pointer"
               title="Notifications & Reminders"
             >
               <Bell className="w-4 h-4" />
@@ -297,10 +427,18 @@ export function TopBar({ user, onInitializeTask }: TopBarProps) {
               )}
             </button>
 
+            {/* Backdrop overlay for clicking outside */}
+            {isNotifOpen && (
+              <div
+                className="fixed inset-0 z-[95]"
+                onClick={() => setIsNotifOpen(false)}
+              />
+            )}
+
             {/* Notifications Dropdown Popover */}
             {isNotifOpen && (
               <div
-                className={`absolute right-0 top-full mt-3 w-80 sm:w-96 rounded-2xl border z-[100] overflow-hidden font-mono transition-all ${
+                className={`absolute right-0 top-full mt-3 w-80 sm:w-96 rounded-2xl border z-[100] overflow-hidden font-mono transition-all animate-in fade-in zoom-in-95 duration-150 ${
                   themeMode === 'light'
                     ? 'bg-white border-border-strong text-[#18181B] shadow-2xl ring-1 ring-black/5'
                     : 'bg-[#18181B] border-border-strong text-white shadow-2xl ring-1 ring-white/10'
@@ -418,8 +556,14 @@ export function TopBar({ user, onInitializeTask }: TopBarProps) {
 
       {/* Global Search Command Palette Modal (Cmd+K) */}
       {isSearchOpen && (
-        <div className="fixed inset-0 z-[100] flex items-start justify-center pt-20 px-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-150">
-          <div className="bg-surface-main border border-border-strong w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden font-mono text-text-main">
+        <div
+          className="fixed inset-0 z-[100] flex items-start justify-center pt-20 px-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-150 cursor-pointer"
+          onClick={() => setIsSearchOpen(false)}
+        >
+          <div
+            className="bg-surface-main border border-border-strong w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden font-mono text-text-main cursor-default"
+            onClick={(e) => e.stopPropagation()}
+          >
             {/* Search Input Bar */}
             <div className="flex items-center px-4 py-3.5 border-b border-border-main gap-3 bg-surface-hover/40">
               <Search className="w-5 h-5 text-muted-main shrink-0" />
@@ -427,63 +571,93 @@ export function TopBar({ user, onInitializeTask }: TopBarProps) {
                 type="text"
                 autoFocus
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search projects, directory contacts, chat threads, or jump to page..."
-                className="flex-1 bg-transparent text-sm text-text-main outline-none placeholder:text-muted-main"
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setSelectedIndex(0);
+                }}
+                placeholder="Search projects, drawing sheets (A-101), chat topics, actions..."
+                className="flex-1 bg-transparent text-sm text-text-main outline-none placeholder:text-muted-main font-sans"
               />
               <button
                 onClick={() => setIsSearchOpen(false)}
-                className="p-1 rounded-lg text-muted-main hover:text-text-main hover:bg-surface-hover"
+                className="p-1 rounded-lg text-muted-main hover:text-text-main hover:bg-surface-hover cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             {/* Results Body */}
-            <div className="max-h-96 overflow-y-auto p-3 space-y-1">
-              {searchQuery.trim() === '' ? (
+            <div className="max-h-96 overflow-y-auto p-2 space-y-1">
+              {searchResults.length === 0 ? (
                 <div className="py-8 text-center text-xs text-muted-main space-y-2">
-                  <p>Type to search across entire studio database</p>
-                  <div className="flex justify-center gap-2 pt-2 text-[11px]">
-                    <span className="px-2 py-0.5 bg-surface-hover rounded border border-border-main">Projects</span>
-                    <span className="px-2 py-0.5 bg-surface-hover rounded border border-border-main">Directory</span>
-                    <span className="px-2 py-0.5 bg-surface-hover rounded border border-border-main">Threads</span>
-                    <span className="px-2 py-0.5 bg-surface-hover rounded border border-border-main">Quick Actions</span>
-                  </div>
-                </div>
-              ) : searchResults.length === 0 ? (
-                <div className="py-8 text-center text-xs text-muted-main">
-                  No matching results found for &ldquo;{searchQuery}&rdquo;
+                  <p>No matching results found for &ldquo;{searchQuery}&rdquo;</p>
+                  <p className="text-[11px] text-muted-main/70">
+                    Try searching for sheet numbers like &ldquo;A-101&rdquo;, project codes like &ldquo;PRJ-001&rdquo;, or &ldquo;Timer&rdquo;
+                  </p>
                 </div>
               ) : (
-                searchResults.map((item) => {
+                searchResults.map((item, idx) => {
                   const ItemIcon = item.icon;
+                  const isSelected = idx === selectedIndex;
                   return (
                     <div
                       key={item.id}
-                      onClick={() => {
-                        setIsSearchOpen(false);
-                        router.push(item.href);
-                      }}
-                      className="p-3 rounded-xl flex items-center justify-between hover:bg-surface-hover transition-colors cursor-pointer group"
+                      onClick={() => handleExecuteItem(item)}
+                      onMouseEnter={() => setSelectedIndex(idx)}
+                      className={cn(
+                        "p-3 rounded-xl flex items-center justify-between transition-all cursor-pointer group",
+                        isSelected
+                          ? "bg-surface-hover/90 border-l-2 border-accent-cyan pl-3.5 shadow-2xs"
+                          : "hover:bg-surface-hover/60"
+                      )}
                     >
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-lg bg-surface-hover group-hover:bg-surface-main border border-border-main shrink-0 text-text-main">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div
+                          className={cn(
+                            "p-2 rounded-lg border shrink-0 transition-colors",
+                            isSelected
+                              ? "bg-accent-cyan/10 border-accent-cyan/40 text-accent-cyan"
+                              : "bg-surface-hover border-border-main text-muted-main group-hover:text-text-main"
+                          )}
+                        >
                           <ItemIcon className="w-4 h-4" />
                         </div>
-                        <div>
-                          <div className="text-xs font-semibold text-text-main flex items-center gap-2">
-                            <span>{item.title}</span>
-                            <span className="text-[10px] px-1.5 py-0.2 rounded bg-surface-hover text-muted-main border border-border-main font-normal">
+                        <div className="min-w-0">
+                          <div className="text-xs font-semibold text-text-main flex items-center gap-2 flex-wrap">
+                            {item.code && (
+                              <span className="font-mono font-bold text-accent-cyan text-[11px]">
+                                [{item.code}]
+                              </span>
+                            )}
+                            <span className="truncate">{item.title}</span>
+                            <span
+                              className={cn(
+                                "text-[9px] px-1.5 py-0.5 rounded border font-sans font-medium uppercase tracking-wider shrink-0",
+                                item.category === 'Drawing Sheets'
+                                  ? "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/30"
+                                  : item.category === 'Projects'
+                                  ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30"
+                                  : item.category === 'Chat Rooms'
+                                  ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30"
+                                  : item.category === 'Quick Actions'
+                                  ? "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/30"
+                                  : "bg-surface-hover text-muted-main border-border-main"
+                              )}
+                            >
                               {item.category}
                             </span>
                           </div>
-                          <div className="text-[11px] text-muted-main font-sans mt-0.5">
+                          <div className="text-[11px] text-muted-main font-sans mt-0.5 truncate">
                             {item.subtitle}
                           </div>
                         </div>
                       </div>
-                      <ArrowRight className="w-4 h-4 text-muted-main group-hover:text-accent-cyan transition-colors" />
+                      <ArrowRight
+                        className={cn(
+                          "w-4 h-4 text-muted-main transition-transform shrink-0",
+                          isSelected ? "text-accent-cyan translate-x-0.5" : "opacity-0 group-hover:opacity-100"
+                        )}
+                      />
                     </div>
                   );
                 })
@@ -491,9 +665,25 @@ export function TopBar({ user, onInitializeTask }: TopBarProps) {
             </div>
 
             {/* Modal Footer Key Navigation Helper */}
-            <div className="px-4 py-2.5 border-t border-border-main bg-surface-hover/30 text-[10px] text-muted-main flex items-center justify-between">
-              <span>Press <kbd className="px-1 py-0.5 bg-surface-main border border-border-main rounded">Esc</kbd> to close</span>
-              <span>Global Studio Command Palette</span>
+            <div className="px-4 py-2.5 border-t border-border-main bg-surface-hover/30 text-[10px] text-muted-main flex flex-wrap items-center justify-between gap-2 font-sans">
+              <div className="flex items-center gap-3">
+                <span className="flex items-center gap-1">
+                  <kbd className="px-1.5 py-0.5 bg-surface-main border border-border-main rounded font-mono">↑</kbd>
+                  <kbd className="px-1.5 py-0.5 bg-surface-main border border-border-main rounded font-mono">↓</kbd>
+                  <span>navigate</span>
+                </span>
+                <span className="flex items-center gap-1">
+                  <kbd className="px-1.5 py-0.5 bg-surface-main border border-border-main rounded font-mono">↵</kbd>
+                  <span>select</span>
+                </span>
+                <span className="flex items-center gap-1">
+                  <kbd className="px-1.5 py-0.5 bg-surface-main border border-border-main rounded font-mono">Esc</kbd>
+                  <span>close</span>
+                </span>
+              </div>
+              <kbd className="px-1.5 py-0.5 bg-surface-main border border-border-main rounded text-muted-main font-mono text-[10px]">
+                Ctrl + K
+              </kbd>
             </div>
           </div>
         </div>

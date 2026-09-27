@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { Search, HardHat, Wrench, Truck, Briefcase, Plus, X, Phone, Mail as MailIcon, MapPin } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface DirectoryEntry {
   id: string;
@@ -17,6 +18,23 @@ export default function DirectoryPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState<string>('ALL');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [nameError, setNameError] = useState('');
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 4000);
+  };
+
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isAddModalOpen) {
+        setIsAddModalOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isAddModalOpen]);
   
   // Custom entries state
   const [entries, setEntries] = useState<DirectoryEntry[]>([
@@ -75,9 +93,10 @@ export default function DirectoryPage() {
 
   const handleAddEntry = () => {
     if (!name.trim()) {
-      alert('Company / supplier name is required.');
+      setNameError('Company / consultant name is required.');
       return;
     }
+    setNameError('');
     const newEntry: DirectoryEntry = {
       id: 'dir-' + Date.now(),
       name: name.trim(),
@@ -96,6 +115,7 @@ export default function DirectoryPage() {
     setPhone('');
     setEmail('');
     setLocation('');
+    showToast(`"${newEntry.name}" added to directory!`);
   };
 
   const filteredEntries = entries.filter((item) => {
@@ -242,11 +262,16 @@ export default function DirectoryPage() {
 
       {/* Add Directory Modal */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-md p-4 font-mono">
-          <div className="bg-surface-main border border-border-main w-full max-w-lg rounded-2xl shadow-2xl p-6 sm:p-7 space-y-5 text-text-main">
+        <div
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setIsAddModalOpen(false);
+          }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-md p-4 font-mono cursor-pointer animate-in fade-in duration-150"
+        >
+          <div className="bg-surface-main border border-border-main w-full max-w-lg rounded-2xl shadow-2xl p-6 sm:p-7 space-y-5 text-text-main cursor-default">
             <div className="flex items-center justify-between border-b border-border-main pb-3">
               <h3 className="text-sm font-bold text-text-main">
-                Add Partner or Supplier to Directory
+                Add to Directory
               </h3>
               <button
                 onClick={() => setIsAddModalOpen(false)}
@@ -265,9 +290,20 @@ export default function DirectoryPage() {
                   type="text"
                   placeholder="e.g. Apex Glass and Metal Specialists"
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full bg-surface-hover border border-border-main rounded-xl px-3.5 py-2.5 text-xs font-mono text-text-main focus:outline-none focus:border-text-main"
+                  onChange={(e) => {
+                    setName(e.target.value);
+                    if (nameError) setNameError('');
+                  }}
+                  className={cn(
+                    "w-full bg-surface-hover border rounded-xl px-3.5 py-2.5 text-xs font-mono text-text-main focus:outline-none transition-colors",
+                    nameError ? "border-rose-500 focus:border-rose-500" : "border-border-main focus:border-text-main"
+                  )}
                 />
+                {nameError && (
+                  <p className="text-[11px] text-rose-500 font-sans font-medium flex items-center gap-1 mt-1">
+                    <span>⚠</span> {nameError}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -344,18 +380,33 @@ export default function DirectoryPage() {
             <div className="flex items-center justify-end gap-3 pt-3 border-t border-border-main">
               <button
                 onClick={() => setIsAddModalOpen(false)}
-                className="px-4 py-2 rounded-xl border border-border-main text-xs font-semibold hover:bg-surface-hover transition-colors cursor-pointer"
+                className="px-4 py-2 rounded-xl border border-border-main text-xs font-semibold hover:bg-surface-hover active:scale-[0.98] transition-all cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 onClick={handleAddEntry}
-                className="px-5 py-2 bg-black text-white dark:bg-white dark:text-black rounded-xl text-xs font-semibold hover:opacity-90 transition-opacity shadow-sm cursor-pointer"
+                className="px-5 py-2 bg-black text-white dark:bg-white dark:text-black rounded-xl text-xs font-semibold hover:opacity-90 active:scale-[0.98] transition-all shadow-sm cursor-pointer"
               >
                 Add Entry
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Floating Toast Notification */}
+      {toastMessage && (
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 bg-emerald-600 text-white rounded-xl shadow-xl text-xs font-semibold animate-in fade-in slide-in-from-bottom-2 duration-200">
+          <span>✓</span>
+          <span>{toastMessage}</span>
+          <button
+            onClick={() => setToastMessage(null)}
+            className="ml-2 hover:opacity-75 transition-opacity"
+            aria-label="Close notification"
+          >
+            ✕
+          </button>
         </div>
       )}
     </div>
