@@ -1125,106 +1125,233 @@ export default function DashboardPage() {
           </div>
         </section>
 
-        {/* RIGHT: Studio Wall (5 Cols) */}
+        {/* RIGHT: Active Time Tracking (5 Cols) */}
         <section className="lg:col-span-5 space-y-4">
-          <div className="bg-surface-main border border-border-main rounded-2xl p-5 sm:p-6 shadow-xs space-y-4 flex flex-col justify-between h-full">
-            <div className="space-y-3">
+          <div className="bg-surface-main border border-border-main rounded-2xl p-5 sm:p-6 shadow-xs flex flex-col justify-between h-full space-y-4">
+            <div className="space-y-4">
+              {/* Header */}
               <div className="flex items-center justify-between border-b border-border-main/50 pb-3">
-                <h2 className="text-base font-bold font-serif text-text-main">
-                  Studio Wall
-                </h2>
-                <Link
-                  href="/chat?tab=wall"
-                  className="text-xs text-accent-cyan hover:underline flex items-center gap-0.5"
-                >
-                  <span>View All →</span>
-                </Link>
+                <div className="flex items-center gap-2">
+                  <div
+                    className={cn(
+                      'w-7 h-7 rounded-lg flex items-center justify-center border transition-colors',
+                      isClocked
+                        ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-500'
+                        : 'bg-surface-hover border-border-main text-muted-main'
+                    )}
+                  >
+                    <Clock className={cn('w-4 h-4', isClocked && 'animate-pulse')} />
+                  </div>
+                  <div>
+                    <h2 className="text-base font-bold font-serif text-text-main leading-tight">
+                      Active Time Tracking
+                    </h2>
+                    <span className="text-[10px] text-muted-main font-mono">
+                      {isClocked ? 'Session in progress' : 'No active session'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span
+                    className={cn(
+                      'text-[9px] font-bold px-2 py-0.5 rounded-full border uppercase tracking-wider font-mono flex items-center gap-1.5',
+                      isClocked
+                        ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400'
+                        : 'bg-surface-hover border-border-main text-muted-main'
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        'w-1.5 h-1.5 rounded-full',
+                        isClocked ? 'bg-emerald-500 animate-pulse' : 'bg-muted-main'
+                      )}
+                    />
+                    {isClocked ? 'Clocked In' : 'Offline'}
+                  </span>
+                  <Link
+                    href="/hr"
+                    className="text-xs text-accent-cyan hover:underline font-mono"
+                    title="Open HR Timesheet"
+                  >
+                    Timesheet →
+                  </Link>
+                </div>
               </div>
 
-              {/* Composer */}
-              <form onSubmit={handleBroadcastPost} className="relative">
-                <input
-                  type="text"
-                  value={wallInput}
-                  onChange={(e) => setWallInput(e.target.value)}
-                  placeholder="Write an update or note..."
-                  className="w-full pl-3.5 pr-10 py-2.5 rounded-xl border border-border-main bg-surface-hover/30 text-xs text-text-main placeholder:text-muted-main/70 focus:outline-none focus:border-accent-cyan transition-colors"
-                />
+              {/* Live Digital Display & Project Banner */}
+              <div className="p-4 rounded-xl border border-border-main/80 bg-surface-hover/30 space-y-3">
+                <div className="flex items-baseline justify-between">
+                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-muted-main">
+                    Live Elapsed Time
+                  </span>
+                  {isClocked && (
+                    <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
+                      Recording
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="text-3xl sm:text-4xl font-mono font-bold tracking-tight text-text-main">
+                    {isClocked ? elapsedTime : '00:00:00'}
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[10px] font-mono text-muted-main block">
+                      Today&apos;s Total
+                    </span>
+                    <span className="text-sm font-mono font-bold text-text-main">
+                      {todayEntries.length > 0
+                        ? `${Math.floor(todayEntries.reduce((acc, c) => acc + (c.duration || 0), 0) / 3600)}h ${Math.floor((todayEntries.reduce((acc, c) => acc + (c.duration || 0), 0) % 3600) / 60)}m`
+                        : (isClocked ? elapsedTime : '0m')}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Active Project Indicator */}
+                <div className="pt-2 border-t border-border-main/40 flex items-center justify-between text-xs">
+                  <span className="text-[11px] text-muted-main font-mono">Assigned Project:</span>
+                  <span className="font-semibold text-text-main truncate max-w-[200px] text-right font-sans">
+                    {availableProjects.find((p) => p.id === (selectedProjectId || activeTimerProject))?.name || 'General Studio'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Project Attribution Selector & Action Controls */}
+              <div className="space-y-2.5">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-mono font-bold uppercase tracking-wider text-muted-main flex items-center justify-between">
+                    <span>Attribution Project</span>
+                    {isClocked && (
+                      <span className="text-[10px] text-muted-main normal-case italic font-sans">
+                        Locked during active session
+                      </span>
+                    )}
+                  </label>
+                  <select
+                    value={selectedProjectId || activeTimerProject}
+                    onChange={(e) => {
+                      setActiveTimerProject(e.target.value);
+                      setSelectedProjectId(e.target.value);
+                    }}
+                    disabled={isClocked}
+                    className="w-full bg-surface-main border border-border-main text-text-main px-3 py-2 text-xs font-mono rounded-xl focus:outline-none focus:border-accent-cyan disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
+                  >
+                    {availableProjects.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.code} — {p.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Clock In / Out Toggle Button */}
                 <button
-                  type="submit"
-                  disabled={!wallInput.trim() || isBroadcasting}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-lg bg-black text-white dark:bg-white dark:text-black hover:opacity-90 disabled:opacity-30 transition-opacity cursor-pointer min-w-[32px] min-h-[32px] flex items-center justify-center"
-                  aria-label="Send update"
+                  onClick={() => {
+                    if (isClocked) {
+                      clockOut();
+                    } else {
+                      clockIn(selectedProjectId || activeTimerProject);
+                    }
+                  }}
+                  className={cn(
+                    'w-full py-2.5 px-4 rounded-xl font-semibold text-xs transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer active:scale-[0.99]',
+                    isClocked
+                      ? 'bg-rose-500 hover:bg-rose-600 text-white shadow-rose-500/20'
+                      : 'bg-black text-white dark:bg-white dark:text-black hover:opacity-90'
+                  )}
                 >
-                  {broadcastSuccess ? (
-                    <Check className="w-3.5 h-3.5 text-emerald-400" />
+                  {isClocked ? (
+                    <>
+                      <Square className="w-3.5 h-3.5 fill-current" />
+                      <span>Clock Out Session</span>
+                    </>
                   ) : (
-                    <Send className="w-3 h-3" />
+                    <>
+                      <Play className="w-3.5 h-3.5 fill-current" />
+                      <span>Start Time Tracking</span>
+                    </>
                   )}
                 </button>
-              </form>
+              </div>
 
-              {/* Feed */}
-              <div className="space-y-2.5 pt-1">
-                {posts.slice(0, 3).map((post) => (
-                  <Link
-                    key={post.id}
-                    href="/chat?tab=wall"
-                    className="block p-3 rounded-xl border border-border-main/60 bg-surface-hover/20 hover:bg-surface-hover/50 transition-colors space-y-1 group"
-                  >
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="font-bold text-text-main font-mono group-hover:text-accent-cyan transition-colors">
-                        {post.authorName}
-                      </span>
-                      <span className="text-[10px] text-muted-main">
-                        {new Date(post.createdAt).toLocaleDateString(undefined, {
-                          month: 'short',
-                          day: 'numeric',
-                        })}
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-muted-main font-sans line-clamp-2 leading-relaxed">
-                      {post.content}
-                    </p>
+              {/* Today's Logged Sessions Stream */}
+              <div className="space-y-2 pt-1">
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="font-bold text-muted-main uppercase tracking-wider font-mono">
+                    Today&apos;s Logs ({todayEntries.length})
+                  </span>
+                  <Link href="/hr" className="text-accent-cyan hover:underline text-[10px] font-mono">
+                    Full Log →
                   </Link>
-                ))}
+                </div>
+
+                {todayEntries.length > 0 ? (
+                  <div className="space-y-1.5 max-h-[120px] overflow-y-auto">
+                    {todayEntries.slice(0, 3).map((entry) => (
+                      <div
+                        key={entry.id}
+                        className="p-2 rounded-lg border border-border-main/50 bg-surface-hover/20 flex items-center justify-between text-xs"
+                      >
+                        <div className="min-w-0 pr-2">
+                          <p className="font-semibold text-text-main truncate text-[11px]">
+                            {entry.projectName || 'Studio Task'}
+                          </p>
+                          <span className="text-[10px] text-muted-main font-mono">
+                            {new Date(entry.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {entry.endTime ? new Date(entry.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Now'}
+                          </span>
+                        </div>
+                        <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-surface-main border border-border-main text-text-main shrink-0">
+                          {entry.durationFormatted || '--:--'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-muted-main italic py-1 text-center font-sans">
+                    No completed sessions yet today. Clock in to log your billable hours.
+                  </p>
+                )}
               </div>
             </div>
 
             {/* Role-aware pending submittals alert */}
-            {canReviewRequests && pendingReviewRequests.length > 0 && (
-              <div className="p-3 rounded-xl border border-amber-500/30 bg-amber-500/10 flex items-center justify-between text-xs mt-2">
-                <div className="flex items-center gap-2">
-                  <ShieldCheck className="w-4 h-4 text-amber-600 shrink-0" />
-                  <span className="text-text-main text-[11px]">
-                    <strong>{pendingReviewRequests.length} pending submittal{pendingReviewRequests.length > 1 ? 's' : ''}</strong> awaiting review
-                  </span>
+            <div className="pt-2">
+              {canReviewRequests && pendingReviewRequests.length > 0 && (
+                <div className="p-3 rounded-xl border border-amber-500/30 bg-amber-500/10 flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="w-4 h-4 text-amber-600 shrink-0" />
+                    <span className="text-text-main text-[11px]">
+                      <strong>{pendingReviewRequests.length} pending submittal{pendingReviewRequests.length > 1 ? 's' : ''}</strong> awaiting review
+                    </span>
+                  </div>
+                  <Link
+                    href="/hr"
+                    className="text-amber-700 dark:text-amber-400 font-semibold hover:underline text-[11px]"
+                  >
+                    Review →
+                  </Link>
                 </div>
-                <Link
-                  href="/hr"
-                  className="text-amber-700 dark:text-amber-400 font-semibold hover:underline text-[11px]"
-                >
-                  Review →
-                </Link>
-              </div>
-            )}
+              )}
 
-            {!canReviewRequests && !isContractor && myPendingRequests.length > 0 && (
-              <div className="p-3 rounded-xl border border-blue-500/30 bg-blue-500/10 flex items-center justify-between text-xs mt-2">
-                <div className="flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-blue-600 shrink-0" />
-                  <span className="text-text-main text-[11px]">
-                    <strong>Your {myPendingRequests[0].type.replace(/_/g, ' ')} submittal</strong> is awaiting review
-                  </span>
+              {!canReviewRequests && !isContractor && myPendingRequests.length > 0 && (
+                <div className="p-3 rounded-xl border border-blue-500/30 bg-blue-500/10 flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-blue-600 shrink-0" />
+                    <span className="text-text-main text-[11px]">
+                      <strong>Your {myPendingRequests[0].type.replace(/_/g, ' ')} submittal</strong> is awaiting review
+                    </span>
+                  </div>
+                  <Link
+                    href="/hr"
+                    className="text-blue-700 dark:text-blue-400 font-semibold hover:underline text-[11px]"
+                  >
+                    View Status →
+                  </Link>
                 </div>
-                <Link
-                  href="/hr"
-                  className="text-blue-700 dark:text-blue-400 font-semibold hover:underline text-[11px]"
-                >
-                  View Status →
-                </Link>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </section>
       </div>
