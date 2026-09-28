@@ -13,7 +13,8 @@ import {
   ShieldAlert, 
   CheckCircle2, 
   Lock,
-  RefreshCw
+  RefreshCw,
+  Download
 } from 'lucide-react';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useHRRequests } from '@/lib/hooks/useHRRequests';
@@ -225,23 +226,61 @@ export default function HRPage() {
     return true;
   });
 
+  const exportHRRequestsToCSV = () => {
+    if (visibleRequests.length === 0) {
+      showNotice('error', 'No requests available to export.');
+      return;
+    }
+    const headers = ['ID', 'Type', 'Employee', 'Status', 'Date Submitted', 'Details', 'Approved/Reviewed By', 'Reviewed At'];
+    const rows = visibleRequests.map((r) => [
+      `"${r.id}"`,
+      `"${r.type}"`,
+      `"${r.userName}"`,
+      `"${r.status}"`,
+      `"${r.createdAt}"`,
+      `"${(r.reason || (r.details?.description as string) || '').replace(/"/g, '""')}"`,
+      `"${r.reviewedBy || ''}"`,
+      `"${r.reviewedAt || ''}"`
+    ]);
+    const csvContent = [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `HR_Ledger_Export_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showNotice('success', `Exported ${visibleRequests.length} HR records to CSV.`);
+  };
+
   return (
-    <div className="min-h-screen bg-bg-main text-text-main font-mono transition-colors pb-12">
+    <div className="min-h-screen bg-bg-main text-text-main font-sans transition-colors pb-12">
       {/* Header */}
-      <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 border-b border-border-main pb-6 gap-4">
+      <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 border-b border-border-main/50 pb-4 gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mb-1">Human Resources (HR)</h1>
-          <p className="text-accent-cyan text-xs font-semibold">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-accent-cyan/10 border border-accent-cyan/20 flex items-center justify-center text-accent-cyan shrink-0">
+              <Briefcase className="w-4 h-4" />
+            </div>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text-main font-sans">
+              Human Resources (HR)
+            </h1>
+            <span className="text-[11px] font-mono px-2.5 py-0.5 rounded-full bg-surface-hover text-muted-main border border-border-main hidden sm:inline-block">
+              {visibleRequests.length} Records
+            </span>
+          </div>
+          <p className="text-xs text-muted-main mt-1 font-sans">
             File workplace clearances, track attendance ledgers, and manage confidential requests.
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <span className={`text-[10px] px-3 py-1 font-semibold rounded capitalize tracking-wide border ${
+          <span className={`text-[10px] font-mono px-2.5 py-1 font-semibold rounded-full capitalize tracking-wide border ${
             isPartner ? 'bg-amber-500/20 text-amber-600 border-amber-500/40' : isSenior ? 'bg-blue-500/20 text-blue-600 border-blue-500/40' : 'bg-surface-hover text-muted-main border-border-main'
           }`}>
             Role: {user?.role ? user.role.replace('_', ' ') : 'Junior Architect'}
           </span>
-          <span className="text-[10px] px-3 py-1 font-semibold rounded tracking-wide border border-emerald-500/30 text-emerald-600 bg-emerald-500/10">
+          <span className="text-[10px] font-mono px-2.5 py-1 font-semibold rounded-full tracking-wide border border-emerald-500/30 text-emerald-600 bg-emerald-500/10">
             Real-Time Sync
           </span>
         </div>
@@ -529,26 +568,37 @@ export default function HRPage() {
                 </p>
               </div>
 
-              {/* Filter Tabs */}
-              <div className="flex items-center gap-1 bg-surface-hover p-1 rounded-lg border border-border-main text-xs font-semibold">
+              {/* Actions & Filter Tabs */}
+              <div className="flex items-center gap-2">
                 <button
-                  onClick={() => setFilterTab('all')}
-                  className={`px-2.5 py-1 rounded transition-all cursor-pointer ${filterTab === 'all' ? 'bg-surface-main text-text-main shadow-xs' : 'text-muted-main'}`}
+                  onClick={exportHRRequestsToCSV}
+                  title="Export requests to CSV"
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 bg-surface-hover hover:bg-surface-main text-muted-main hover:text-text-main border border-border-main rounded-lg text-xs font-semibold transition-all cursor-pointer shadow-xs"
                 >
-                  All ({visibleRequests.length})
+                  <Download className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Export CSV</span>
                 </button>
-                <button
-                  onClick={() => setFilterTab('requests')}
-                  className={`px-2.5 py-1 rounded transition-all cursor-pointer ${filterTab === 'requests' ? 'bg-surface-main text-text-main shadow-xs' : 'text-muted-main'}`}
-                >
-                  Requests
-                </button>
-                <button
-                  onClick={() => setFilterTab('complaints')}
-                  className={`px-2.5 py-1 rounded transition-all cursor-pointer ${filterTab === 'complaints' ? 'bg-surface-main text-rose-600 dark:text-rose-400 shadow-xs' : 'text-muted-main'}`}
-                >
-                  Complaints
-                </button>
+
+                <div className="flex items-center gap-1 bg-surface-hover p-1 rounded-lg border border-border-main text-xs font-semibold">
+                  <button
+                    onClick={() => setFilterTab('all')}
+                    className={`px-2.5 py-1 rounded transition-all cursor-pointer ${filterTab === 'all' ? 'bg-surface-main text-text-main shadow-xs' : 'text-muted-main'}`}
+                  >
+                    All ({visibleRequests.length})
+                  </button>
+                  <button
+                    onClick={() => setFilterTab('requests')}
+                    className={`px-2.5 py-1 rounded transition-all cursor-pointer ${filterTab === 'requests' ? 'bg-surface-main text-text-main shadow-xs' : 'text-muted-main'}`}
+                  >
+                    Requests
+                  </button>
+                  <button
+                    onClick={() => setFilterTab('complaints')}
+                    className={`px-2.5 py-1 rounded transition-all cursor-pointer ${filterTab === 'complaints' ? 'bg-surface-main text-rose-600 dark:text-rose-400 shadow-xs' : 'text-muted-main'}`}
+                  >
+                    Complaints
+                  </button>
+                </div>
               </div>
             </div>
 

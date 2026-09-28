@@ -1227,39 +1227,60 @@ export default function ChatPage() {
         </div>
       )}
 
-      {/* Top Main Tabs Header */}
-      <div className="flex border-b border-border-main mb-4">
-        <button
-          className={cn(
-            'px-6 py-3 font-semibold text-xs tracking-wide border-b-2 -mb-[2px] transition-colors cursor-pointer',
-            activeTab === 'wall'
-              ? 'border-text-main text-text-main font-bold'
-              : 'border-transparent text-muted-main hover:text-text-main'
-          )}
-          onClick={() => {
-            setActiveTab('wall');
-            window.history.replaceState(null, '', '/chat?tab=wall');
-          }}
-        >
-          Estudio Wall
-        </button>
-        <button
-          className={cn(
-            'px-6 py-3 font-semibold text-xs tracking-wide border-b-2 -mb-[2px] transition-colors flex items-center gap-2 cursor-pointer',
-            activeTab === 'chat'
-              ? 'border-text-main text-text-main font-bold'
-              : 'border-transparent text-muted-main hover:text-text-main'
-          )}
-          onClick={() => {
-            setActiveTab('chat');
-            window.history.replaceState(null, '', '/chat?tab=chat');
-          }}
-        >
-          <span>Chat & Threads</span>
-          <span className="bg-surface-hover text-text-main px-2 py-0.5 rounded-full text-[10px] font-semibold border border-border-main">
-            {threads.length} topics
-          </span>
-        </button>
+      {/* Top Header & Tabs Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-border-main/50 pb-3 mb-4 gap-3">
+        <div className="flex flex-wrap items-center gap-3 sm:gap-6">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-accent-cyan/10 border border-accent-cyan/20 flex items-center justify-center text-accent-cyan shrink-0">
+              <MessageSquare className="w-4 h-4" />
+            </div>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text-main font-sans">
+              Studio Communications
+            </h1>
+            <span className="text-[11px] font-mono px-2.5 py-0.5 rounded-full bg-surface-hover text-muted-main border border-border-main hidden sm:inline-block">
+              {activeTab === 'wall' ? 'Wall Feed' : `${threads.length} Threads`}
+            </span>
+          </div>
+
+          <div className="flex items-center space-x-1 sm:space-x-2 border-l border-border-main/50 pl-3 sm:pl-5">
+            <button
+              className={cn(
+                'px-3 py-1.5 rounded-lg text-xs font-semibold tracking-wide transition-all cursor-pointer',
+                activeTab === 'wall'
+                  ? 'bg-black text-white dark:bg-white dark:text-black font-bold shadow-2xs'
+                  : 'text-muted-main hover:text-text-main hover:bg-surface-hover/70'
+              )}
+              onClick={() => {
+                setActiveTab('wall');
+                window.history.replaceState(null, '', '/chat?tab=wall');
+              }}
+            >
+              Estudio Wall
+            </button>
+            <button
+              className={cn(
+                'px-3 py-1.5 rounded-lg text-xs font-semibold tracking-wide transition-all flex items-center gap-1.5 cursor-pointer',
+                activeTab === 'chat'
+                  ? 'bg-black text-white dark:bg-white dark:text-black font-bold shadow-2xs'
+                  : 'text-muted-main hover:text-text-main hover:bg-surface-hover/70'
+              )}
+              onClick={() => {
+                setActiveTab('chat');
+                window.history.replaceState(null, '', '/chat?tab=chat');
+              }}
+            >
+              <span>Chat & Threads</span>
+              <span className={cn(
+                'px-1.5 py-0.2 rounded-full text-[10px] font-mono',
+                activeTab === 'chat'
+                  ? 'bg-white/20 dark:bg-black/20 text-current'
+                  : 'bg-surface-hover text-muted-main border border-border-main/50'
+              )}>
+                {threads.length}
+              </span>
+            </button>
+          </div>
+        </div>
       </div>
 
       <div className="flex-1 overflow-hidden">

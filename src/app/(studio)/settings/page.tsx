@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useTheme } from '@/lib/themeContext';
-import { User, Phone, Mail, Camera, RefreshCw, Save, Check, Calendar, ExternalLink } from 'lucide-react';
+import { User, Phone, Mail, Camera, RefreshCw, Save, Check, Calendar, ExternalLink, Settings as SettingsIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function ProfileSettingsPage() {
@@ -103,7 +103,7 @@ export default function ProfileSettingsPage() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6 pb-12 font-mono">
+    <div className="max-w-3xl mx-auto space-y-6 pb-12 font-sans">
       <input
         type="file"
         ref={fileInputRef}
@@ -113,9 +113,17 @@ export default function ProfileSettingsPage() {
       />
 
       {/* Header */}
-      <div className="border-b border-border-main pb-4">
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-text-main">Settings</h1>
-        <p className="text-xs text-muted-main mt-1">
+      <div className="border-b border-border-main/50 pb-3">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-xl bg-accent-cyan/10 border border-accent-cyan/20 flex items-center justify-center text-accent-cyan shrink-0">
+            <SettingsIcon className="w-4 h-4" />
+          </div>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text-main font-sans">Settings</h1>
+          <span className="text-[11px] font-mono px-2.5 py-0.5 rounded-full bg-surface-hover text-muted-main border border-border-main hidden sm:inline-block">
+            Preferences
+          </span>
+        </div>
+        <p className="text-xs text-muted-main mt-1 font-sans">
           Manage your personal profile, calendar integrations, and studio theme preferences.
         </p>
       </div>

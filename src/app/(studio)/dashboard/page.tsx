@@ -390,7 +390,7 @@ export default function DashboardPage() {
       {/* 1. HERO HORIZON */}
       <section className="animate-fade-in-up border-b border-border-main/60 pb-4 space-y-3">
         <div className="space-y-1">
-          <h1 className="text-2xl sm:text-3xl font-serif tracking-tight text-text-main">
+          <h1 className="text-2xl sm:text-3xl font-bold font-sans tracking-tight text-text-main">
             Mabuhay, {displayName}.
           </h1>
           <p className="text-xs sm:text-sm text-muted-main font-sans">
@@ -465,7 +465,7 @@ export default function DashboardPage() {
                       {activeSheet.scale}
                     </span>
                   </div>
-                  <h2 className="text-base sm:text-lg font-serif font-bold text-text-main">
+                  <h2 className="text-base sm:text-lg font-sans font-bold text-text-main">
                     {activeSheet.title}
                   </h2>
                 </div>
@@ -1000,7 +1000,7 @@ export default function DashboardPage() {
       <section className="space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
           <div>
-            <h2 className="text-base sm:text-lg font-serif font-bold text-text-main">
+            <h2 className="text-base sm:text-lg font-sans font-bold text-text-main">
               Projects
             </h2>
             <p className="text-xs text-muted-main font-sans">
@@ -1087,7 +1087,7 @@ export default function DashboardPage() {
             <div className="space-y-4">
               <div className="flex items-center justify-between border-b border-border-main/50 pb-3">
                 <div>
-                  <h2 className="text-base font-bold font-serif text-text-main">
+                  <h2 className="text-base font-bold font-sans text-text-main">
                     Tasks
                   </h2>
                   <span className="text-[11px] text-muted-main">
@@ -1211,7 +1211,7 @@ export default function DashboardPage() {
                     <Clock className={cn('w-4 h-4', isClocked && 'animate-pulse')} />
                   </div>
                   <div>
-                    <h2 className="text-base font-bold font-serif text-text-main leading-tight">
+                    <h2 className="text-base font-bold font-sans text-text-main leading-tight">
                       Active Time Tracking
                     </h2>
                     <span className="text-[10px] text-muted-main font-mono">

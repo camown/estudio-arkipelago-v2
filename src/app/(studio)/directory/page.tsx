@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Search, HardHat, Wrench, Truck, Briefcase, Plus, X, Phone, Mail as MailIcon, MapPin } from 'lucide-react';
+import { Search, HardHat, Wrench, Truck, Briefcase, Plus, X, Phone, Mail as MailIcon, MapPin, BookUser } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface DirectoryEntry {
@@ -128,14 +128,22 @@ export default function DirectoryPage() {
   });
 
   return (
-    <div className="space-y-6 font-mono pb-12">
+    <div className="space-y-6 pb-12 font-sans">
       {/* Header Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-border-main pb-4 gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-border-main/50 pb-3 gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-text-main flex items-center gap-3">
-            Specialty Directory
-          </h1>
-          <p className="text-xs text-muted-main mt-1">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-accent-cyan/10 border border-accent-cyan/20 flex items-center justify-center text-accent-cyan shrink-0">
+              <BookUser className="w-4 h-4" />
+            </div>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text-main font-sans">
+              Specialty Directory
+            </h1>
+            <span className="text-[11px] font-mono px-2.5 py-0.5 rounded-full bg-surface-hover text-muted-main border border-border-main hidden sm:inline-block">
+              {filteredEntries.length} Contacts
+            </span>
+          </div>
+          <p className="text-xs text-muted-main mt-1 font-sans">
             Find and manage engineering consultants, material suppliers, and specialized contractors.
           </p>
         </div>

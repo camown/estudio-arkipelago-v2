@@ -172,3 +172,113 @@ export interface TaskItem {
   createdAt: string;
 }
 
+// ============================================================
+// Sketch & CAD Studio Types
+// ============================================================
+
+export type SketchToolMode =
+  | 'select'
+  | 'pan'
+  | 'pen'
+  | 'line'
+  | 'rectangle'
+  | 'circle'
+  | 'arrow'
+  | 'cloud'
+  | 'measure'
+  | 'callout'
+  | 'stamp'
+  | 'text'
+  | 'eraser';
+
+export type SketchGridType = 'none' | 'square' | 'dots' | 'isometric';
+
+export interface SketchPoint {
+  x: number;
+  y: number;
+}
+
+export interface SketchShapeItem {
+  id: string;
+  type: SketchToolMode;
+  points: SketchPoint[];
+  color: string;
+  size: number;
+  opacity: number;
+  layerId?: string;
+  text?: string;
+  fontSize?: number;
+  measureLengthMeters?: number;
+  scaleRatio?: number;
+  stampType?: string;
+  calloutText?: string;
+}
+
+export interface SketchLayer {
+  id: string;
+  name: string;
+  visible: boolean;
+  locked?: boolean;
+}
+
+export interface PresetBlueprint {
+  id: string;
+  sheetNo: string;
+  title: string;
+  projectCode: string;
+  projectName: string;
+  scale: string;
+  revision: string;
+  previewUrl: string;
+}
+
+// ============================================================
+// RFI (Request for Information) & Submittal Types
+// ============================================================
+
+export type RFIStatus = 'OPEN' | 'UNDER_REVIEW' | 'RESPONDED' | 'CLOSED';
+export type RFICategory = 'STRUCTURAL' | 'ARCHITECTURAL' | 'MEP' | 'SITE_CIVIL' | 'FINISHES';
+export type RFIPriority = 'HIGH' | 'MEDIUM' | 'LOW';
+
+export interface RFIItem {
+  id: string;
+  rfiNumber: string;
+  projectId: string;
+  projectCode: string;
+  subject: string;
+  category: RFICategory;
+  question: string;
+  response?: string;
+  status: RFIStatus;
+  priority: RFIPriority;
+  submittedBy: string;
+  assignedTo?: string;
+  dueDate?: string;
+  createdAt: string;
+  respondedAt?: string;
+  costImpact?: boolean;
+  scheduleImpact?: boolean;
+  attachmentUrl?: string;
+  attachmentTitle?: string;
+}
+
+export type SubmittalType = 'SHOP_DRAWING' | 'MATERIAL_SAMPLE' | 'PRODUCT_DATA' | 'TEST_REPORT';
+export type SubmittalStatus = 'SUBMITTED' | 'UNDER_REVIEW' | 'APPROVED' | 'REVISE_RESUBMIT' | 'REJECTED';
+
+export interface SubmittalItem {
+  id: string;
+  submittalNumber: string;
+  projectId: string;
+  projectCode: string;
+  title: string;
+  specSection: string;
+  type: SubmittalType;
+  status: SubmittalStatus;
+  submittedBy: string;
+  reviewedBy?: string;
+  actionNotes?: string;
+  sampleDate: string;
+  createdAt: string;
+  previewUrl?: string;
+}
+

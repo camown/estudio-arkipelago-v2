@@ -572,31 +572,50 @@ export default function CalendarPage() {
       />
 
       {/* TOP HEADER: Title, Tabs & Global Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-border-main/50 pb-4 gap-4">
-        <div className="flex items-center gap-6">
-          <h1 className="text-xl font-bold tracking-tight text-text-main">
-            Calendar
-          </h1>
-          <div className="flex items-center space-x-4 border-l border-border-main/50 pl-5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-border-main/50 pb-3 gap-4">
+        <div className="flex flex-wrap items-center gap-3 sm:gap-6">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-accent-cyan/10 border border-accent-cyan/20 flex items-center justify-center text-accent-cyan shrink-0">
+              <CalendarIcon className="w-4 h-4" />
+            </div>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text-main font-sans">
+              Calendar
+            </h1>
+            <span className="text-[11px] font-mono px-2.5 py-0.5 rounded-full bg-surface-hover text-muted-main border border-border-main hidden sm:inline-block">
+              {activeTab === 'CALENDAR' ? `${syncedEvents.length + meetings.length} Events` : `${tasks.length} Tasks`}
+            </span>
+          </div>
+
+          <div className="flex items-center space-x-1 sm:space-x-2 border-l border-border-main/50 pl-3 sm:pl-5">
             <button
               onClick={() => setActiveTab('CALENDAR')}
-              className={`text-xs font-bold tracking-wide transition-all cursor-pointer ${
+              className={cn(
+                'px-3 py-1.5 rounded-lg text-xs font-semibold tracking-wide transition-all cursor-pointer',
                 activeTab === 'CALENDAR'
-                  ? 'text-text-main border-b-2 border-text-main pb-1'
-                  : 'text-muted-main hover:text-text-main'
-              }`}
+                  ? 'bg-black text-white dark:bg-white dark:text-black font-bold shadow-2xs'
+                  : 'text-muted-main hover:text-text-main hover:bg-surface-hover/70'
+              )}
             >
               Schedule & Meetings
             </button>
             <button
               onClick={() => setActiveTab('TASKS')}
-              className={`text-xs font-bold tracking-wide transition-all cursor-pointer ${
+              className={cn(
+                'px-3 py-1.5 rounded-lg text-xs font-semibold tracking-wide transition-all cursor-pointer flex items-center gap-1.5',
                 activeTab === 'TASKS'
-                  ? 'text-text-main border-b-2 border-text-main pb-1'
-                  : 'text-muted-main hover:text-text-main'
-              }`}
+                  ? 'bg-black text-white dark:bg-white dark:text-black font-bold shadow-2xs'
+                  : 'text-muted-main hover:text-text-main hover:bg-surface-hover/70'
+              )}
             >
-              Tasks & Queue ({tasks.length})
+              <span>Tasks & Queue</span>
+              <span className={cn(
+                'px-1.5 py-0.2 rounded-full text-[10px] font-mono',
+                activeTab === 'TASKS'
+                  ? 'bg-white/20 dark:bg-black/20 text-current'
+                  : 'bg-surface-hover text-muted-main border border-border-main/50'
+              )}>
+                {tasks.length}
+              </span>
             </button>
           </div>
         </div>
