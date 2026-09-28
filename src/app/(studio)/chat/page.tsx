@@ -25,7 +25,7 @@ import {
   ExternalLink,
   Check,
   CheckCircle2,
-  Sparkles,
+  Info,
   Smile,
   Heart,
   MessageCircle,
@@ -2114,7 +2114,7 @@ export default function ChatPage() {
                         return (
                           <div key={msg.id} className="w-full flex items-center justify-center my-3">
                             <div className="px-3.5 py-1.5 rounded-full bg-surface-hover border border-border-main text-[11px] text-muted-main font-semibold flex items-center gap-2 shadow-2xs">
-                              <Sparkles className="w-3.5 h-3.5 text-accent-cyan" />
+                              <Info className="w-3.5 h-3.5 text-muted-main" />
                               <span>{msg.text}</span>
                               <span className="text-[10px] font-mono opacity-60">· {msg.timestamp}</span>
                             </div>

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Sparkles, X, Check } from 'lucide-react';
+import { Clock, X, Check } from 'lucide-react';
 import { useClockIn } from '@/lib/hooks/useClockIn';
 import { MOCK_PROJECTS } from '@/lib/constants';
 import { usePathname } from 'next/navigation';
@@ -88,10 +88,10 @@ export function TimeTrackingNudge() {
 
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-2.5 text-accent-cyan font-extrabold text-xs uppercase tracking-wider">
-            <div className="p-1.5 bg-accent-cyan/10 rounded-lg animate-pulse">
-              <Sparkles className="w-4 h-4 text-accent-cyan" />
+            <div className="p-1.5 bg-accent-cyan/10 rounded-lg">
+              <Clock className="w-4 h-4 text-accent-cyan" />
             </div>
-            <span>Smart Time Nudge</span>
+            <span>Studio Time Reminder</span>
           </div>
 
           <button

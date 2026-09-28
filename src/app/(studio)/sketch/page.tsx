@@ -6,7 +6,7 @@ import {
   PenTool, Undo2, Redo2, Trash2, 
   Upload, Save, FileDown, Info, Eraser, 
   Square, Circle, MoveRight, Type, Grid3X3,
-  MessageSquare, Check, Sparkles, Layers,
+  MessageSquare, Check, Palette, Layers,
   Eye, EyeOff, Plus, ImagePlus
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -1329,7 +1329,7 @@ export default function SketchingStudioPage() {
             <div className="absolute top-4 right-4 bg-surface-main/95 backdrop-blur-md border border-border-main p-4 rounded-2xl shadow-2xl w-64 space-y-3.5 z-20 font-mono text-text-main">
               <div className="flex items-center justify-between text-[10px] font-semibold text-muted-main uppercase tracking-wider">
                 <span>Architectural Palette</span>
-                <Sparkles className="w-3.5 h-3.5 text-accent-cyan" />
+                <Palette className="w-3.5 h-3.5 text-muted-main" />
               </div>
 
               {/* Color Grid */}
