@@ -11,7 +11,7 @@ import {
   PenTool, FileText,
   HardHat, UploadCloud, CheckCircle2,
   LayoutGrid, List, Columns, SlidersHorizontal,
-  FolderOpen, FolderKanban
+  FolderOpen, FolderKanban, Folder, ChevronRight
 } from 'lucide-react';
 import { Project } from '@/types';
 import { useTasks } from '@/lib/hooks/useTasks';
@@ -517,6 +517,36 @@ export default function ProjectsPage() {
     }
   }, [visibleProjects]);
 
+  // Universal Escape Key Handler to dismiss modals, drawers, or popovers
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (isUploadSheetModalOpen) {
+          setIsUploadSheetModalOpen(false);
+        } else if (isAddProjectModalOpen) {
+          setIsAddProjectModalOpen(false);
+        } else if (isAddFolderModalOpen) {
+          setIsAddFolderModalOpen(false);
+        } else if (isFilterPopoverOpen) {
+          setIsFilterPopoverOpen(false);
+        } else if (selectedProjectForDetail) {
+          setSelectedProjectForDetail(null);
+        } else if (activeFolderFilter) {
+          setActiveFolderFilter(null);
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [
+    isUploadSheetModalOpen,
+    isAddProjectModalOpen,
+    isAddFolderModalOpen,
+    isFilterPopoverOpen,
+    selectedProjectForDetail,
+    activeFolderFilter
+  ]);
+
   // Handle Sheet File Selection
   const handleSheetFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -895,6 +925,101 @@ export default function ProjectsPage() {
               <span>Assigned Scope</span>
             </div>
           )}
+        </div>
+      </div>
+
+      {/* VISIBLE STUDIO FOLDERS DIRECTORY EXPLORER */}
+      <div className="bg-surface-main/80 border border-border-main/70 rounded-2xl p-4 shadow-2xs space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Folder className="w-4 h-4 text-accent-cyan" />
+            <h2 className="text-xs font-bold uppercase tracking-wider text-text-main font-sans">
+              Studio Project Folders
+            </h2>
+            <span className="text-[10px] text-muted-main hidden sm:inline">
+              ({customFolders.length} categories)
+            </span>
+          </div>
+          <div className="flex items-center gap-3">
+            {activeFolderFilter && (
+              <button
+                onClick={() => setActiveFolderFilter(null)}
+                className="text-xs font-semibold text-accent-cyan hover:underline cursor-pointer flex items-center gap-1"
+              >
+                <span>View All Projects</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            )}
+            {!isContractor && (
+              <button
+                onClick={() => setIsAddFolderModalOpen(true)}
+                className="text-xs font-semibold text-muted-main hover:text-text-main cursor-pointer"
+              >
+                + New Folder
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Folder Cards Grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2.5">
+          {/* Root "All Projects" folder */}
+          <button
+            onClick={() => setActiveFolderFilter(null)}
+            className={cn(
+              'p-3 rounded-xl border text-left transition-all duration-200 flex flex-col justify-between cursor-pointer',
+              activeFolderFilter === null
+                ? 'bg-black text-white dark:bg-white dark:text-black border-transparent shadow-sm'
+                : 'bg-surface-main border-border-main hover:border-text-main/50 hover:bg-surface-hover'
+            )}
+          >
+            <div className="flex items-center justify-between w-full mb-1.5">
+              <FolderOpen className={cn('w-4 h-4', activeFolderFilter === null ? 'text-accent-cyan' : 'text-muted-main')} />
+              <span className={cn('text-[10px] font-mono font-bold px-1.5 py-0.5 rounded', activeFolderFilter === null ? 'bg-white/20 text-white dark:bg-black/20 dark:text-black' : 'bg-surface-hover text-muted-main border border-border-main')}>
+                {visibleProjects.length}
+              </span>
+            </div>
+            <div>
+              <p className="text-xs font-bold truncate">All Projects</p>
+              <p className={cn('text-[10px]', activeFolderFilter === null ? 'opacity-80' : 'text-muted-main')}>
+                Complete studio index
+              </p>
+            </div>
+          </button>
+
+          {/* Dynamic Studio Folders */}
+          {customFolders.map((folder) => {
+            const count = visibleProjects.filter((p) => (p.folderCategory || 'IN_PROGRESS') === folder).length;
+            const isSelected = activeFolderFilter === folder;
+
+            return (
+              <button
+                key={folder}
+                onClick={() => setActiveFolderFilter(isSelected ? null : folder)}
+                className={cn(
+                  'p-3 rounded-xl border text-left transition-all duration-200 flex flex-col justify-between cursor-pointer',
+                  isSelected
+                    ? 'bg-black text-white dark:bg-white dark:text-black border-transparent shadow-sm'
+                    : 'bg-surface-main border-border-main hover:border-text-main/50 hover:bg-surface-hover'
+                )}
+              >
+                <div className="flex items-center justify-between w-full mb-1.5">
+                  <Folder className={cn('w-4 h-4', isSelected ? 'text-accent-cyan' : 'text-accent-cyan/80')} />
+                  <span className={cn('text-[10px] font-mono font-bold px-1.5 py-0.5 rounded', isSelected ? 'bg-white/20 text-white dark:bg-black/20 dark:text-black' : 'bg-surface-hover text-muted-main border border-border-main')}>
+                    {count}
+                  </span>
+                </div>
+                <div>
+                  <p className="text-xs font-bold truncate" title={folder.replace(/_/g, ' ')}>
+                    {folder.replace(/_/g, ' ')}
+                  </p>
+                  <p className={cn('text-[10px]', isSelected ? 'opacity-80' : 'text-muted-main')}>
+                    {count} {count === 1 ? 'project' : 'projects'}
+                  </p>
+                </div>
+              </button>
+            );
+          })}
         </div>
       </div>
 
