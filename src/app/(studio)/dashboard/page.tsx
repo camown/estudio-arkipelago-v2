@@ -655,7 +655,10 @@ export default function DashboardPage() {
 
                 <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
                   {wallPosts.slice(0, 3).map((post) => {
-                    const isAuthor = user?.id === post.authorId || user?.name === post.authorName;
+                    const isAuthor = Boolean(
+                      (user?.id && post.authorId && user.id === post.authorId) ||
+                      (user?.name && post.authorName && user.name.trim().toLowerCase() === post.authorName.trim().toLowerCase())
+                    );
                     const canManage = isAuthor || user?.role === 'partner';
                     const isLiked = user?.id ? post.likedBy?.includes(user.id) : false;
                     const likeCount = post.likes ?? (post.likedBy?.length || 0);
@@ -741,22 +744,24 @@ export default function DashboardPage() {
                                   {canManage && (
                                     <>
                                       <div className="border-t border-border-main my-1" />
+                                      {isAuthor && (
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setEditingPostId(post.id);
+                                            setEditingPostContent(post.content);
+                                            setPostMenuOpenId(null);
+                                          }}
+                                          className="w-full px-3 py-1.5 text-left hover:bg-surface-hover flex items-center gap-2 text-text-main cursor-pointer"
+                                        >
+                                          <Edit3 className="w-3.5 h-3.5 text-muted-main" />
+                                          <span>Edit Post</span>
+                                        </button>
+                                      )}
                                       <button
                                         type="button"
                                         onClick={() => {
-                                          setEditingPostId(post.id);
-                                          setEditingPostContent(post.content);
-                                          setPostMenuOpenId(null);
-                                        }}
-                                        className="w-full px-3 py-1.5 text-left hover:bg-surface-hover flex items-center gap-2 text-text-main cursor-pointer"
-                                      >
-                                        <Edit3 className="w-3.5 h-3.5 text-muted-main" />
-                                        <span>Edit Post</span>
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          deleteWallPost(post.id);
+                                          deleteWallPost(post.id, user);
                                           setToastNotice({ message: '✓ Post deleted' });
                                           setPostMenuOpenId(null);
                                         }}
@@ -868,10 +873,11 @@ export default function DashboardPage() {
                             {comments.length > 0 && (
                               <div className="space-y-1.5 max-h-36 overflow-y-auto pr-0.5">
                                 {comments.map((comment) => {
-                                  const canDeleteComment =
-                                    user?.id === comment.authorId ||
-                                    user?.name === comment.authorName ||
-                                    user?.role === 'partner';
+                                  const canDeleteComment = Boolean(
+                                    (user?.id && comment.authorId && user.id === comment.authorId) ||
+                                    (user?.name && comment.authorName && user.name.trim().toLowerCase() === comment.authorName.trim().toLowerCase()) ||
+                                    user?.role === 'partner'
+                                  );
 
                                   return (
                                     <div
@@ -903,7 +909,7 @@ export default function DashboardPage() {
                                       {canDeleteComment && (
                                         <button
                                           type="button"
-                                          onClick={() => deleteWallComment(post.id, comment.id)}
+                                          onClick={() => deleteWallComment(post.id, comment.id, user)}
                                           className="opacity-0 group-hover:opacity-100 p-0.5 text-muted-main hover:text-red-500 rounded transition-opacity cursor-pointer"
                                           title="Delete reply"
                                         >
