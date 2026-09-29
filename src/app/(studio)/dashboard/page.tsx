@@ -10,6 +10,7 @@ import { useWallPosts } from '@/lib/hooks/useWallPosts';
 import { useClockIn } from '@/lib/hooks/useClockIn';
 import { MOCK_PROJECTS } from '@/lib/constants';
 import { TaskInitializationModal } from '@/components/dashboard/TaskInitializationModal';
+import { Marquee } from '@/components/common/Marquee';
 import {
   CheckCircle2,
   Circle,
@@ -399,26 +400,39 @@ export default function DashboardPage() {
           </p>
         </div>
 
-        {/* Architectural Studio Telemetry & Milestones Strip */}
-        <div className="rounded-lg border border-border-main bg-surface-main p-2.5 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs font-mono">
-          <div className="flex items-center gap-2.5 overflow-x-auto scrollbar-none py-0.5">
+        {/* Studio Milestone & Deadline Marquee Ticker */}
+        <div className="rounded-lg border border-border-main bg-surface-main py-1.5 px-3 overflow-hidden">
+          <div className="flex items-center gap-3">
             <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-surface-hover border border-border-main text-text-main text-[10px] font-mono font-semibold uppercase tracking-wider shrink-0">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-              <span>Studio Telemetry</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 dark:bg-emerald-500" />
+              <span>Studio Ticker</span>
             </div>
-            <div className="flex items-center gap-3 text-xs text-muted-main shrink-0">
-              <span className="text-text-main font-medium">Makati Tower: Column inspection 14:00</span>
-              <span className="text-border-strong">/</span>
-              <span className="text-text-main font-medium">Casa Verde: Carrara Spec Rev 01</span>
-              <span className="text-border-strong">/</span>
-              <span className="text-text-main font-medium">Cultural Pavilion: Roof Framing S-101</span>
-              <span className="text-border-strong">/</span>
-              <span className="text-text-main font-medium">Permits: City Hall clearance due 12d</span>
-            </div>
-          </div>
-          <div className="hidden lg:flex items-center gap-3 shrink-0 text-[11px] text-muted-main border-t md:border-t-0 md:border-l border-border-main pt-2 md:pt-0 md:pl-3">
-            <span>Commissions: <strong className="text-text-main font-semibold">3 Active</strong></span>
-            <span>Punch Items: <strong className="text-text-main font-semibold">{inProgressTasks.length} Active</strong></span>
+            <Marquee pauseOnHover className="[--duration:40s]">
+              <div className="flex items-center gap-2 text-xs font-mono">
+                <span className="text-text-main font-semibold">Makati Tower Phase 2</span>
+                <span className="text-muted-main">• Structural Column inspection scheduled</span>
+                <span className="text-text-main font-semibold">14:00</span>
+              </div>
+              <span className="text-border-main mx-2">|</span>
+              <div className="flex items-center gap-2 text-xs font-mono">
+                <span className="text-text-main font-semibold">Casa Verde Residence</span>
+                <span className="text-muted-main">• Carrara Marble spec approval pending</span>
+                <span className="text-amber-600 dark:text-amber-400 font-semibold">Rev 01</span>
+              </div>
+              <span className="text-border-main mx-2">|</span>
+              <div className="flex items-center gap-2 text-xs font-mono">
+                <span className="text-text-main font-semibold">BGC Cultural Pavilion</span>
+                <span className="text-muted-main">• Parametric roof framing shop drawings released</span>
+                <span className="text-emerald-600 dark:text-emerald-400 font-semibold">S-101</span>
+              </div>
+              <span className="text-border-main mx-2">|</span>
+              <div className="flex items-center gap-2 text-xs font-mono">
+                <span className="text-text-main font-semibold">City Hall Submittal</span>
+                <span className="text-muted-main">• Building Permit clearances due in 12 days</span>
+                <span className="text-text-main font-semibold">Oct 10</span>
+              </div>
+              <span className="text-border-main mx-2">|</span>
+            </Marquee>
           </div>
         </div>
       </section>
@@ -1159,25 +1173,13 @@ export default function DashboardPage() {
 
         {/* RIGHT: Active Time Tracking (5 Cols) */}
         <section className="lg:col-span-5 flex flex-col">
-          <div
-            className={cn(
-              'bg-surface-main border rounded-2xl p-5 sm:p-6 shadow-xs flex flex-col justify-between h-full space-y-4 relative overflow-hidden transition-colors',
-              isClocked ? 'border-emerald-500/40 dark:border-emerald-500/30' : 'border-border-main'
-            )}
-          >
+          <div className="bg-surface-main border border-border-main rounded-2xl p-5 sm:p-6 shadow-xs flex flex-col justify-between h-full space-y-4 relative overflow-hidden transition-colors">
             <div className="space-y-4">
               {/* Header */}
               <div className="flex items-center justify-between border-b border-border-main/50 pb-3">
                 <div className="flex items-center gap-2">
-                  <div
-                    className={cn(
-                      'w-7 h-7 rounded-lg flex items-center justify-center border transition-colors',
-                      isClocked
-                        ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-500'
-                        : 'bg-surface-hover border-border-main text-muted-main'
-                    )}
-                  >
-                    <Clock className={cn('w-4 h-4', isClocked && 'animate-pulse')} />
+                  <div className="w-7 h-7 rounded-lg flex items-center justify-center border border-border-main bg-surface-hover text-text-main transition-colors">
+                    <Clock className="w-4 h-4" />
                   </div>
                   <div>
                     <h2 className="text-base font-bold font-sans text-text-main leading-tight">
@@ -1192,16 +1194,16 @@ export default function DashboardPage() {
                 <div className="flex items-center gap-2">
                   <span
                     className={cn(
-                      'text-[9px] font-bold px-2 py-0.5 rounded-full border uppercase tracking-wider font-mono flex items-center gap-1.5',
+                      'text-[10px] font-semibold px-2 py-0.5 rounded border uppercase tracking-wider font-mono flex items-center gap-1.5',
                       isClocked
-                        ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400'
+                        ? 'bg-surface-hover border-border-strong text-text-main'
                         : 'bg-surface-hover border-border-main text-muted-main'
                     )}
                   >
                     <span
                       className={cn(
                         'w-1.5 h-1.5 rounded-full',
-                        isClocked ? 'bg-emerald-500 animate-pulse' : 'bg-muted-main'
+                        isClocked ? 'bg-emerald-600 dark:bg-emerald-500' : 'bg-muted-main'
                       )}
                     />
                     {isClocked ? 'Clocked In' : 'Offline'}
@@ -1223,8 +1225,8 @@ export default function DashboardPage() {
                     Live Elapsed Time
                   </span>
                   {isClocked && (
-                    <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
+                    <span className="text-[10px] font-mono text-muted-main font-semibold flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 dark:bg-emerald-500" />
                       Recording
                     </span>
                   )}

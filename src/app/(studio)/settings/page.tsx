@@ -238,10 +238,10 @@ export default function ProfileSettingsPage() {
           <div className="p-4 rounded-xl bg-surface-hover/50 border border-border-main space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className={cn('w-2.5 h-2.5 rounded-full', isGoogleSynced ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500')} />
+                <span className={cn('w-2.5 h-2.5 rounded-full', isGoogleSynced ? 'bg-emerald-600 dark:bg-emerald-500' : 'bg-amber-600 dark:bg-amber-500')} />
                 <span className="font-bold text-xs text-text-main">Sync Your Gmail Account (Google Calendar)</span>
               </div>
-              <span className={cn('text-[11px] font-mono font-semibold', isGoogleSynced ? 'text-emerald-500' : 'text-amber-500')}>
+              <span className={cn('text-[11px] font-mono font-semibold', isGoogleSynced ? 'text-text-main' : 'text-amber-600 dark:text-amber-400')}>
                 {isGoogleSynced ? 'Connected & Active' : 'Ready to Sync'}
               </span>
             </div>

@@ -1157,8 +1157,8 @@ export default function CalendarPage() {
                   </button>
 
                   {isGoogleSynced && (
-                    <div className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1.5 font-mono">
-                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    <div className="text-xs text-muted-main font-semibold flex items-center gap-1.5 font-mono">
+                      <span className="w-2 h-2 rounded-full bg-emerald-600 dark:bg-emerald-500" />
                       <span>{connectedAccount}</span>
                     </div>
                   )}
@@ -1729,10 +1729,10 @@ export default function CalendarPage() {
               <div className="p-4 rounded-xl bg-surface-hover/50 border border-border-main space-y-2.5">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className={cn('w-2.5 h-2.5 rounded-full', isGoogleSynced ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500')} />
+                    <span className={cn('w-2.5 h-2.5 rounded-full', isGoogleSynced ? 'bg-emerald-600 dark:bg-emerald-500' : 'bg-amber-600 dark:bg-amber-500')} />
                     <span className="font-bold text-text-main">Sync Your Gmail Account (Google Calendar)</span>
                   </div>
-                  <span className={cn('text-[11px] font-mono font-semibold', isGoogleSynced ? 'text-emerald-500' : 'text-amber-500')}>
+                  <span className={cn('text-[11px] font-mono font-semibold', isGoogleSynced ? 'text-text-main' : 'text-amber-600 dark:text-amber-400')}>
                     {isGoogleSynced ? 'Connected & Active' : 'Ready to Sync'}
                   </span>
                 </div>
@@ -1819,8 +1819,8 @@ export default function CalendarPage() {
           <div className="bg-surface-main border border-border-main rounded-2xl max-w-lg w-full p-6 sm:p-8 space-y-5 shadow-2xl relative text-text-main cursor-default">
             <div className="flex items-start justify-between border-b border-border-main pb-4">
               <div className="space-y-1.5">
-                <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold px-2.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/40 text-emerald-600 dark:text-emerald-400">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold px-2 py-0.5 rounded border border-border-main bg-surface-hover text-text-main">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 dark:bg-emerald-500" />
                   {selectedEvent.source}
                 </span>
                 <h3 className="text-base sm:text-lg font-bold text-text-main tracking-tight leading-tight">

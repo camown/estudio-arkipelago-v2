@@ -134,3 +134,22 @@ body {
   animation: fadeInUp 0.25s ease-out both;
 }
 
+/* Studio Marquee Animation (Clean, Smooth, Zero Glow) */
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(calc(-100% - var(--gap, 1.5rem)));
+  }
+}
+
+.animate-marquee {
+  animation: marquee var(--duration, 35s) linear infinite;
+}
+
+.pause-hover:hover .animate-marquee,
+.group:hover .animate-marquee {
+  animation-play-state: paused;
+}
+

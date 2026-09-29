@@ -67,23 +67,12 @@ export function KeyboardShortcutsModal({ isOpen, onClose }: KeyboardShortcutsMod
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Global key listener for '?' and Escape
+  // Escape Key Listener to dismiss modal
   useEffect(() => {
+    if (!isOpen) return;
+
     const handleKeyDown = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement;
-      const isInput = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable);
-
-      if (e.key === '?' && !isInput) {
-        e.preventDefault();
-        if (isOpen) {
-          onClose();
-        } else {
-          // Trigger open via custom event or prop
-          window.dispatchEvent(new CustomEvent('toggle-shortcuts-modal'));
-        }
-      }
-
-      if (e.key === 'Escape' && isOpen) {
+      if (e.key === 'Escape') {
         onClose();
       }
     };
@@ -91,56 +80,6 @@ export function KeyboardShortcutsModal({ isOpen, onClose }: KeyboardShortcutsMod
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
-
-  // Two-key chord navigation sequence (e.g. 'G' then 'D')
-  useEffect(() => {
-    let lastKey = '';
-    let lastKeyTime = 0;
-
-    const handleKeyChord = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement;
-      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
-        return;
-      }
-
-      const now = Date.now();
-      const currentKey = e.key.toLowerCase();
-
-      if (lastKey === 'g' && now - lastKeyTime < 1000) {
-        if (currentKey === 'd') {
-          e.preventDefault();
-          router.push('/dashboard');
-        } else if (currentKey === 'p') {
-          e.preventDefault();
-          router.push('/projects');
-        } else if (currentKey === 'c') {
-          e.preventDefault();
-          router.push('/calendar');
-        } else if (currentKey === 's') {
-          e.preventDefault();
-          router.push('/sketch');
-        } else if (currentKey === 'h') {
-          e.preventDefault();
-          router.push('/hr');
-        } else if (currentKey === 'w') {
-          e.preventDefault();
-          router.push('/chat?tab=wall');
-        }
-        lastKey = '';
-        return;
-      }
-
-      if (currentKey === 'g') {
-        lastKey = 'g';
-        lastKeyTime = now;
-      } else {
-        lastKey = '';
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyChord);
-    return () => window.removeEventListener('keydown', handleKeyChord);
-  }, [router]);
 
   const filteredGroups = useMemo(() => {
     if (!searchQuery.trim()) return SHORTCUT_GROUPS;

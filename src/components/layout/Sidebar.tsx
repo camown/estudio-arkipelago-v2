@@ -147,10 +147,16 @@ export function Sidebar({ user }: SidebarProps) {
                 </h2>
                 <span
                   className={cn(
-                    'text-[9px] font-bold px-1.5 py-0.5 rounded tracking-wider uppercase',
-                    isClockedIn ? 'bg-accent-cyan/15 text-accent-cyan' : 'bg-surface-hover text-muted-main'
+                    'text-[10px] font-semibold px-2 py-0.5 rounded border uppercase tracking-wider font-mono flex items-center gap-1.5',
+                    isClockedIn ? 'bg-surface-hover border-border-strong text-text-main' : 'bg-surface-hover border-border-main text-muted-main'
                   )}
                 >
+                  <span
+                    className={cn(
+                      'w-1.5 h-1.5 rounded-full',
+                      isClockedIn ? 'bg-emerald-600 dark:bg-emerald-500' : 'bg-muted-main'
+                    )}
+                  />
                   {isClockedIn ? 'CLOCKED IN' : 'OFFLINE'}
                 </span>
               </div>
@@ -158,7 +164,7 @@ export function Sidebar({ user }: SidebarProps) {
               <div className="text-xs">
                 {isClockedIn ? (
                   <div className="flex flex-col">
-                    <span className="text-accent-cyan font-bold truncate">
+                    <span className="text-text-main font-semibold truncate">
                       {availableProjects.find((p) => p.id === selectedProjectId)?.name || 'Unknown Project'}
                     </span>
                     <span className="text-xl font-bold font-mono tracking-tight">{elapsedTime}</span>
@@ -176,7 +182,7 @@ export function Sidebar({ user }: SidebarProps) {
                   value={selectedProjectId || defaultProjectId}
                   onChange={(e) => setSelectedProjectId(e.target.value)}
                   disabled={isClockedIn}
-                  className="bg-surface-main border border-border-main text-text-main p-2 text-xs font-mono focus:outline-none focus:border-accent-cyan rounded-lg disabled:opacity-50"
+                  className="bg-surface-main border border-border-main text-text-main p-2 text-xs font-mono focus:outline-none focus:border-border-strong rounded-lg disabled:opacity-50"
                 >
                   {availableProjects.map((p) => (
                     <option key={p.id} value={p.id}>
@@ -189,10 +195,10 @@ export function Sidebar({ user }: SidebarProps) {
               <button
                 onClick={isClockedIn ? () => clockOut() : () => clockIn(selectedProjectId || defaultProjectId)}
                 className={cn(
-                  'w-full py-2.5 border font-semibold text-xs rounded-lg transition-all shadow-xs cursor-pointer',
+                  'w-full py-2 border font-medium text-xs rounded-lg transition-colors cursor-pointer',
                   isClockedIn
-                    ? 'border-accent-red text-accent-red hover:bg-accent-red hover:text-white'
-                    : 'border-accent-cyan text-accent-cyan hover:bg-accent-cyan hover:text-black'
+                    ? 'border-border-main bg-surface-hover text-rose-600 dark:text-rose-400 hover:bg-rose-500/10'
+                    : 'border-border-main bg-text-main text-bg-main hover:opacity-90'
                 )}
               >
                 {isClockedIn ? 'Clock Out' : 'Clock In'}
@@ -207,21 +213,21 @@ export function Sidebar({ user }: SidebarProps) {
                 className={cn(
                   'w-11 h-11 rounded-xl flex items-center justify-center border transition-all cursor-pointer shadow-xs',
                   isClockedIn
-                    ? 'border-accent-red text-accent-red bg-accent-red/10 hover:bg-accent-red hover:text-white'
-                    : 'border-accent-cyan text-accent-cyan bg-accent-cyan/10 hover:bg-accent-cyan hover:text-black'
+                    ? 'border-border-main bg-surface-hover text-rose-600 dark:text-rose-400'
+                    : 'border-border-main bg-surface-hover text-text-main'
                 )}
                 aria-label={isClockedIn ? 'Clock Out' : 'Clock In'}
               >
-                <Clock className={cn('w-4 h-4', isClockedIn && 'animate-pulse')} />
+                <Clock className="w-4 h-4" />
               </button>
               {/* Floating Tooltip */}
               <div className="absolute left-full ml-3 bottom-0 px-3 py-2 bg-surface-main border border-border-main text-text-main text-xs font-sans rounded-xl shadow-2xl opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity z-50 whitespace-nowrap">
                 <div className="font-semibold text-text-main flex items-center gap-1.5">
-                  <span className={cn('w-2 h-2 rounded-full', isClockedIn ? 'bg-accent-cyan animate-pulse' : 'bg-muted-main')} />
+                  <span className={cn('w-2 h-2 rounded-full', isClockedIn ? 'bg-emerald-600 dark:bg-emerald-500' : 'bg-muted-main')} />
                   <span>{isClockedIn ? 'Active Work Session' : 'Time Tracking Offline'}</span>
                 </div>
                 {isClockedIn && (
-                  <div className="text-accent-cyan font-mono text-xs font-bold mt-1">
+                  <div className="text-text-main font-mono text-xs font-bold mt-1">
                     {elapsedTime}
                   </div>
                 )}

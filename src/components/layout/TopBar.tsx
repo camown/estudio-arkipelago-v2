@@ -368,41 +368,139 @@ export function TopBar({ user, onInitializeTask }: TopBarProps) {
     }
   }, [router]);
 
-  // Keyboard shortcut listener
-  const handleKeyDown = useCallback(
-    (e: KeyboardEvent) => {
+  // Global Keyboard Shortcuts Listener
+  useEffect(() => {
+    let lastKey = '';
+    let lastKeyTime = 0;
+
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      const isInput = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable);
+
+      // 1. Ctrl+K or Cmd+K: Search & Command Palette
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
         setIsSearchOpen((prev) => !prev);
         return;
       }
 
-      if (!isSearchOpen) return;
+      // If search palette is open, handle search item navigation
+      if (isSearchOpen) {
+        if (e.key === 'Escape') {
+          setIsSearchOpen(false);
+          setIsNotifOpen(false);
+          setIsProfileOpen(false);
+          return;
+        } else if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          setSelectedIndex((prev) => (searchResults.length > 0 ? (prev + 1) % searchResults.length : 0));
+          return;
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          setSelectedIndex((prev) => (searchResults.length > 0 ? (prev - 1 + searchResults.length) % searchResults.length : 0));
+          return;
+        } else if (e.key === 'Enter') {
+          e.preventDefault();
+          if (searchResults.length > 0 && searchResults[selectedIndex]) {
+            handleExecuteItem(searchResults[selectedIndex]);
+          }
+          return;
+        }
+      }
 
+      // If user is typing in a form field, do not hijack typing keys
+      if (isInput) return;
+
+      // 2. '?' or 'Shift + /': Toggle Keyboard Shortcuts Cheatsheet
+      if (e.key === '?' || (e.shiftKey && e.key === '/')) {
+        e.preventDefault();
+        setIsShortcutsModalOpen((prev) => !prev);
+        return;
+      }
+
+      // 3. Alt + T: Initialize New Studio Task
+      if (e.altKey && e.key.toLowerCase() === 't') {
+        e.preventDefault();
+        setIsTaskModalOpen(true);
+        return;
+      }
+
+      // 4. Alt + N: Toggle Night / Day Mode
+      if (e.altKey && e.key.toLowerCase() === 'n') {
+        e.preventDefault();
+        toggleThemeMode();
+        return;
+      }
+
+      // 5. Alt + R: Log New Contractor RFI
+      if (e.altKey && e.key.toLowerCase() === 'r') {
+        e.preventDefault();
+        if (window.location.pathname.includes('/projects')) {
+          window.dispatchEvent(new CustomEvent('open-new-rfi-modal'));
+        } else {
+          router.push('/projects?action=new-rfi');
+        }
+        return;
+      }
+
+      // 6. Alt + S: Log New Material Submittal
+      if (e.altKey && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        if (window.location.pathname.includes('/projects')) {
+          window.dispatchEvent(new CustomEvent('open-new-submittal-modal'));
+        } else {
+          router.push('/projects?action=new-submittal');
+        }
+        return;
+      }
+
+      // 7. Escape: close any active popover/modal
       if (e.key === 'Escape') {
         setIsSearchOpen(false);
         setIsNotifOpen(false);
         setIsProfileOpen(false);
-      } else if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        setSelectedIndex((prev) => (searchResults.length > 0 ? (prev + 1) % searchResults.length : 0));
-      } else if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        setSelectedIndex((prev) => (searchResults.length > 0 ? (prev - 1 + searchResults.length) % searchResults.length : 0));
-      } else if (e.key === 'Enter') {
-        e.preventDefault();
-        if (searchResults.length > 0 && searchResults[selectedIndex]) {
-          handleExecuteItem(searchResults[selectedIndex]);
-        }
+        setIsShortcutsModalOpen(false);
       }
-    },
-    [isSearchOpen, searchResults, selectedIndex, handleExecuteItem]
-  );
 
-  useEffect(() => {
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleKeyDown]);
+      // 8. Two-key chord navigation sequence (e.g. 'G' then 'D')
+      const now = Date.now();
+      const currentKey = e.key.toLowerCase();
+
+      if (lastKey === 'g' && now - lastKeyTime < 1000) {
+        if (currentKey === 'd') {
+          e.preventDefault();
+          router.push('/dashboard');
+        } else if (currentKey === 'p') {
+          e.preventDefault();
+          router.push('/projects');
+        } else if (currentKey === 'c') {
+          e.preventDefault();
+          router.push('/calendar');
+        } else if (currentKey === 's') {
+          e.preventDefault();
+          router.push('/sketch');
+        } else if (currentKey === 'h') {
+          e.preventDefault();
+          router.push('/hr');
+        } else if (currentKey === 'w') {
+          e.preventDefault();
+          router.push('/chat?tab=wall');
+        }
+        lastKey = '';
+        return;
+      }
+
+      if (currentKey === 'g') {
+        lastKey = 'g';
+        lastKeyTime = now;
+      } else {
+        lastKey = '';
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [router, toggleThemeMode, isSearchOpen, searchResults, selectedIndex, handleExecuteItem]);
 
   const formatFullTimestamp = (date: Date) => {
     const timeStr = date.toLocaleTimeString('en-US', {

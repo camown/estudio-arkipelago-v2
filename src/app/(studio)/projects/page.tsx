@@ -728,11 +728,19 @@ export default function ProjectsPage() {
       });
   }, [visibleProjects, statusFilter, activeFolderFilter, searchQuery, sortBy]);
 
-  // Open specific project if query parameter ?code= is provided
+  // Open specific project or modal if query parameters provided
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
     const codeParam = params.get('code');
+    const actionParam = params.get('action');
+
+    if (actionParam === 'new-rfi') {
+      setIsCreateRFIModalOpen(true);
+    } else if (actionParam === 'new-submittal') {
+      setIsCreateSubmittalModalOpen(true);
+    }
+
     if (codeParam) {
       const match = visibleProjects.find((p) => p.code.toLowerCase() === codeParam.toLowerCase());
       if (match) {
@@ -744,9 +752,37 @@ export default function ProjectsPage() {
     }
   }, [visibleProjects]);
 
-  // Universal Escape Key Handler
+  // Listen for custom modal events (dispatched by global shortcuts)
+  useEffect(() => {
+    const handleOpenRFI = () => setIsCreateRFIModalOpen(true);
+    const handleOpenSubmittal = () => setIsCreateSubmittalModalOpen(true);
+    window.addEventListener('open-new-rfi-modal', handleOpenRFI);
+    window.addEventListener('open-new-submittal-modal', handleOpenSubmittal);
+    return () => {
+      window.removeEventListener('open-new-rfi-modal', handleOpenRFI);
+      window.removeEventListener('open-new-submittal-modal', handleOpenSubmittal);
+    };
+  }, []);
+
+  // Universal Escape & Shortcut Key Handler
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      const isInput = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable);
+
+      if (!isInput) {
+        if (e.altKey && e.key.toLowerCase() === 'r') {
+          e.preventDefault();
+          setIsCreateRFIModalOpen(true);
+          return;
+        }
+        if (e.altKey && e.key.toLowerCase() === 's') {
+          e.preventDefault();
+          setIsCreateSubmittalModalOpen(true);
+          return;
+        }
+      }
+
       if (e.key === 'Escape') {
         if (isCreateRFIModalOpen) {
           setIsCreateRFIModalOpen(false);
