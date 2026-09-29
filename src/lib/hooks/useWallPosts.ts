@@ -164,20 +164,33 @@ export function useWallPosts() {
 
     if (isSupabaseConfigured && supabase) {
       try {
-        await supabase.from('wall_posts').insert({
+        const fullPayload = {
           id: newPost.id,
           author_id: newPost.authorId,
           author_name: newPost.authorName,
           author_role: newPost.authorRole,
           content: newPost.content,
           created_at: newPost.createdAt,
-          attachments: newPost.attachments,
+          attachments: newPost.attachments || [],
           likes: 0,
           liked_by: [],
           comments: [],
-        });
-      } catch {
-        // graceful fallback
+        };
+        const { error: fullError } = await supabase.from('wall_posts').insert(fullPayload);
+        if (fullError) {
+          // If schema cache does not have comments/likes/liked_by, insert core columns
+          await supabase.from('wall_posts').insert({
+            id: newPost.id,
+            author_id: newPost.authorId,
+            author_name: newPost.authorName,
+            author_role: newPost.authorRole,
+            content: newPost.content,
+            created_at: newPost.createdAt,
+            attachments: newPost.attachments || [],
+          });
+        }
+      } catch (err) {
+        console.error('Error saving post to Supabase:', err);
       }
     }
   }, []);
@@ -197,12 +210,15 @@ export function useWallPosts() {
 
     if (isSupabaseConfigured && supabase) {
       try {
-        await supabase.from('wall_posts').update({
+        const { error } = await supabase.from('wall_posts').update({
           content: newContent,
           updated_at: now,
         }).eq('id', id);
-      } catch {
-        // graceful fallback
+        if (error) {
+          await supabase.from('wall_posts').update({ content: newContent }).eq('id', id);
+        }
+      } catch (err) {
+        console.error('Error editing post in Supabase:', err);
       }
     }
   }, []);

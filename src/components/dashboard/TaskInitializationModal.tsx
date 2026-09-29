@@ -163,7 +163,7 @@ export function TaskInitializationModal({
       >
         {/* Modal Header */}
         <div className="flex items-center justify-between px-6 py-4.5 border-b border-border-main bg-surface-main">
-          <h2 className="text-sm font-serif font-bold text-text-main">
+          <h2 className="text-sm font-sans font-semibold tracking-tight text-text-main">
             New Task
           </h2>
 

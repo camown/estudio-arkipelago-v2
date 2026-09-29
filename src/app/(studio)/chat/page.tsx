@@ -432,8 +432,9 @@ export default function ChatPage() {
 
     fetchThreadsAndMessages();
 
+    const channelId = `chat_realtime_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
     const channel = supabase
-      .channel('chat_realtime_broadcast')
+      .channel(channelId)
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'chat_messages' },
@@ -476,6 +477,25 @@ export default function ChatPage() {
             if (prev.some((existing) => existing.id === mappedThread.id)) return prev;
             return [mappedThread, ...prev];
           });
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'chat_threads' },
+        (payload) => {
+          const t = payload.new;
+          setThreads((prev) =>
+            prev.map((thread) =>
+              thread.id === t.id
+                ? {
+                    ...thread,
+                    name: t.name || thread.name,
+                    topicName: t.topic_name || thread.topicName,
+                    participants: Array.isArray(t.participants) ? t.participants : thread.participants,
+                  }
+                : thread
+            )
+          );
         }
       )
       .subscribe();
@@ -629,6 +649,7 @@ export default function ChatPage() {
 
   const handleSendMessage = async () => {
     if (!chatInput.trim() && !attachedImage) return;
+    if (!currentThread) return;
     const messageId = 'msg-' + Date.now();
     const senderName = user?.name ? user.name : 'Arch. Leandro Locsin';
     const messageText = chatInput.trim();
@@ -652,15 +673,22 @@ export default function ChatPage() {
     setAttachedImage(null);
 
     // Save message to Supabase
-    if (isSupabaseConfigured && supabase) {
-      await supabase.from('chat_messages').insert({
-        id: messageId,
-        thread_id: currentThread.id,
-        sender: senderName,
-        text: messageText,
-        attachment: attachmentUrl || null,
-        attachment_title: attachmentHeader || null,
-      });
+    if (isSupabaseConfigured && supabase && currentThread?.id) {
+      try {
+        const { error } = await supabase.from('chat_messages').insert({
+          id: messageId,
+          thread_id: currentThread.id,
+          sender: senderName,
+          text: messageText,
+          attachment: attachmentUrl || null,
+          attachment_title: attachmentHeader || null,
+        });
+        if (error) {
+          console.error('Error inserting message to Supabase:', error);
+        }
+      } catch (err) {
+        console.error('Exception inserting message to Supabase:', err);
+      }
     }
   };
 

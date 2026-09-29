@@ -14,32 +14,32 @@
 }
 
 :root {
-  /* Light Theme Defaults (matching studio clean light gray) */
-  --bg-main: #EAEAEA;
+  /* Light Theme Defaults — Clean, Minimalist Architectural Tones */
+  --bg-main: #F4F4F5;
   --text-main: #18181B;
   --surface-main: #FFFFFF;
-  --surface-hover: #F1F5F9;
-  --border-main: #CBD5E1;
-  --border-strong: #94A3B8;
-  --muted-main: #334155; /* Higher contrast readable text for light theme */
-  --accent-cyan: #0284C7; /* Refined cyan accent for light mode */
-  --accent-yellow: #D97706;
-  --accent-red: #DC2626;
-  --card-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.05), 0 1px 2px -1px rgb(0 0 0 / 0.05);
+  --surface-hover: #F4F4F5;
+  --border-main: #E4E4E7;
+  --border-strong: #D4D4D8;
+  --muted-main: #52525B; /* WCAG AA accessible contrast >= 4.5:1 */
+  --accent-cyan: #0284C7; /* Subdued architectural sky */
+  --accent-yellow: #B45309; /* Deep accessible amber */
+  --accent-red: #B91C1C; /* Deep accessible crimson */
+  --card-shadow: none;
 }
 
 .dark, [data-theme="dark"] {
-  /* Dark Theme (Night Mode) */
-  --bg-main: #0A0A0A;
-  --text-main: #FAFAFA;
-  --surface-main: #141414;
-  --surface-hover: #1E1E1E;
-  --border-main: #2A2A2A;
-  --border-strong: #444444;
-  --muted-main: #B4B4BC; /* Lightened high-contrast secondary text for dark theme */
-  --accent-cyan: #00FFE0;
-  --accent-yellow: #FFE000;
-  --accent-red: #FF3333;
+  /* Dark Theme — Subdued, Minimalist, Zero Neon */
+  --bg-main: #09090B;
+  --text-main: #F4F4F5;
+  --surface-main: #121214;
+  --surface-hover: #18181B;
+  --border-main: #27272A;
+  --border-strong: #3F3F46;
+  --muted-main: #A1A1AA; /* WCAG AA compliant muted text */
+  --accent-cyan: #38BDF8; /* Subdued accessible sky blue — NOT neon */
+  --accent-yellow: #F59E0B; /* Muted amber — NOT neon */
+  --accent-red: #EF4444; /* Clean crimson — NOT neon */
   --card-shadow: none;
 }
 
@@ -58,7 +58,7 @@ body {
   background-color: var(--bg-main);
   color: var(--text-main);
   font-family: var(--font-jakarta), var(--font-geist-sans), sans-serif;
-  transition: background-color 0.2s ease, color 0.2s ease;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
 .font-display {
@@ -70,24 +70,24 @@ body {
 }
 
 ::selection {
-  background-color: var(--accent-cyan);
-  color: var(--bg-main);
+  background-color: var(--surface-hover);
+  color: var(--text-main);
 }
 
-/* Themed Scrollbars */
+/* Minimalist Clean Scrollbars */
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(148, 163, 184, 0.3) transparent;
+  scrollbar-color: rgba(148, 163, 184, 0.25) transparent;
 }
 
 .dark *,
 [data-theme="dark"] * {
-  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
 }
 
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 
 ::-webkit-scrollbar-track {
@@ -95,23 +95,22 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.35);
-  border-radius: 9999px;
-  transition: background-color 0.2s ease;
+  background: rgba(148, 163, 184, 0.3);
+  border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(148, 163, 184, 0.6);
+  background: rgba(148, 163, 184, 0.5);
 }
 
 .dark ::-webkit-scrollbar-thumb,
 [data-theme="dark"] ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.15);
 }
 
 .dark ::-webkit-scrollbar-thumb:hover,
 [data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.3);
 }
 
 :focus-visible {
@@ -119,11 +118,11 @@ body {
   outline-offset: 2px;
 }
 
-/* Taste Skill Architectural Animations & Textures */
+/* Clean, Minimalist Transitions (No Vibecoded Glows or Lasers) */
 @keyframes fadeInUp {
   from {
     opacity: 0;
-    transform: translateY(12px);
+    transform: translateY(6px);
   }
   to {
     opacity: 1;
@@ -132,45 +131,6 @@ body {
 }
 
 .animate-fade-in-up {
-  animation: fadeInUp 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
-.bg-architectural-grid {
-  background-image: radial-gradient(circle, rgba(100, 116, 139, 0.18) 1px, transparent 1px);
-  background-size: 24px 24px;
-}
-
-.dark .bg-architectural-grid,
-[data-theme="dark"] .bg-architectural-grid {
-  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.09) 1px, transparent 1px);
-  background-size: 24px 24px;
-}
-
-/* Magic UI Keyframes */
-@keyframes border-beam {
-  100% {
-    offset-distance: 100%;
-  }
-}
-
-.animate-border-beam {
-  animation: border-beam var(--duration, 10s) infinite linear;
-}
-
-@keyframes marquee {
-  from {
-    transform: translateX(0);
-  }
-  to {
-    transform: translateX(calc(-100% - var(--gap, 1rem)));
-  }
-}
-
-.animate-marquee {
-  animation: marquee var(--duration, 35s) linear infinite;
-}
-
-.pause-hover:hover .animate-marquee {
-  animation-play-state: paused;
+  animation: fadeInUp 0.25s ease-out both;
 }
 

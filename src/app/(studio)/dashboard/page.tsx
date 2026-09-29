@@ -10,9 +10,6 @@ import { useWallPosts } from '@/lib/hooks/useWallPosts';
 import { useClockIn } from '@/lib/hooks/useClockIn';
 import { MOCK_PROJECTS } from '@/lib/constants';
 import { TaskInitializationModal } from '@/components/dashboard/TaskInitializationModal';
-import { BorderBeam } from '@/components/magicui/border-beam';
-import { GridPattern } from '@/components/magicui/grid-pattern';
-import { Marquee } from '@/components/magicui/marquee';
 import {
   CheckCircle2,
   Circle,
@@ -402,39 +399,26 @@ export default function DashboardPage() {
           </p>
         </div>
 
-        {/* Magic UI Studio Milestone & Deadline Ticker */}
-        <div className="rounded-xl border border-border-main/80 bg-surface-main py-1.5 px-3 overflow-hidden shadow-2xs">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-black text-white dark:bg-white dark:text-black text-[9px] font-mono font-bold uppercase tracking-wider shrink-0">
-              <span className="w-1.5 h-1.5 rounded-full bg-accent-cyan animate-pulse" />
-              <span>Studio Ticker</span>
+        {/* Architectural Studio Telemetry & Milestones Strip */}
+        <div className="rounded-lg border border-border-main bg-surface-main p-2.5 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs font-mono">
+          <div className="flex items-center gap-2.5 overflow-x-auto scrollbar-none py-0.5">
+            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-surface-hover border border-border-main text-text-main text-[10px] font-mono font-semibold uppercase tracking-wider shrink-0">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              <span>Studio Telemetry</span>
             </div>
-            <Marquee pauseOnHover className="[--duration:40s]">
-              <div className="flex items-center gap-2 text-xs font-mono">
-                <span className="text-text-main font-bold">Makati Tower Phase 2</span>
-                <span className="text-muted-main">• Structural Column inspection scheduled</span>
-                <span className="text-accent-cyan font-bold">14:00</span>
-              </div>
-              <span className="text-border-main/60 mx-2">|</span>
-              <div className="flex items-center gap-2 text-xs font-mono">
-                <span className="text-text-main font-bold">Casa Verde Residence</span>
-                <span className="text-muted-main">• Carrara Marble spec approval pending</span>
-                <span className="text-amber-500 font-bold">Rev 01</span>
-              </div>
-              <span className="text-border-main/60 mx-2">|</span>
-              <div className="flex items-center gap-2 text-xs font-mono">
-                <span className="text-text-main font-bold">BGC Cultural Pavilion</span>
-                <span className="text-muted-main">• Parametric roof framing shop drawings released</span>
-                <span className="text-emerald-500 font-bold">S-101</span>
-              </div>
-              <span className="text-border-main/60 mx-2">|</span>
-              <div className="flex items-center gap-2 text-xs font-mono">
-                <span className="text-text-main font-bold">City Hall Submittal</span>
-                <span className="text-muted-main">• Building Permit clearances due in 12 days</span>
-                <span className="text-accent-cyan font-bold">Oct 10</span>
-              </div>
-              <span className="text-border-main/60 mx-2">|</span>
-            </Marquee>
+            <div className="flex items-center gap-3 text-xs text-muted-main shrink-0">
+              <span className="text-text-main font-medium">Makati Tower: Column inspection 14:00</span>
+              <span className="text-border-strong">/</span>
+              <span className="text-text-main font-medium">Casa Verde: Carrara Spec Rev 01</span>
+              <span className="text-border-strong">/</span>
+              <span className="text-text-main font-medium">Cultural Pavilion: Roof Framing S-101</span>
+              <span className="text-border-strong">/</span>
+              <span className="text-text-main font-medium">Permits: City Hall clearance due 12d</span>
+            </div>
+          </div>
+          <div className="hidden lg:flex items-center gap-3 shrink-0 text-[11px] text-muted-main border-t md:border-t-0 md:border-l border-border-main pt-2 md:pt-0 md:pl-3">
+            <span>Commissions: <strong className="text-text-main font-semibold">3 Active</strong></span>
+            <span>Punch Items: <strong className="text-text-main font-semibold">{inProgressTasks.length} Active</strong></span>
           </div>
         </div>
       </section>
@@ -444,20 +428,7 @@ export default function DashboardPage() {
         {/* LEFT / CENTER: Drafting Board (8 Cols) */}
         <section className="lg:col-span-8 space-y-4">
           <div className="bg-surface-main border border-border-main rounded-2xl p-5 sm:p-6 shadow-xs relative overflow-hidden group">
-            {/* Magic UI Architectural Blueprint Grid Pattern */}
-            <GridPattern
-              width={28}
-              height={28}
-              className="opacity-40 [mask-image:radial-gradient(ellipse_at_center,white,transparent_80%)]"
-              squares={[
-                [4, 2],
-                [8, 4],
-                [14, 3],
-                [18, 6],
-              ]}
-            />
-
-            <div className="relative z-10 space-y-4">
+            <div className="space-y-4">
               {/* Header with Drawing Tabs */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border-main/50 pb-4">
                 <div className="space-y-0.5">
@@ -1188,19 +1159,13 @@ export default function DashboardPage() {
 
         {/* RIGHT: Active Time Tracking (5 Cols) */}
         <section className="lg:col-span-5 flex flex-col">
-          <div className="bg-surface-main border border-border-main rounded-2xl p-5 sm:p-6 shadow-xs flex flex-col justify-between h-full space-y-4 relative overflow-hidden">
-            {/* Magic UI BorderBeam Laser Trace when Clocked In */}
-            {isClocked && (
-              <BorderBeam
-                size={220}
-                duration={8}
-                borderWidth={2}
-                colorFrom="#0284C7"
-                colorTo="#00FFE0"
-              />
+          <div
+            className={cn(
+              'bg-surface-main border rounded-2xl p-5 sm:p-6 shadow-xs flex flex-col justify-between h-full space-y-4 relative overflow-hidden transition-colors',
+              isClocked ? 'border-emerald-500/40 dark:border-emerald-500/30' : 'border-border-main'
             )}
-
-            <div className="space-y-4 relative z-10">
+          >
+            <div className="space-y-4">
               {/* Header */}
               <div className="flex items-center justify-between border-b border-border-main/50 pb-3">
                 <div className="flex items-center gap-2">
