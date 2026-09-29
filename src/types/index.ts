@@ -176,21 +176,35 @@ export interface TaskItem {
 // Construction Administration (CA) Types
 // ============================================================
 
-export type RFIStatus = 'PENDING' | 'UNDER_REVIEW' | 'ANSWERED' | 'CLOSED';
+export type RFIStatus = 'PENDING' | 'OPEN' | 'UNDER_REVIEW' | 'ANSWERED' | 'RESPONDED' | 'CLOSED';
+export type RFICategory = 'STRUCTURAL' | 'ARCHITECTURAL' | 'MEP' | 'SITE_CIVIL' | 'FINISHES';
+export type RFIPriority = 'HIGH' | 'MEDIUM' | 'LOW';
 
 export interface RFIItem {
   id: string;
   projectId: string;
+  projectCode?: string;
   rfiNumber: string;
-  title: string;
+  title?: string;
+  subject?: string;
+  category?: RFICategory;
   assignedTo?: string;
-  dateReceived: string;
+  submittedBy?: string;
+  dateReceived?: string;
   dateRequired?: string;
   dateAnswered?: string;
+  dueDate?: string;
   status: RFIStatus;
+  priority?: RFIPriority;
   question: string;
   response?: string;
   attachments?: string[];
+  attachmentUrl?: string;
+  attachmentTitle?: string;
+  costImpact?: boolean;
+  scheduleImpact?: boolean;
+  createdAt?: string;
+  respondedAt?: string;
 }
 
 export type RFADecision = 'APPROVED' | 'APPROVED_WITH_COMMENTS' | 'REVISE_RESUBMIT' | 'REJECTED' | 'PENDING';
@@ -378,5 +392,89 @@ export interface WorkspaceStickyNote {
   x: number;
   y: number;
   minimized?: boolean;
+}
+
+// ============================================================
+// Sketch & CAD Studio Types
+// ============================================================
+
+export type SketchToolMode =
+  | 'select'
+  | 'pan'
+  | 'pen'
+  | 'line'
+  | 'rectangle'
+  | 'circle'
+  | 'arrow'
+  | 'cloud'
+  | 'measure'
+  | 'callout'
+  | 'stamp'
+  | 'text'
+  | 'eraser';
+
+export type SketchGridType = 'none' | 'square' | 'dots' | 'isometric';
+
+export interface SketchPoint {
+  x: number;
+  y: number;
+}
+
+export interface SketchShapeItem {
+  id: string;
+  type: SketchToolMode;
+  points: SketchPoint[];
+  color: string;
+  size: number;
+  opacity: number;
+  layerId?: string;
+  text?: string;
+  fontSize?: number;
+  measureLengthMeters?: number;
+  scaleRatio?: number;
+  stampType?: string;
+  calloutText?: string;
+}
+
+export interface SketchLayer {
+  id: string;
+  name: string;
+  visible: boolean;
+  locked?: boolean;
+}
+
+export interface PresetBlueprint {
+  id: string;
+  sheetNo: string;
+  title: string;
+  projectCode: string;
+  projectName: string;
+  scale: string;
+  revision: string;
+  previewUrl: string;
+}
+
+// ============================================================
+// Submittal Types
+// ============================================================
+
+export type SubmittalType = 'SHOP_DRAWING' | 'MATERIAL_SAMPLE' | 'PRODUCT_DATA' | 'TEST_REPORT';
+export type SubmittalStatus = 'SUBMITTED' | 'UNDER_REVIEW' | 'APPROVED' | 'REVISE_RESUBMIT' | 'REJECTED';
+
+export interface SubmittalItem {
+  id: string;
+  submittalNumber: string;
+  projectId: string;
+  projectCode: string;
+  title: string;
+  specSection: string;
+  type: SubmittalType;
+  status: SubmittalStatus;
+  submittedBy: string;
+  reviewedBy?: string;
+  actionNotes?: string;
+  sampleDate: string;
+  createdAt: string;
+  previewUrl?: string;
 }
 

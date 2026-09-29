@@ -10,6 +10,9 @@ import { useWallPosts } from '@/lib/hooks/useWallPosts';
 import { useClockIn } from '@/lib/hooks/useClockIn';
 import { MOCK_PROJECTS } from '@/lib/constants';
 import { TaskInitializationModal } from '@/components/dashboard/TaskInitializationModal';
+import { BorderBeam } from '@/components/magicui/border-beam';
+import { GridPattern } from '@/components/magicui/grid-pattern';
+import { Marquee } from '@/components/magicui/marquee';
 import {
   CheckCircle2,
   Circle,
@@ -389,14 +392,50 @@ export default function DashboardPage() {
       />
 
       {/* 1. HERO HORIZON */}
-      <section className="animate-fade-in-up border-b border-border-main/60 pb-4">
+      <section className="animate-fade-in-up border-b border-border-main/60 pb-4 space-y-3">
         <div className="space-y-1">
-          <h1 className="text-2xl sm:text-3xl font-serif tracking-tight text-text-main">
+          <h1 className="text-2xl sm:text-3xl font-bold font-sans tracking-tight text-text-main">
             Mabuhay, {displayName}.
           </h1>
           <p className="text-xs sm:text-sm text-muted-main font-sans">
             Studio overview for today.
           </p>
+        </div>
+
+        {/* Magic UI Studio Milestone & Deadline Ticker */}
+        <div className="rounded-xl border border-border-main/80 bg-surface-main py-1.5 px-3 overflow-hidden shadow-2xs">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-black text-white dark:bg-white dark:text-black text-[9px] font-mono font-bold uppercase tracking-wider shrink-0">
+              <span className="w-1.5 h-1.5 rounded-full bg-accent-cyan animate-pulse" />
+              <span>Studio Ticker</span>
+            </div>
+            <Marquee pauseOnHover className="[--duration:40s]">
+              <div className="flex items-center gap-2 text-xs font-mono">
+                <span className="text-text-main font-bold">Makati Tower Phase 2</span>
+                <span className="text-muted-main">• Structural Column inspection scheduled</span>
+                <span className="text-accent-cyan font-bold">14:00</span>
+              </div>
+              <span className="text-border-main/60 mx-2">|</span>
+              <div className="flex items-center gap-2 text-xs font-mono">
+                <span className="text-text-main font-bold">Casa Verde Residence</span>
+                <span className="text-muted-main">• Carrara Marble spec approval pending</span>
+                <span className="text-amber-500 font-bold">Rev 01</span>
+              </div>
+              <span className="text-border-main/60 mx-2">|</span>
+              <div className="flex items-center gap-2 text-xs font-mono">
+                <span className="text-text-main font-bold">BGC Cultural Pavilion</span>
+                <span className="text-muted-main">• Parametric roof framing shop drawings released</span>
+                <span className="text-emerald-500 font-bold">S-101</span>
+              </div>
+              <span className="text-border-main/60 mx-2">|</span>
+              <div className="flex items-center gap-2 text-xs font-mono">
+                <span className="text-text-main font-bold">City Hall Submittal</span>
+                <span className="text-muted-main">• Building Permit clearances due in 12 days</span>
+                <span className="text-accent-cyan font-bold">Oct 10</span>
+              </div>
+              <span className="text-border-main/60 mx-2">|</span>
+            </Marquee>
+          </div>
         </div>
       </section>
 
@@ -405,8 +444,18 @@ export default function DashboardPage() {
         {/* LEFT / CENTER: Drafting Board (8 Cols) */}
         <section className="lg:col-span-8 space-y-4">
           <div className="bg-surface-main border border-border-main rounded-2xl p-5 sm:p-6 shadow-xs relative overflow-hidden group">
-            {/* Subtle Grid Watermark */}
-            <div className="absolute inset-0 bg-architectural-grid opacity-50 pointer-events-none" />
+            {/* Magic UI Architectural Blueprint Grid Pattern */}
+            <GridPattern
+              width={28}
+              height={28}
+              className="opacity-40 [mask-image:radial-gradient(ellipse_at_center,white,transparent_80%)]"
+              squares={[
+                [4, 2],
+                [8, 4],
+                [14, 3],
+                [18, 6],
+              ]}
+            />
 
             <div className="relative z-10 space-y-4">
               {/* Header with Drawing Tabs */}
@@ -420,7 +469,7 @@ export default function DashboardPage() {
                       {activeSheet.scale}
                     </span>
                   </div>
-                  <h2 className="text-base sm:text-lg font-serif font-bold text-text-main">
+                  <h2 className="text-base sm:text-lg font-sans font-bold text-text-main">
                     {activeSheet.title}
                   </h2>
                 </div>
@@ -610,7 +659,10 @@ export default function DashboardPage() {
 
                 <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
                   {wallPosts.slice(0, 3).map((post) => {
-                    const isAuthor = user?.id === post.authorId || user?.name === post.authorName;
+                    const isAuthor = Boolean(
+                      (user?.id && post.authorId && user.id === post.authorId) ||
+                      (user?.name && post.authorName && user.name.trim().toLowerCase() === post.authorName.trim().toLowerCase())
+                    );
                     const canManage = isAuthor || user?.role === 'partner';
                     const isLiked = user?.id ? post.likedBy?.includes(user.id) : false;
                     const likeCount = post.likes ?? (post.likedBy?.length || 0);
@@ -696,22 +748,24 @@ export default function DashboardPage() {
                                   {canManage && (
                                     <>
                                       <div className="border-t border-border-main my-1" />
+                                      {isAuthor && (
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setEditingPostId(post.id);
+                                            setEditingPostContent(post.content);
+                                            setPostMenuOpenId(null);
+                                          }}
+                                          className="w-full px-3 py-1.5 text-left hover:bg-surface-hover flex items-center gap-2 text-text-main cursor-pointer"
+                                        >
+                                          <Edit3 className="w-3.5 h-3.5 text-muted-main" />
+                                          <span>Edit Post</span>
+                                        </button>
+                                      )}
                                       <button
                                         type="button"
                                         onClick={() => {
-                                          setEditingPostId(post.id);
-                                          setEditingPostContent(post.content);
-                                          setPostMenuOpenId(null);
-                                        }}
-                                        className="w-full px-3 py-1.5 text-left hover:bg-surface-hover flex items-center gap-2 text-text-main cursor-pointer"
-                                      >
-                                        <Edit3 className="w-3.5 h-3.5 text-muted-main" />
-                                        <span>Edit Post</span>
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          deleteWallPost(post.id);
+                                          deleteWallPost(post.id, user);
                                           setToastNotice({ message: '✓ Post deleted' });
                                           setPostMenuOpenId(null);
                                         }}
@@ -823,10 +877,11 @@ export default function DashboardPage() {
                             {comments.length > 0 && (
                               <div className="space-y-1.5 max-h-36 overflow-y-auto pr-0.5">
                                 {comments.map((comment) => {
-                                  const canDeleteComment =
-                                    user?.id === comment.authorId ||
-                                    user?.name === comment.authorName ||
-                                    user?.role === 'partner';
+                                  const canDeleteComment = Boolean(
+                                    (user?.id && comment.authorId && user.id === comment.authorId) ||
+                                    (user?.name && comment.authorName && user.name.trim().toLowerCase() === comment.authorName.trim().toLowerCase()) ||
+                                    user?.role === 'partner'
+                                  );
 
                                   return (
                                     <div
@@ -858,7 +913,7 @@ export default function DashboardPage() {
                                       {canDeleteComment && (
                                         <button
                                           type="button"
-                                          onClick={() => deleteWallComment(post.id, comment.id)}
+                                          onClick={() => deleteWallComment(post.id, comment.id, user)}
                                           className="opacity-0 group-hover:opacity-100 p-0.5 text-muted-main hover:text-red-500 rounded transition-opacity cursor-pointer"
                                           title="Delete reply"
                                         >
@@ -949,7 +1004,7 @@ export default function DashboardPage() {
       <section className="space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
           <div>
-            <h2 className="text-base sm:text-lg font-serif font-bold text-text-main">
+            <h2 className="text-base sm:text-lg font-sans font-bold text-text-main">
               Projects
             </h2>
             <p className="text-xs text-muted-main font-sans">
@@ -1031,204 +1086,344 @@ export default function DashboardPage() {
       {/* 4. TASKS & STUDIO WALL */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* LEFT: Tasks (7 Cols) */}
-        <section className="lg:col-span-7 space-y-4">
-          <div className="bg-surface-main border border-border-main rounded-2xl p-5 sm:p-6 shadow-xs space-y-4">
-            <div className="flex items-center justify-between border-b border-border-main/50 pb-3">
-              <div>
-                <h2 className="text-base font-bold font-serif text-text-main">
-                  Tasks
-                </h2>
-                <span className="text-[11px] text-muted-main">
-                  {inProgressTasks.length} active • {completedTasks.length} completed
-                </span>
+        <section className="lg:col-span-7 flex flex-col">
+          <div className="bg-surface-main border border-border-main rounded-2xl p-5 sm:p-6 shadow-xs flex flex-col justify-between h-full space-y-4">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between border-b border-border-main/50 pb-3">
+                <div>
+                  <h2 className="text-base font-bold font-sans text-text-main">
+                    Tasks
+                  </h2>
+                  <span className="text-[11px] text-muted-main">
+                    {inProgressTasks.length} active • {completedTasks.length} completed
+                  </span>
+                </div>
+
+                <button
+                  onClick={() => setIsTaskModalOpen(true)}
+                  className="px-3 py-1.5 rounded-lg border border-border-main bg-surface-hover/60 hover:bg-surface-hover text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer min-h-[34px]"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Task</span>
+                </button>
               </div>
 
-              <button
-                onClick={() => setIsTaskModalOpen(true)}
-                className="px-3 py-1.5 rounded-lg border border-border-main bg-surface-hover/60 hover:bg-surface-hover text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer min-h-[34px]"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Task</span>
-              </button>
-            </div>
+              {/* Checklist */}
+              <div className="space-y-2.5">
+                {inProgressTasks.length > 0 ? (
+                  inProgressTasks.slice(0, 4).map((task) => {
+                    const formattedName = task.name.length > 0 
+                      ? task.name.toLowerCase().replace(/\b\w/g, l => l.toUpperCase())
+                      : task.name;
 
-            {/* Checklist */}
-            <div className="space-y-2.5">
-              {inProgressTasks.length > 0 ? (
-                inProgressTasks.slice(0, 4).map((task) => {
-                  const formattedName = task.name.length > 0 
-                    ? task.name.toLowerCase().replace(/\b\w/g, l => l.toUpperCase())
-                    : task.name;
-
-                  return (
-                    <div
-                      key={task.id}
-                      onClick={() => handleInitiateTaskToggle(task)}
-                      className="p-3.5 rounded-xl border border-border-main/70 bg-surface-hover/30 hover:bg-surface-hover transition-colors flex items-start justify-between gap-3 cursor-pointer group"
-                    >
-                      <div className="flex items-start gap-3 min-w-0">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleInitiateTaskToggle(task);
-                          }}
-                          className="mt-0.5 text-muted-main group-hover:text-emerald-500 transition-colors p-0.5 cursor-pointer"
-                          aria-label="Toggle task status"
-                        >
-                          <Circle className="w-4 h-4 text-muted-main" />
-                        </button>
-                        <div className="space-y-0.5 min-w-0">
-                          <p className="text-xs font-bold text-text-main truncate group-hover:text-accent-cyan transition-colors">
-                            {formattedName}
-                          </p>
-                          {task.description && (
-                            <p className="text-[11px] text-muted-main line-clamp-1 font-sans">
-                              {task.description}
+                    return (
+                      <div
+                        key={task.id}
+                        onClick={() => handleInitiateTaskToggle(task)}
+                        className="p-3.5 rounded-xl border border-border-main/70 bg-surface-hover/30 hover:bg-surface-hover transition-colors flex items-start justify-between gap-3 cursor-pointer group"
+                      >
+                        <div className="flex items-start gap-3 min-w-0">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleInitiateTaskToggle(task);
+                            }}
+                            className="mt-0.5 text-muted-main group-hover:text-emerald-500 transition-colors p-0.5 cursor-pointer"
+                            aria-label="Toggle task status"
+                          >
+                            <Circle className="w-4 h-4 text-muted-main" />
+                          </button>
+                          <div className="space-y-0.5 min-w-0">
+                            <p className="text-xs font-bold text-text-main truncate group-hover:text-accent-cyan transition-colors">
+                              {formattedName}
                             </p>
-                          )}
-                          <div className="flex items-center gap-1.5 text-[10px] text-muted-main font-mono pt-0.5 whitespace-nowrap overflow-hidden">
-                            <span className="capitalize shrink-0">{task.projectPhase?.toLowerCase()}</span>
-                            <span className="shrink-0">•</span>
-                            <span className="truncate">{task.assignedMember}</span>
+                            {task.description && (
+                              <p className="text-[11px] text-muted-main line-clamp-1 font-sans">
+                                {task.description}
+                              </p>
+                            )}
+                            <div className="flex items-center gap-1.5 text-[10px] text-muted-main font-mono pt-0.5 whitespace-nowrap overflow-hidden">
+                              <span className="capitalize shrink-0">{task.projectPhase?.toLowerCase()}</span>
+                              <span className="shrink-0">•</span>
+                              <span className="truncate">{task.assignedMember}</span>
+                            </div>
                           </div>
                         </div>
-                      </div>
 
-                      <div className="shrink-0">
-                        <span
-                          className={cn(
-                            'text-[9px] font-bold px-2 py-0.5 rounded border uppercase',
-                            task.priority === 'HIGH'
-                              ? 'bg-rose-500/10 border-rose-500/30 text-rose-600 dark:text-rose-400'
-                              : task.priority === 'MEDIUM'
-                              ? 'bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400'
-                              : 'bg-surface-hover border-border-main text-muted-main'
-                          )}
-                        >
-                          {task.priority}
-                        </span>
+                        <div className="shrink-0">
+                          <span
+                            className={cn(
+                              'text-[9px] font-bold px-2 py-0.5 rounded border uppercase',
+                              task.priority === 'HIGH'
+                                ? 'bg-rose-500/10 border-rose-500/30 text-rose-600 dark:text-rose-400'
+                                : task.priority === 'MEDIUM'
+                                ? 'bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400'
+                                : 'bg-surface-hover border-border-main text-muted-main'
+                            )}
+                          >
+                            {task.priority}
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                  );
-                })
-              ) : (
-                <div className="py-8 text-center space-y-1.5 border border-dashed border-border-main rounded-xl">
-                  <CheckCircle2 className="w-7 h-7 text-emerald-500 mx-auto" />
-                  <p className="text-xs font-semibold text-text-main">
-                    All tasks completed
-                  </p>
-                </div>
-              )}
+                    );
+                  })
+                ) : (
+                  <div className="py-8 text-center space-y-1.5 border border-dashed border-border-main rounded-xl">
+                    <CheckCircle2 className="w-7 h-7 text-emerald-500 mx-auto" />
+                    <p className="text-xs font-semibold text-text-main">
+                      All tasks completed
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
 
             {completedTasks.length > 0 && (
-              <div className="pt-2 text-[11px] text-muted-main">
+              <div className="pt-2 text-[11px] text-muted-main border-t border-border-main/40">
                 <span>✓ {completedTasks.length} completed today</span>
               </div>
             )}
           </div>
         </section>
 
-        {/* RIGHT: Studio Wall (5 Cols) */}
-        <section className="lg:col-span-5 space-y-4">
-          <div className="bg-surface-main border border-border-main rounded-2xl p-5 sm:p-6 shadow-xs space-y-4 flex flex-col justify-between h-full">
-            <div className="space-y-3">
+        {/* RIGHT: Active Time Tracking (5 Cols) */}
+        <section className="lg:col-span-5 flex flex-col">
+          <div className="bg-surface-main border border-border-main rounded-2xl p-5 sm:p-6 shadow-xs flex flex-col justify-between h-full space-y-4 relative overflow-hidden">
+            {/* Magic UI BorderBeam Laser Trace when Clocked In */}
+            {isClocked && (
+              <BorderBeam
+                size={220}
+                duration={8}
+                borderWidth={2}
+                colorFrom="#0284C7"
+                colorTo="#00FFE0"
+              />
+            )}
+
+            <div className="space-y-4 relative z-10">
+              {/* Header */}
               <div className="flex items-center justify-between border-b border-border-main/50 pb-3">
-                <h2 className="text-base font-bold font-serif text-text-main">
-                  Studio Wall
-                </h2>
-                <Link
-                  href="/chat?tab=wall"
-                  className="text-xs text-accent-cyan hover:underline flex items-center gap-0.5"
-                >
-                  <span>View All →</span>
-                </Link>
+                <div className="flex items-center gap-2">
+                  <div
+                    className={cn(
+                      'w-7 h-7 rounded-lg flex items-center justify-center border transition-colors',
+                      isClocked
+                        ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-500'
+                        : 'bg-surface-hover border-border-main text-muted-main'
+                    )}
+                  >
+                    <Clock className={cn('w-4 h-4', isClocked && 'animate-pulse')} />
+                  </div>
+                  <div>
+                    <h2 className="text-base font-bold font-sans text-text-main leading-tight">
+                      Active Time Tracking
+                    </h2>
+                    <span className="text-[10px] text-muted-main font-mono">
+                      {isClocked ? 'Session in progress' : 'No active session'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span
+                    className={cn(
+                      'text-[9px] font-bold px-2 py-0.5 rounded-full border uppercase tracking-wider font-mono flex items-center gap-1.5',
+                      isClocked
+                        ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400'
+                        : 'bg-surface-hover border-border-main text-muted-main'
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        'w-1.5 h-1.5 rounded-full',
+                        isClocked ? 'bg-emerald-500 animate-pulse' : 'bg-muted-main'
+                      )}
+                    />
+                    {isClocked ? 'Clocked In' : 'Offline'}
+                  </span>
+                  <Link
+                    href="/hr"
+                    className="text-xs text-accent-cyan hover:underline font-mono"
+                    title="Open HR Timesheet"
+                  >
+                    Timesheet →
+                  </Link>
+                </div>
               </div>
 
-              {/* Composer */}
-              <form onSubmit={handleBroadcastPost} className="relative">
-                <input
-                  type="text"
-                  value={wallInput}
-                  onChange={(e) => setWallInput(e.target.value)}
-                  placeholder="Write an update or note..."
-                  className="w-full pl-3.5 pr-10 py-2.5 rounded-xl border border-border-main bg-surface-hover/30 text-xs text-text-main placeholder:text-muted-main/70 focus:outline-none focus:border-accent-cyan transition-colors"
-                />
+              {/* Live Digital Display & Project Banner */}
+              <div className="p-4 rounded-xl border border-border-main/80 bg-surface-hover/30 space-y-3">
+                <div className="flex items-baseline justify-between">
+                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-muted-main">
+                    Live Elapsed Time
+                  </span>
+                  {isClocked && (
+                    <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
+                      Recording
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="text-3xl sm:text-4xl font-mono font-bold tracking-tight text-text-main">
+                    {isClocked ? elapsedTime : '00:00:00'}
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[10px] font-mono text-muted-main block">
+                      Today&apos;s Total
+                    </span>
+                    <span className="text-sm font-mono font-bold text-text-main">
+                      {todayEntries.length > 0
+                        ? `${Math.floor(todayEntries.reduce((acc, c) => acc + (c.duration || 0), 0) / 3600)}h ${Math.floor((todayEntries.reduce((acc, c) => acc + (c.duration || 0), 0) % 3600) / 60)}m`
+                        : (isClocked ? elapsedTime : '0m')}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Active Project Indicator */}
+                <div className="pt-2 border-t border-border-main/40 flex items-center justify-between text-xs">
+                  <span className="text-[11px] text-muted-main font-mono">Assigned Project:</span>
+                  <span className="font-semibold text-text-main truncate max-w-[200px] text-right font-sans">
+                    {availableProjects.find((p) => p.id === (selectedProjectId || activeTimerProject))?.name || 'General Studio'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Project Attribution Selector & Action Controls */}
+              <div className="space-y-2.5">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-mono font-bold uppercase tracking-wider text-muted-main flex items-center justify-between">
+                    <span>Attribution Project</span>
+                    {isClocked && (
+                      <span className="text-[10px] text-muted-main normal-case italic font-sans">
+                        Locked during active session
+                      </span>
+                    )}
+                  </label>
+                  <select
+                    value={selectedProjectId || activeTimerProject}
+                    onChange={(e) => {
+                      setActiveTimerProject(e.target.value);
+                      setSelectedProjectId(e.target.value);
+                    }}
+                    disabled={isClocked}
+                    className="w-full bg-surface-main border border-border-main text-text-main px-3 py-2 text-xs font-mono rounded-xl focus:outline-none focus:border-accent-cyan disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
+                  >
+                    {availableProjects.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.code} — {p.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Clock In / Out Toggle Button */}
                 <button
-                  type="submit"
-                  disabled={!wallInput.trim() || isBroadcasting}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-lg bg-black text-white dark:bg-white dark:text-black hover:opacity-90 disabled:opacity-30 transition-opacity cursor-pointer min-w-[32px] min-h-[32px] flex items-center justify-center"
-                  aria-label="Send update"
+                  onClick={() => {
+                    if (isClocked) {
+                      clockOut();
+                    } else {
+                      clockIn(selectedProjectId || activeTimerProject);
+                    }
+                  }}
+                  className={cn(
+                    'w-full py-2.5 px-4 rounded-xl font-semibold text-xs transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer active:scale-[0.99]',
+                    isClocked
+                      ? 'bg-rose-500 hover:bg-rose-600 text-white shadow-rose-500/20'
+                      : 'bg-black text-white dark:bg-white dark:text-black hover:opacity-90'
+                  )}
                 >
-                  {broadcastSuccess ? (
-                    <Check className="w-3.5 h-3.5 text-emerald-400" />
+                  {isClocked ? (
+                    <>
+                      <Square className="w-3.5 h-3.5 fill-current" />
+                      <span>Clock Out Session</span>
+                    </>
                   ) : (
-                    <Send className="w-3 h-3" />
+                    <>
+                      <Play className="w-3.5 h-3.5 fill-current" />
+                      <span>Start Time Tracking</span>
+                    </>
                   )}
                 </button>
-              </form>
+              </div>
 
-              {/* Feed */}
-              <div className="space-y-2.5 pt-1">
-                {posts.slice(0, 3).map((post) => (
-                  <Link
-                    key={post.id}
-                    href="/chat?tab=wall"
-                    className="block p-3 rounded-xl border border-border-main/60 bg-surface-hover/20 hover:bg-surface-hover/50 transition-colors space-y-1 group"
-                  >
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="font-bold text-text-main font-mono group-hover:text-accent-cyan transition-colors">
-                        {post.authorName}
-                      </span>
-                      <span className="text-[10px] text-muted-main">
-                        {new Date(post.createdAt).toLocaleDateString(undefined, {
-                          month: 'short',
-                          day: 'numeric',
-                        })}
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-muted-main font-sans line-clamp-2 leading-relaxed">
-                      {post.content}
-                    </p>
+              {/* Today's Logged Sessions Stream */}
+              <div className="space-y-2 pt-1">
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="font-bold text-muted-main uppercase tracking-wider font-mono">
+                    Today&apos;s Logs ({todayEntries.length})
+                  </span>
+                  <Link href="/hr" className="text-accent-cyan hover:underline text-[10px] font-mono">
+                    Full Log →
                   </Link>
-                ))}
+                </div>
+
+                {todayEntries.length > 0 ? (
+                  <div className="space-y-1.5 max-h-[120px] overflow-y-auto">
+                    {todayEntries.slice(0, 3).map((entry) => (
+                      <div
+                        key={entry.id}
+                        className="p-2 rounded-lg border border-border-main/50 bg-surface-hover/20 flex items-center justify-between text-xs"
+                      >
+                        <div className="min-w-0 pr-2">
+                          <p className="font-semibold text-text-main truncate text-[11px]">
+                            {entry.projectName || 'Studio Task'}
+                          </p>
+                          <span className="text-[10px] text-muted-main font-mono">
+                            {new Date(entry.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {entry.endTime ? new Date(entry.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Now'}
+                          </span>
+                        </div>
+                        <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-surface-main border border-border-main text-text-main shrink-0">
+                          {entry.durationFormatted || '--:--'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-muted-main italic py-1 text-center font-sans">
+                    No completed sessions yet today. Clock in to log your billable hours.
+                  </p>
+                )}
               </div>
             </div>
 
             {/* Role-aware pending submittals alert */}
-            {canReviewRequests && pendingReviewRequests.length > 0 && (
-              <div className="p-3 rounded-xl border border-amber-500/30 bg-amber-500/10 flex items-center justify-between text-xs mt-2">
-                <div className="flex items-center gap-2">
-                  <ShieldCheck className="w-4 h-4 text-amber-600 shrink-0" />
-                  <span className="text-text-main text-[11px]">
-                    <strong>{pendingReviewRequests.length} pending submittal{pendingReviewRequests.length > 1 ? 's' : ''}</strong> awaiting review
-                  </span>
+            <div className="pt-2">
+              {canReviewRequests && pendingReviewRequests.length > 0 && (
+                <div className="p-3 rounded-xl border border-amber-500/30 bg-amber-500/10 flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="w-4 h-4 text-amber-600 shrink-0" />
+                    <span className="text-text-main text-[11px]">
+                      <strong>{pendingReviewRequests.length} pending submittal{pendingReviewRequests.length > 1 ? 's' : ''}</strong> awaiting review
+                    </span>
+                  </div>
+                  <Link
+                    href="/hr"
+                    className="text-amber-700 dark:text-amber-400 font-semibold hover:underline text-[11px]"
+                  >
+                    Review →
+                  </Link>
                 </div>
-                <Link
-                  href="/hr"
-                  className="text-amber-700 dark:text-amber-400 font-semibold hover:underline text-[11px]"
-                >
-                  Review →
-                </Link>
-              </div>
-            )}
+              )}
 
-            {!canReviewRequests && !isContractor && myPendingRequests.length > 0 && (
-              <div className="p-3 rounded-xl border border-blue-500/30 bg-blue-500/10 flex items-center justify-between text-xs mt-2">
-                <div className="flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-blue-600 shrink-0" />
-                  <span className="text-text-main text-[11px]">
-                    <strong>Your {myPendingRequests[0].type.replace(/_/g, ' ')} submittal</strong> is awaiting review
-                  </span>
+              {!canReviewRequests && !isContractor && myPendingRequests.length > 0 && (
+                <div className="p-3 rounded-xl border border-blue-500/30 bg-blue-500/10 flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-blue-600 shrink-0" />
+                    <span className="text-text-main text-[11px]">
+                      <strong>Your {myPendingRequests[0].type.replace(/_/g, ' ')} submittal</strong> is awaiting review
+                    </span>
+                  </div>
+                  <Link
+                    href="/hr"
+                    className="text-blue-700 dark:text-blue-400 font-semibold hover:underline text-[11px]"
+                  >
+                    View Status →
+                  </Link>
                 </div>
-                <Link
-                  href="/hr"
-                  className="text-blue-700 dark:text-blue-400 font-semibold hover:underline text-[11px]"
-                >
-                  View Status →
-                </Link>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </section>
       </div>

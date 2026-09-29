@@ -207,7 +207,23 @@ export function useWallPosts() {
     }
   }, []);
 
-  const deletePost = useCallback(async (id: string) => {
+  const deletePost = useCallback(async (id: string, currentUser?: { id?: string; name?: string; role?: string } | null) => {
+    // If user is provided, enforce that only the post author or partner/admin can delete
+    if (currentUser) {
+      const targetPost = posts.find((p) => p.id === id);
+      if (targetPost) {
+        const isAuthor = Boolean(
+          (currentUser.id && targetPost.authorId && currentUser.id === targetPost.authorId) ||
+          (currentUser.name && targetPost.authorName && currentUser.name.trim().toLowerCase() === targetPost.authorName.trim().toLowerCase())
+        );
+        const isPartnerOrAdmin = currentUser.role === 'partner' || currentUser.role === 'admin';
+        if (!isAuthor && !isPartnerOrAdmin) {
+          console.warn('Unauthorized: Only the post author or a partner can delete this post.');
+          return false;
+        }
+      }
+    }
+
     setPosts((prev) => {
       const updated = prev.filter((p) => p.id !== id);
       persistPosts(updated);
@@ -221,7 +237,8 @@ export function useWallPosts() {
         // graceful fallback
       }
     }
-  }, []);
+    return true;
+  }, [posts]);
 
   const toggleLike = useCallback(async (postId: string, userId: string) => {
     let updatedPost: WallPost | null = null;
@@ -303,8 +320,24 @@ export function useWallPosts() {
     }
   }, []);
 
-  const deleteComment = useCallback(async (postId: string, commentId: string) => {
+  const deleteComment = useCallback(async (postId: string, commentId: string, currentUser?: { id?: string; name?: string; role?: string } | null) => {
     let updatedPost: WallPost | null = null;
+
+    if (currentUser) {
+      const targetPost = posts.find((p) => p.id === postId);
+      const targetComment = targetPost?.comments?.find((c) => c.id === commentId);
+      if (targetComment) {
+        const isAuthor = Boolean(
+          (currentUser.id && targetComment.authorId && currentUser.id === targetComment.authorId) ||
+          (currentUser.name && targetComment.authorName && currentUser.name.trim().toLowerCase() === targetComment.authorName.trim().toLowerCase())
+        );
+        const isPartnerOrAdmin = currentUser.role === 'partner' || currentUser.role === 'admin';
+        if (!isAuthor && !isPartnerOrAdmin) {
+          console.warn('Unauthorized: Only the comment author or a partner can delete this comment.');
+          return false;
+        }
+      }
+    }
 
     setPosts((prev) => {
       const updated = prev.map((p) => {

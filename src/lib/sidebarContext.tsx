@@ -17,17 +17,18 @@ const defaultSidebarContext: SidebarContextType = {
 const SidebarContext = createContext<SidebarContextType>(defaultSidebarContext);
 
 export function SidebarProvider({ children }: { children: React.ReactNode }) {
-  const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const saved = localStorage.getItem('arkipelago_sidebar_collapsed');
-        return saved === 'true';
-      } catch {
-        return false;
+  const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
+
+  React.useEffect(() => {
+    try {
+      const saved = localStorage.getItem('arkipelago_sidebar_collapsed');
+      if (saved === 'true') {
+        setIsCollapsed(true);
       }
+    } catch {
+      // Ignore
     }
-    return false;
-  });
+  }, []);
 
   const toggleSidebar = () => {
     setIsCollapsed((prev) => {

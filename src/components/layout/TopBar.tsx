@@ -1,26 +1,28 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { User } from '@/types';
+import { User, Role } from '@/types';
 import { useTheme } from '@/lib/themeContext';
 import { useTasks } from '@/lib/hooks/useTasks';
 import Logo from '@/components/ui/Logo';
 import { TaskInitializationModal } from '@/components/dashboard/TaskInitializationModal';
 import { DailyLogbookModal } from '@/components/common/DailyLogbookModal';
+import { KeyboardShortcutsModal } from '@/components/common/KeyboardShortcutsModal';
 import { 
   Sun, Moon, LogOut, Bell, MessageSquare, Clock, Search,
   FolderKanban, BookUser, PenTool, LayoutDashboard, X, ArrowRight, Command, Plus, PanelLeft,
-  FileText, BookOpen
+  FileText, BookOpen, Keyboard, User as UserIcon, Shield, Users, Wrench, Settings, ChevronDown, Check,
+  CheckCircle2, Sparkles
 } from 'lucide-react';
 import { useSidebar } from '@/lib/sidebarContext';
-import { MOCK_PROJECTS } from '@/lib/constants';
+import { MOCK_PROJECTS, PRESET_ACCOUNTS } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 
 interface NotificationItem {
   id: string;
-  type: 'message' | 'reminder';
+  type: 'message' | 'reminder' | 'rfi' | 'hr';
   title: string;
   description: string;
   time: string;
@@ -33,39 +35,68 @@ interface TopBarProps {
   onInitializeTask?: () => void;
 }
 
+const ROLE_ICONS: Record<Role, React.ComponentType<{ className?: string }>> = {
+  partner: Shield,
+  senior_architect: Users,
+  junior_architect: UserIcon,
+  contractor: Wrench,
+};
+
 export function TopBar({ user, onInitializeTask }: TopBarProps) {
   const router = useRouter();
   const { addTask } = useTasks();
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [isDailyLogOpen, setIsDailyLogOpen] = useState(false);
+  const [isShortcutsModalOpen, setIsShortcutsModalOpen] = useState(false);
   const [currentDate, setCurrentDate] = useState<Date | null>(() => (typeof window !== 'undefined' ? new Date() : null));
   const { themeMode, toggleThemeMode } = useTheme();
+  
+  // Menus
   const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  
   const { isCollapsed: isSidebarCollapsed, toggleSidebar } = useSidebar();
+  const profileMenuRef = useRef<HTMLDivElement>(null);
+  const notifMenuRef = useRef<HTMLDivElement>(null);
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3000);
+  };
   
   const [notifications, setNotifications] = useState<NotificationItem[]>([
     {
       id: 'n1',
-      type: 'message',
-      title: 'New Direct Message',
-      description: 'Arch. Maria Cruz sent a photo update on Makati Tower Phase 2.',
-      time: '10m ago',
+      type: 'rfi',
+      title: 'New Contractor RFI Logged',
+      description: '[MT-2024] RFI-MT2024-001: Cantilever Shear Wall Rebar Clearance on Grid 4-C.',
+      time: '5m ago',
       unread: true,
-      link: '/chat?thread=thread-001',
+      link: '/projects?code=MT-2024',
     },
     {
       id: 'n2',
-      type: 'reminder',
-      title: 'Project Deadline Reminder',
-      description: 'Casa Verde Residence schematic review due by EOD Friday.',
-      time: '1h ago',
+      type: 'hr',
+      title: 'Overtime Clearance Approved',
+      description: 'Your 2.5 hrs Overtime submittal for Casa Verde Residence was stamped approved.',
+      time: '25m ago',
       unread: true,
-      link: '/projects',
+      link: '/hr',
     },
     {
       id: 'n3',
+      type: 'message',
+      title: 'Studio Wall Update',
+      description: 'Arch. Carlos Mendoza shared massing diagram rendering Rev 02.',
+      time: '1h ago',
+      unread: true,
+      link: '/chat?tab=wall',
+    },
+    {
+      id: 'n4',
       type: 'reminder',
       title: 'Site Visit Schedule',
       description: 'BGC Cultural Pavilion site survey scheduled for tomorrow 10:00 AM.',
@@ -92,7 +123,48 @@ export function TopBar({ user, onInitializeTask }: TopBarProps) {
   const handleTaskCreated = (newTaskData: Parameters<typeof addTask>[0]) => {
     addTask(newTaskData);
     setIsTaskModalOpen(false);
+    showToast(`✓ Task "${newTaskData.name}" created!`);
   };
+
+  // 1-Click Role Switcher
+  const handleQuickSwitchRole = (targetRole: Role) => {
+    const matchedAccount = PRESET_ACCOUNTS.find((a) => a.role === targetRole) || PRESET_ACCOUNTS[0];
+    const newUser: User = {
+      id: matchedAccount.id || `usr-${Date.now()}`,
+      name: matchedAccount.name,
+      email: matchedAccount.email,
+      role: matchedAccount.role,
+      assignedProjectCodes: matchedAccount.assignedProjectCodes,
+    };
+
+    localStorage.setItem('arkipelago_user', JSON.stringify(newUser));
+    setIsProfileOpen(false);
+    showToast(`Switched profile to ${newUser.name} (${newUser.role.replace('_', ' ')})`);
+    
+    // Refresh page / state
+    window.location.reload();
+  };
+
+  // Close menus on outside click
+  useEffect(() => {
+    const handleOutside = (e: MouseEvent) => {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(e.target as Node)) {
+        setIsProfileOpen(false);
+      }
+      if (notifMenuRef.current && !notifMenuRef.current.contains(e.target as Node)) {
+        setIsNotifOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutside);
+    return () => document.removeEventListener('mousedown', handleOutside);
+  }, []);
+
+  // Listen for shortcuts modal custom event
+  useEffect(() => {
+    const handleToggleModal = () => setIsShortcutsModalOpen((prev) => !prev);
+    window.addEventListener('toggle-shortcuts-modal', handleToggleModal);
+    return () => window.removeEventListener('toggle-shortcuts-modal', handleToggleModal);
+  }, []);
 
   useEffect(() => {
     const handleExternalOpen = () => setIsTaskModalOpen(true);
@@ -122,7 +194,7 @@ export function TopBar({ user, onInitializeTask }: TopBarProps) {
       action?: () => void;
     }> = [];
 
-    // Quick Actions (always accessible or matched by query)
+    // Quick Actions
     const quickActions = [
       {
         id: 'act-new-task',
@@ -131,6 +203,14 @@ export function TopBar({ user, onInitializeTask }: TopBarProps) {
         subtitle: 'Create a deliverable or assignment task',
         icon: Plus,
         action: () => handleOpenTaskModal(),
+      },
+      {
+        id: 'act-shortcuts',
+        category: 'Quick Actions' as const,
+        title: 'Keyboard Shortcuts Cheatsheet (?)',
+        subtitle: 'View all CAD & studio hotkeys',
+        icon: Keyboard,
+        action: () => setIsShortcutsModalOpen(true),
       },
       {
         id: 'act-toggle-theme',
@@ -164,7 +244,7 @@ export function TopBar({ user, onInitializeTask }: TopBarProps) {
       }
     });
 
-    // Search Drawing Sheets
+    // Drawing Sheets
     const DRAWING_SHEETS = [
       { number: 'A-101', title: 'Ground Floor & Reflected Ceiling Plan', project: 'Makati Luxury Tower', code: 'PRJ-001', rev: 'REV 03' },
       { number: 'A-102', title: 'Second Floor Architectural Layout', project: 'Makati Luxury Tower', code: 'PRJ-001', rev: 'REV 02' },
@@ -187,12 +267,12 @@ export function TopBar({ user, onInitializeTask }: TopBarProps) {
           code: s.number,
           subtitle: `${s.project} [${s.code}] • ${s.rev}`,
           icon: FileText,
-          href: `/projects?sheet=${s.number}`,
+          href: `/projects?code=MT-2024`,
         });
       }
     });
 
-    // Search Projects
+    // Projects
     MOCK_PROJECTS.forEach((p) => {
       const matchName = p.name.toLowerCase().includes(q);
       const matchCode = p.code.toLowerCase().includes(q);
@@ -205,12 +285,12 @@ export function TopBar({ user, onInitializeTask }: TopBarProps) {
           code: p.code,
           subtitle: `${p.clientName || 'Studio Project'} • Phase: ${p.status}`,
           icon: FolderKanban,
-          href: '/projects',
+          href: `/projects?code=${p.code}`,
         });
       }
     });
 
-    // Search Chat Rooms & Topic Threads
+    // Chat Rooms
     const CHAT_ROOMS = [
       { id: 'thread-001', name: '[PRJ-001] Structural Coordination & Slab Review', project: 'Makati Luxury Tower' },
       { id: 'thread-002', name: '[PRJ-002] 3D Massing & Façade Material Board', project: 'BGC Cultural Pavilion' },
@@ -232,7 +312,7 @@ export function TopBar({ user, onInitializeTask }: TopBarProps) {
       }
     });
 
-    // Search Directory Contacts
+    // Directory Contacts
     const directoryItems = [
       { name: 'AMJ Structural Engineering', cat: 'Engineers', contact: 'Engr. Aris Mendoza' },
       { name: 'Pacific Glass & Aluminum Tech', cat: 'Suppliers', contact: 'Luis Tan' },
@@ -252,10 +332,10 @@ export function TopBar({ user, onInitializeTask }: TopBarProps) {
       }
     });
 
-    // Search Navigation & Modules
+    // Navigation & Modules
     const navEntries = [
       { name: 'Homepage & Workspace', href: '/dashboard', cat: 'Navigation' as const, icon: LayoutDashboard },
-      { name: 'Projects Blueprint Vault', href: '/projects', cat: 'Navigation' as const, icon: FolderKanban },
+      { name: 'Projects Blueprint Vault & RFIs', href: '/projects', cat: 'Navigation' as const, icon: FolderKanban },
       { name: 'Calendar & Google Sync', href: '/calendar', cat: 'Navigation' as const, icon: Clock },
       { name: 'Sketching Studio & Layers', href: '/sketch', cat: 'Navigation' as const, icon: PenTool },
       { name: 'Human Resources & Attendance', href: '/hr', cat: 'Navigation' as const, icon: Clock },
@@ -288,7 +368,7 @@ export function TopBar({ user, onInitializeTask }: TopBarProps) {
     }
   }, [router]);
 
-  // Keyboard shortcut listener (Cmd+K / Ctrl+K / ArrowDown / ArrowUp / Enter / Escape)
+  // Keyboard shortcut listener
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
@@ -302,6 +382,7 @@ export function TopBar({ user, onInitializeTask }: TopBarProps) {
       if (e.key === 'Escape') {
         setIsSearchOpen(false);
         setIsNotifOpen(false);
+        setIsProfileOpen(false);
       } else if (e.key === 'ArrowDown') {
         e.preventDefault();
         setSelectedIndex((prev) => (searchResults.length > 0 ? (prev + 1) % searchResults.length : 0));
@@ -338,12 +419,21 @@ export function TopBar({ user, onInitializeTask }: TopBarProps) {
     return `${timeStr} — ${dayName}, ${monthName} ${dayNum}, ${year}`;
   };
 
+  const UserRoleIcon = user?.role ? (ROLE_ICONS[user.role] || UserIcon) : UserIcon;
+
   return (
     <>
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="fixed top-20 right-6 z-[130] bg-black text-white dark:bg-white dark:text-black px-4 py-2.5 rounded-xl shadow-2xl flex items-center gap-2 text-xs font-semibold animate-in fade-in slide-in-from-top-2 duration-200">
+          <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+          <span>{toastMessage}</span>
+        </div>
+      )}
+
       <header className="w-full h-16 bg-surface-main border-b border-border-main flex items-center justify-between px-3 sm:px-6 text-text-main font-mono shrink-0 mb-6 rounded-2xl shadow-2xs relative z-40">
-        {/* Left side: Sidebar Toggle (Desktop), Studio Logo (mobile), Timestamp, and Search */}
+        {/* Left side: Sidebar Toggle, Studio Logo, Timestamp, and Search */}
         <div className="flex items-center gap-2.5 sm:gap-3 flex-1 min-w-0 max-w-2xl">
-          {/* Desktop Sidebar Toggle Button */}
           <button
             onClick={toggleSidebar}
             className="hidden md:flex items-center justify-center p-2 rounded-xl border border-border-main bg-surface-main hover:bg-surface-hover text-muted-main hover:text-text-main transition-colors cursor-pointer shrink-0 shadow-2xs"
@@ -353,7 +443,6 @@ export function TopBar({ user, onInitializeTask }: TopBarProps) {
             <PanelLeft className="w-4 h-4" />
           </button>
 
-          {/* Studio Brand & Logo (Mobile only, desktop uses centered sidebar logo) */}
           <Link href="/dashboard" className="flex md:hidden items-center gap-2 shrink-0 group">
             <Logo size={26} />
             <span className="font-bold text-xs tracking-wider uppercase text-text-main group-hover:text-accent-cyan transition-colors hidden xs:inline sm:inline">
@@ -364,13 +453,11 @@ export function TopBar({ user, onInitializeTask }: TopBarProps) {
             </span>
           </Link>
 
-          {/* Desktop live timestamp */}
           <div className="hidden lg:flex items-center gap-2 text-xs font-medium text-muted-main tracking-normal shrink-0">
             <Clock className="w-3.5 h-3.5 text-muted-main/70" />
             <span>{currentDate ? formatFullTimestamp(currentDate) : '--:--:--'}</span>
           </div>
 
-          {/* Persistent Global Search Bar Input Trigger */}
           <button
             onClick={() => setIsSearchOpen(true)}
             className="hidden md:flex items-center justify-between w-full max-w-xs px-3.5 py-1.5 rounded-xl border border-border-main bg-surface-hover/50 hover:bg-surface-hover hover:border-border-strong text-muted-main hover:text-text-main transition-all text-xs cursor-pointer"
@@ -386,12 +473,12 @@ export function TopBar({ user, onInitializeTask }: TopBarProps) {
           </button>
         </div>
 
-        {/* Right side: Initialize Task CTA, Role Badge, Notifications, Theme Switcher, Sign Out */}
-        <div className="flex items-center space-x-1.5 sm:space-x-2.5 shrink-0">
-          {/* Add Task Primary Action Button */}
+        {/* Right side Actions */}
+        <div className="flex items-center space-x-1.5 sm:space-x-2 shrink-0">
+          {/* Add Task Button */}
           <button
             onClick={handleOpenTaskModal}
-            className="px-2.5 sm:px-3.5 py-1.5 sm:py-2 bg-black text-white dark:bg-white dark:text-black font-semibold text-xs tracking-wide flex items-center gap-1.5 rounded-lg shadow-xs hover:opacity-90 active:scale-95 transition-all cursor-pointer shrink-0"
+            className="px-2.5 sm:px-3 py-1.5 bg-black text-white dark:bg-white dark:text-black font-semibold text-xs tracking-wide flex items-center gap-1.5 rounded-xl shadow-xs hover:opacity-90 active:scale-95 transition-all cursor-pointer shrink-0"
             title="Add Task"
           >
             <Plus className="w-3.5 h-3.5" />
@@ -408,6 +495,15 @@ export function TopBar({ user, onInitializeTask }: TopBarProps) {
             <span className="hidden sm:inline">Logbook</span>
           </button>
 
+          {/* Keyboard Shortcuts Trigger Button */}
+          <button
+            onClick={() => setIsShortcutsModalOpen(true)}
+            className="p-2 rounded-xl border border-border-main bg-surface-main hover:bg-surface-hover active:scale-[0.95] transition-all text-muted-main hover:text-text-main shadow-2xs cursor-pointer hidden sm:flex"
+            title="Keyboard Shortcuts Cheatsheet (?)"
+          >
+            <Keyboard className="w-4 h-4" />
+          </button>
+
           {/* Mobile search button */}
           <button
             onClick={() => setIsSearchOpen(true)}
@@ -417,17 +513,13 @@ export function TopBar({ user, onInitializeTask }: TopBarProps) {
             <Search className="w-4 h-4" />
           </button>
 
-          {/* User Role Badge */}
-          <div className="hidden lg:flex items-center">
-            <span className="bg-surface-hover border border-border-strong px-2.5 py-1 text-[11px] capitalize font-medium text-text-main rounded-lg shadow-2xs">
-              {user?.role ? user.role.replace('_', ' ') : 'Junior Architect'}
-            </span>
-          </div>
-
           {/* NOTIFICATION BELL DROPDOWN */}
-          <div className="relative">
+          <div className="relative" ref={notifMenuRef}>
             <button
-              onClick={() => setIsNotifOpen(!isNotifOpen)}
+              onClick={() => {
+                setIsNotifOpen(!isNotifOpen);
+                setIsProfileOpen(false);
+              }}
               className="p-2 rounded-xl border border-border-main bg-surface-main hover:bg-surface-hover active:scale-[0.95] transition-all text-muted-main hover:text-text-main relative shadow-2xs cursor-pointer"
               title="Notifications & Reminders"
             >
@@ -439,14 +531,6 @@ export function TopBar({ user, onInitializeTask }: TopBarProps) {
               )}
             </button>
 
-            {/* Backdrop overlay for clicking outside */}
-            {isNotifOpen && (
-              <div
-                className="fixed inset-0 z-[95]"
-                onClick={() => setIsNotifOpen(false)}
-              />
-            )}
-
             {/* Notifications Dropdown Popover */}
             {isNotifOpen && (
               <div
@@ -456,7 +540,6 @@ export function TopBar({ user, onInitializeTask }: TopBarProps) {
                     : 'bg-[#18181B] border-border-strong text-white shadow-2xl ring-1 ring-white/10'
                 }`}
               >
-                {/* Header */}
                 <div className="p-4 border-b border-border-main flex items-center justify-between bg-surface-hover/50">
                   <div className="flex items-center gap-2">
                     <h3 className="font-bold text-xs uppercase tracking-wider text-text-main">
@@ -471,14 +554,13 @@ export function TopBar({ user, onInitializeTask }: TopBarProps) {
                   {unreadCount > 0 && (
                     <button
                       onClick={handleMarkAllRead}
-                      className="text-[10px] font-semibold text-accent-cyan hover:underline"
+                      className="text-[10px] font-semibold text-accent-cyan hover:underline cursor-pointer"
                     >
                       Mark all read
                     </button>
                   )}
                 </div>
 
-                {/* Notification List */}
                 <div className="max-h-80 overflow-y-auto divide-y divide-border-main/50 bg-surface-main">
                   {notifications.map((notif) => (
                     <div
@@ -488,9 +570,7 @@ export function TopBar({ user, onInitializeTask }: TopBarProps) {
                           prev.map((n) => (n.id === notif.id ? { ...n, unread: false } : n))
                         );
                         setIsNotifOpen(false);
-                        if (notif.link) {
-                          router.push(notif.link);
-                        }
+                        if (notif.link) router.push(notif.link);
                       }}
                       className={cn(
                         "p-4 transition-all flex items-start gap-3 cursor-pointer",
@@ -498,7 +578,11 @@ export function TopBar({ user, onInitializeTask }: TopBarProps) {
                       )}
                     >
                       <div className="mt-0.5 p-2 rounded-xl border border-border-main bg-surface-hover shrink-0">
-                        {notif.type === 'message' ? (
+                        {notif.type === 'rfi' ? (
+                          <FileText className="w-4 h-4 text-rose-500" />
+                        ) : notif.type === 'hr' ? (
+                          <Clock className="w-4 h-4 text-emerald-500" />
+                        ) : notif.type === 'message' ? (
                           <MessageSquare className="w-4 h-4 text-accent-cyan" />
                         ) : (
                           <Clock className="w-4 h-4 text-amber-500" />
@@ -526,11 +610,10 @@ export function TopBar({ user, onInitializeTask }: TopBarProps) {
                   ))}
                 </div>
 
-                {/* Footer */}
                 <div className="p-3 border-t border-border-main text-center bg-surface-hover/30">
                   <button
                     onClick={() => setIsNotifOpen(false)}
-                    className="text-[10px] font-bold text-muted-main uppercase tracking-wider hover:text-text-main transition-colors"
+                    className="text-[10px] font-bold text-muted-main uppercase tracking-wider hover:text-text-main transition-colors cursor-pointer"
                   >
                     Close
                   </button>
@@ -539,10 +622,10 @@ export function TopBar({ user, onInitializeTask }: TopBarProps) {
             )}
           </div>
 
-          {/* Day / Night Theme Toggle */}
+          {/* Theme Toggle */}
           <button
             onClick={toggleThemeMode}
-            className="p-2 rounded-xl hover:bg-surface-hover transition-colors text-muted-main hover:text-text-main border border-border-main bg-surface-main shadow-2xs"
+            className="p-2 rounded-xl hover:bg-surface-hover transition-colors text-muted-main hover:text-text-main border border-border-main bg-surface-main shadow-2xs cursor-pointer"
             title="Toggle Day/Night Mode"
           >
             {themeMode === 'light' ? (
@@ -552,17 +635,124 @@ export function TopBar({ user, onInitializeTask }: TopBarProps) {
             )}
           </button>
 
-          {/* Sign Out */}
-          <button
-            onClick={() => {
-              localStorage.removeItem('arkipelago_user');
-              router.push('/login');
-            }}
-            className="p-2 text-muted-main hover:text-accent-red transition-colors rounded-xl border border-border-main bg-surface-main hover:bg-surface-hover shadow-2xs"
-            title="Sign Out"
-          >
-            <LogOut className="w-4 h-4" />
-          </button>
+          {/* USER PROFILE & 1-CLICK ROLE SWITCHER DROPDOWN */}
+          <div className="relative" ref={profileMenuRef}>
+            <button
+              onClick={() => {
+                setIsProfileOpen(!isProfileOpen);
+                setIsNotifOpen(false);
+              }}
+              className="flex items-center gap-2 p-1 sm:pl-2.5 sm:pr-2 rounded-xl border border-border-main bg-surface-main hover:bg-surface-hover transition-all text-text-main cursor-pointer shadow-2xs group"
+              title="Account & Role Switcher"
+            >
+              <div className="w-6 h-6 rounded-lg bg-surface-hover border border-border-main flex items-center justify-center font-bold text-[10px] text-text-main shrink-0">
+                {user?.name ? user.name.charAt(0) : 'A'}
+              </div>
+              <div className="hidden lg:flex flex-col text-left">
+                <span className="text-xs font-bold text-text-main truncate max-w-[110px] leading-tight">
+                  {user?.name ? user.name.split(' ')[0] : 'Architect'}
+                </span>
+                <span className="text-[9px] text-muted-main font-mono capitalize">
+                  {user?.role ? user.role.replace('_', ' ') : 'Role'}
+                </span>
+              </div>
+              <ChevronDown className="w-3.5 h-3.5 text-muted-main group-hover:text-text-main transition-transform" />
+            </button>
+
+            {/* Profile & Role Switcher Menu */}
+            {isProfileOpen && (
+              <div className="absolute right-0 top-full mt-3 w-72 rounded-2xl border border-border-strong bg-surface-main shadow-2xl p-3 z-[110] space-y-3 font-mono animate-in fade-in duration-100">
+                {/* User Info Header */}
+                <div className="p-2.5 rounded-xl bg-surface-hover/50 border border-border-main flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-black text-white dark:bg-white dark:text-black flex items-center justify-center font-bold text-sm shrink-0">
+                    {user?.name ? user.name.charAt(0) : 'A'}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-bold text-xs text-text-main truncate">
+                      {user?.name || 'Studio Member'}
+                    </p>
+                    <p className="text-[10px] text-muted-main truncate">
+                      {user?.email || 'architect@arkipelago.ph'}
+                    </p>
+                    <span className="inline-block mt-1 text-[9px] font-bold px-1.5 py-0.2 rounded bg-accent-cyan/15 text-accent-cyan uppercase">
+                      {user?.role ? user.role.replace(/_/g, ' ') : 'Staff'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* 1-Click Role Switcher */}
+                <div className="space-y-1.5 pt-1 border-t border-border-main/50">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-main block px-1">
+                    1-Click Role Switcher
+                  </span>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {([
+                      { role: 'partner', label: 'Partner', icon: Shield },
+                      { role: 'senior_architect', label: 'Senior Lead', icon: Users },
+                      { role: 'junior_architect', label: 'Junior Staff', icon: UserIcon },
+                      { role: 'contractor', label: 'Contractor', icon: Wrench },
+                    ] as const).map((r) => {
+                      const Icon = r.icon;
+                      const isCurrent = user?.role === r.role;
+                      return (
+                        <button
+                          key={r.role}
+                          type="button"
+                          onClick={() => handleQuickSwitchRole(r.role)}
+                          className={cn(
+                            'p-2 rounded-xl text-[11px] font-semibold text-left transition-colors flex items-center justify-between cursor-pointer border',
+                            isCurrent
+                              ? 'bg-black text-white dark:bg-white dark:text-black font-bold border-transparent shadow-xs'
+                              : 'bg-surface-hover/60 hover:bg-surface-hover text-muted-main hover:text-text-main border-border-main/60'
+                          )}
+                        >
+                          <div className="flex items-center gap-1.5 truncate">
+                            <Icon className="w-3.5 h-3.5 shrink-0" />
+                            <span className="truncate">{r.label}</span>
+                          </div>
+                          {isCurrent && <Check className="w-3 h-3 shrink-0" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Direct Action Links */}
+                <div className="space-y-1 pt-1 border-t border-border-main/50 text-xs">
+                  <Link
+                    href="/settings"
+                    onClick={() => setIsProfileOpen(false)}
+                    className="w-full p-2 rounded-xl hover:bg-surface-hover flex items-center gap-2 text-text-main cursor-pointer"
+                  >
+                    <Settings className="w-4 h-4 text-muted-main" />
+                    <span>Profile & Integration Settings</span>
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsProfileOpen(false);
+                      setIsShortcutsModalOpen(true);
+                    }}
+                    className="w-full p-2 rounded-xl hover:bg-surface-hover flex items-center gap-2 text-text-main cursor-pointer text-left"
+                  >
+                    <Keyboard className="w-4 h-4 text-muted-main" />
+                    <span>Keyboard Shortcuts (?)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      localStorage.removeItem('arkipelago_user');
+                      router.push('/login');
+                    }}
+                    className="w-full p-2 rounded-xl hover:bg-rose-500/10 flex items-center gap-2 text-rose-500 cursor-pointer text-left"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    <span>Sign Out</span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 
@@ -576,7 +766,6 @@ export function TopBar({ user, onInitializeTask }: TopBarProps) {
             className="bg-surface-main border border-border-strong w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden font-mono text-text-main cursor-default"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Search Input Bar */}
             <div className="flex items-center px-4 py-3.5 border-b border-border-main gap-3 bg-surface-hover/40">
               <Search className="w-5 h-5 text-muted-main shrink-0" />
               <input
@@ -598,13 +787,12 @@ export function TopBar({ user, onInitializeTask }: TopBarProps) {
               </button>
             </div>
 
-            {/* Results Body */}
             <div className="max-h-96 overflow-y-auto p-2 space-y-1">
               {searchResults.length === 0 ? (
                 <div className="py-8 text-center text-xs text-muted-main space-y-2">
                   <p>No matching results found for &ldquo;{searchQuery}&rdquo;</p>
                   <p className="text-[11px] text-muted-main/70">
-                    Try searching for sheet numbers like &ldquo;A-101&rdquo;, project codes like &ldquo;PRJ-001&rdquo;, or &ldquo;Timer&rdquo;
+                    Try searching for sheet numbers like &ldquo;A-101&rdquo;, project codes like &ldquo;MT-2024&rdquo;, or &ldquo;Timer&rdquo;
                   </p>
                 </div>
               ) : (
@@ -676,7 +864,6 @@ export function TopBar({ user, onInitializeTask }: TopBarProps) {
               )}
             </div>
 
-            {/* Modal Footer Key Navigation Helper */}
             <div className="px-4 py-2.5 border-t border-border-main bg-surface-hover/30 text-[10px] text-muted-main flex flex-wrap items-center justify-between gap-2 font-sans">
               <div className="flex items-center gap-3">
                 <span className="flex items-center gap-1">
@@ -701,6 +888,12 @@ export function TopBar({ user, onInitializeTask }: TopBarProps) {
         </div>
       )}
 
+      {/* Global Keyboard Shortcuts Modal */}
+      <KeyboardShortcutsModal
+        isOpen={isShortcutsModalOpen}
+        onClose={() => setIsShortcutsModalOpen(false)}
+      />
+
       {/* Global Task Initialization Modal */}
       <TaskInitializationModal
         isOpen={isTaskModalOpen}
@@ -720,3 +913,4 @@ export function TopBar({ user, onInitializeTask }: TopBarProps) {
     </>
   );
 }
+export default TopBar;

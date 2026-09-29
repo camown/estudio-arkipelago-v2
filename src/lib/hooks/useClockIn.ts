@@ -104,7 +104,7 @@ export function useClockIn() {
   const [startTime, setStartTime] = useState<Date | null>(() => getStoredClockInState(userId).startTime);
   const [elapsed, setElapsed] = useState<number>(() => getStoredClockInState(userId).elapsed);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(() => getStoredClockInState(userId).selectedProjectId);
-  const [todayEntries, setTodayEntries] = useState<TimeEntry[]>(getTodayEntries);
+  const [todayEntries, setTodayEntries] = useState<TimeEntry[]>([]);
 
   const [prevUserId, setPrevUserId] = useState<string | undefined>(userId);
   if (userId !== prevUserId) {
@@ -114,13 +114,15 @@ export function useClockIn() {
     setStartTime(stored.startTime);
     setElapsed(stored.elapsed);
     setSelectedProjectId(stored.selectedProjectId);
-    setTodayEntries(getTodayEntries());
   }
 
   const refreshTodayEntries = useCallback(() => {
     setTodayEntries(getTodayEntries());
   }, [getTodayEntries]);
 
+  useEffect(() => {
+    setTodayEntries(getTodayEntries());
+  }, [getTodayEntries, userId]);
   // Tick elapsed duration every second while clocked in
   useEffect(() => {
     if (!isClocked || !startTime) {

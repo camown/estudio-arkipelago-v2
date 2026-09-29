@@ -25,7 +25,7 @@ import {
   ExternalLink,
   Check,
   CheckCircle2,
-  Sparkles,
+  Info,
   Smile,
   Heart,
   MessageCircle,
@@ -1227,39 +1227,60 @@ export default function ChatPage() {
         </div>
       )}
 
-      {/* Top Main Tabs Header */}
-      <div className="flex border-b border-border-main mb-4">
-        <button
-          className={cn(
-            'px-6 py-3 font-semibold text-xs tracking-wide border-b-2 -mb-[2px] transition-colors cursor-pointer',
-            activeTab === 'wall'
-              ? 'border-text-main text-text-main font-bold'
-              : 'border-transparent text-muted-main hover:text-text-main'
-          )}
-          onClick={() => {
-            setActiveTab('wall');
-            window.history.replaceState(null, '', '/chat?tab=wall');
-          }}
-        >
-          Estudio Wall
-        </button>
-        <button
-          className={cn(
-            'px-6 py-3 font-semibold text-xs tracking-wide border-b-2 -mb-[2px] transition-colors flex items-center gap-2 cursor-pointer',
-            activeTab === 'chat'
-              ? 'border-text-main text-text-main font-bold'
-              : 'border-transparent text-muted-main hover:text-text-main'
-          )}
-          onClick={() => {
-            setActiveTab('chat');
-            window.history.replaceState(null, '', '/chat?tab=chat');
-          }}
-        >
-          <span>Chat & Threads</span>
-          <span className="bg-surface-hover text-text-main px-2 py-0.5 rounded-full text-[10px] font-semibold border border-border-main">
-            {threads.length} topics
-          </span>
-        </button>
+      {/* Top Header & Tabs Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-border-main/50 pb-3 mb-4 gap-3">
+        <div className="flex flex-wrap items-center gap-3 sm:gap-6">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-accent-cyan/10 border border-accent-cyan/20 flex items-center justify-center text-accent-cyan shrink-0">
+              <MessageSquare className="w-4 h-4" />
+            </div>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text-main font-sans">
+              Studio Communications
+            </h1>
+            <span className="text-[11px] font-mono px-2.5 py-0.5 rounded-full bg-surface-hover text-muted-main border border-border-main hidden sm:inline-block">
+              {activeTab === 'wall' ? 'Wall Feed' : `${threads.length} Threads`}
+            </span>
+          </div>
+
+          <div className="flex items-center space-x-1 sm:space-x-2 border-l border-border-main/50 pl-3 sm:pl-5">
+            <button
+              className={cn(
+                'px-3 py-1.5 rounded-lg text-xs font-semibold tracking-wide transition-all cursor-pointer',
+                activeTab === 'wall'
+                  ? 'bg-black text-white dark:bg-white dark:text-black font-bold shadow-2xs'
+                  : 'text-muted-main hover:text-text-main hover:bg-surface-hover/70'
+              )}
+              onClick={() => {
+                setActiveTab('wall');
+                window.history.replaceState(null, '', '/chat?tab=wall');
+              }}
+            >
+              Estudio Wall
+            </button>
+            <button
+              className={cn(
+                'px-3 py-1.5 rounded-lg text-xs font-semibold tracking-wide transition-all flex items-center gap-1.5 cursor-pointer',
+                activeTab === 'chat'
+                  ? 'bg-black text-white dark:bg-white dark:text-black font-bold shadow-2xs'
+                  : 'text-muted-main hover:text-text-main hover:bg-surface-hover/70'
+              )}
+              onClick={() => {
+                setActiveTab('chat');
+                window.history.replaceState(null, '', '/chat?tab=chat');
+              }}
+            >
+              <span>Chat & Threads</span>
+              <span className={cn(
+                'px-1.5 py-0.2 rounded-full text-[10px] font-mono',
+                activeTab === 'chat'
+                  ? 'bg-white/20 dark:bg-black/20 text-current'
+                  : 'bg-surface-hover text-muted-main border border-border-main/50'
+              )}>
+                {threads.length}
+              </span>
+            </button>
+          </div>
+        </div>
       </div>
 
       <div className="flex-1 overflow-hidden">
@@ -1379,7 +1400,10 @@ export default function ChatPage() {
             {/* Wall Posts Stream */}
             <div className="space-y-4">
               {posts.map((post) => {
-                const isAuthor = user?.id === post.authorId || user?.name === post.authorName;
+                const isAuthor = Boolean(
+                  (user?.id && post.authorId && user.id === post.authorId) ||
+                  (user?.name && post.authorName && user.name.trim().toLowerCase() === post.authorName.trim().toLowerCase())
+                );
                 const canManage = isAuthor || user?.role === 'partner';
                 const isLiked = user?.id ? post.likedBy?.includes(user.id) : false;
                 const likeCount = post.likes ?? (post.likedBy?.length || 0);
@@ -1477,24 +1501,30 @@ export default function ChatPage() {
                             {canManage && (
                               <>
                                 <div className="border-t border-border-main my-1" />
+                                {isAuthor && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setEditingPostId(post.id);
+                                      setEditingPostContent(post.content);
+                                      setPostMenuOpenId(null);
+                                    }}
+                                    className="w-full px-3 py-2 text-left hover:bg-surface-hover flex items-center gap-2 text-text-main cursor-pointer"
+                                  >
+                                    <Edit3 className="w-3.5 h-3.5 text-muted-main" />
+                                    <span>Edit Post</span>
+                                  </button>
+                                )}
                                 <button
                                   type="button"
-                                  onClick={() => {
-                                    setEditingPostId(post.id);
-                                    setEditingPostContent(post.content);
-                                    setPostMenuOpenId(null);
-                                  }}
-                                  className="w-full px-3 py-2 text-left hover:bg-surface-hover flex items-center gap-2 text-text-main cursor-pointer"
-                                >
-                                  <Edit3 className="w-3.5 h-3.5 text-muted-main" />
-                                  <span>Edit Post</span>
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => {
+                                  onClick={async () => {
                                     if (confirm('Are you sure you want to delete this wall post?')) {
-                                      deletePost(post.id);
-                                      showToast('Wall post deleted');
+                                      const success = await deletePost(post.id, user);
+                                      if (success !== false) {
+                                        showToast('Wall post deleted');
+                                      } else {
+                                        showToast('Unauthorized to delete this post');
+                                      }
                                     }
                                     setPostMenuOpenId(null);
                                   }}
@@ -1626,7 +1656,11 @@ export default function ChatPage() {
                         {comments.length > 0 && (
                           <div className="space-y-2.5">
                             {comments.map((comment) => {
-                              const canDeleteComment = user?.id === comment.authorId || user?.name === comment.authorName || user?.role === 'partner';
+                              const canDeleteComment = Boolean(
+                                (user?.id && comment.authorId && user.id === comment.authorId) ||
+                                (user?.name && comment.authorName && user.name.trim().toLowerCase() === comment.authorName.trim().toLowerCase()) ||
+                                user?.role === 'partner'
+                              );
                               return (
                                 <div key={comment.id} className="flex items-start justify-between gap-2.5 bg-surface-hover/30 rounded-xl p-3 border border-border-main/40 group">
                                   <div className="flex items-start gap-2.5">
@@ -1650,9 +1684,13 @@ export default function ChatPage() {
                                   {canDeleteComment && (
                                     <button
                                       type="button"
-                                      onClick={() => {
-                                        deleteComment(post.id, comment.id);
-                                        showToast('Reply deleted');
+                                      onClick={async () => {
+                                        const success = await deleteComment(post.id, comment.id, user);
+                                        if (success !== false) {
+                                          showToast('Reply deleted');
+                                        } else {
+                                          showToast('Unauthorized to delete this reply');
+                                        }
                                       }}
                                       className="opacity-0 group-hover:opacity-100 p-1 text-muted-main hover:text-red-500 rounded transition-opacity cursor-pointer"
                                       title="Delete reply"
@@ -2114,7 +2152,7 @@ export default function ChatPage() {
                         return (
                           <div key={msg.id} className="w-full flex items-center justify-center my-3">
                             <div className="px-3.5 py-1.5 rounded-full bg-surface-hover border border-border-main text-[11px] text-muted-main font-semibold flex items-center gap-2 shadow-2xs">
-                              <Sparkles className="w-3.5 h-3.5 text-accent-cyan" />
+                              <Info className="w-3.5 h-3.5 text-muted-main" />
                               <span>{msg.text}</span>
                               <span className="text-[10px] font-mono opacity-60">· {msg.timestamp}</span>
                             </div>

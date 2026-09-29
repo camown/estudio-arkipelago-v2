@@ -1,20 +1,30 @@
 'use client';
 
-import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { cn } from '@/lib/utils';
 import { 
-  Plus, Search, Edit3, 
+  Plus, Search, 
   X, MessageSquare, 
   PenTool, FileText,
   HardHat, UploadCloud, CheckCircle2,
   LayoutGrid, List, Columns, SlidersHorizontal,
-  FolderOpen, FolderKanban
+  FolderOpen, FolderKanban, Folder, ChevronRight,
+  HelpCircle, AlertTriangle, DollarSign,
+  Clock, Check, Stamp, Download
 } from 'lucide-react';
-import { Project } from '@/types';
-import { useTasks } from '@/lib/hooks/useTasks';
+import { 
+  Project, 
+  RFIItem, 
+  SubmittalItem, 
+  RFIStatus, 
+  RFICategory, 
+  RFIPriority, 
+  SubmittalStatus, 
+  SubmittalType 
+} from '@/types';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { uploadStudioAsset } from '@/lib/supabase/storage';
 import { ConstructionAdminSection } from '@/components/projects/ConstructionAdminSection';
@@ -143,8 +153,153 @@ const INITIAL_DRAWINGS: DrawingSheet[] = [
   },
 ];
 
+const INITIAL_RFIS: RFIItem[] = [
+  {
+    id: 'rfi-001',
+    rfiNumber: 'RFI-MT2024-001',
+    projectId: 'proj-002',
+    projectCode: 'MT-2024',
+    subject: 'Cantilever Shear Wall Rebar Clearance on Grid 4-C',
+    category: 'STRUCTURAL',
+    priority: 'HIGH',
+    status: 'OPEN',
+    question: 'Rebar spacing between the main 32mm shear wall reinforcement and post-tensioned beam tendons conflicts with the MEP 4-inch sleeve duct on Level 14. Requesting engineer clearance for sleeve relocation 150mm north.',
+    submittedBy: 'Foreman Danilo (Site Contractor)',
+    assignedTo: 'Engr. Roberto Cruz / Arch. Carlos Mendoza',
+    dueDate: '2026-10-02',
+    createdAt: '2026-09-26',
+    costImpact: false,
+    scheduleImpact: true,
+    attachmentUrl: 'https://images.unsplash.com/photo-1541888946425-d0fbb18f15f7?w=600&q=80',
+    attachmentTitle: 'Shear Wall Rebar Detail - Section 4-C',
+  },
+  {
+    id: 'rfi-002',
+    rfiNumber: 'RFI-MT2024-002',
+    projectId: 'proj-002',
+    projectCode: 'MT-2024',
+    subject: 'Curtain Wall Mullion Expansion Joint Anchor Depth',
+    category: 'ARCHITECTURAL',
+    priority: 'MEDIUM',
+    status: 'RESPONDED',
+    question: 'Anchor embedment depth for south facade double-glazed curtain wall requires 120mm into perimeter beam edge. Architectural detail specifies 100mm. Please clarify if 120mm is approved without structural rebars clash.',
+    response: 'Approved for 120mm embedment depth. Structural rebar clearance verified with Engr. Cruz. Stamped revision issued on Sheet A-201.',
+    submittedBy: 'Pacific Glass & Aluminum Tech',
+    assignedTo: 'Arch. Carlos Mendoza',
+    dueDate: '2026-09-28',
+    createdAt: '2026-09-22',
+    respondedAt: '2026-09-24',
+    costImpact: false,
+    scheduleImpact: false,
+    attachmentUrl: 'https://images.unsplash.com/photo-1503387762-592deb58ef4e?w=600&q=80',
+    attachmentTitle: 'Mullion Anchor Detail A-201',
+  },
+  {
+    id: 'rfi-003',
+    rfiNumber: 'RFI-CV2024-001',
+    projectId: 'proj-001',
+    projectCode: 'CV-2024',
+    subject: 'Italian Carrara Marble Subfloor Moisture Barrier Spec',
+    category: 'FINISHES',
+    priority: 'MEDIUM',
+    status: 'OPEN',
+    question: 'Requesting confirmation on waterproof penetrating sealant brand and acoustic underlay matting thickness for 2nd-floor master suite Carrara marble flooring.',
+    submittedBy: 'BuildCore General Contractors',
+    assignedTo: 'Arch. Leandro Locsin',
+    dueDate: '2026-10-05',
+    createdAt: '2026-09-25',
+    costImpact: true,
+    scheduleImpact: false,
+    attachmentUrl: 'https://images.unsplash.com/photo-1600566753376-12c8ab7fb75b?w=600&q=80',
+    attachmentTitle: 'Master Suite Slab Layout MAT-01',
+  },
+  {
+    id: 'rfi-004',
+    rfiNumber: 'RFI-BCP2024-001',
+    projectId: 'proj-003',
+    projectCode: 'BCP-2024',
+    subject: 'Parametric Roof Cast Steel Node Welding Inspection',
+    category: 'STRUCTURAL',
+    priority: 'HIGH',
+    status: 'UNDER_REVIEW',
+    question: 'Ultrasound weld inspection protocol required for tree column cast steel nodes prior to crane lifting. Requesting approved testing laboratory certification endorsement.',
+    submittedBy: 'AMJ Structural Engineering',
+    assignedTo: 'Arch. Sofia Reyes',
+    dueDate: '2026-10-01',
+    createdAt: '2026-09-24',
+    costImpact: false,
+    scheduleImpact: true,
+    attachmentUrl: 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=600&q=80',
+    attachmentTitle: 'Node Detail S-101',
+  },
+];
+
+const INITIAL_SUBMITTALS: SubmittalItem[] = [
+  {
+    id: 'sub-001',
+    submittalNumber: 'SUB-MT2024-001',
+    projectId: 'proj-002',
+    projectCode: 'MT-2024',
+    title: 'Curtain Wall Double-Glazed Thermal Break Unit Sample',
+    specSection: '08 44 00 - Curtain Wall & Glazed Assemblies',
+    type: 'MATERIAL_SAMPLE',
+    status: 'UNDER_REVIEW',
+    submittedBy: 'Pacific Glass & Aluminum Tech',
+    sampleDate: '2026-09-22',
+    createdAt: '2026-09-22',
+    previewUrl: 'https://images.unsplash.com/photo-1503387762-592deb58ef4e?w=600&q=80',
+  },
+  {
+    id: 'sub-002',
+    submittalNumber: 'SUB-MT2024-002',
+    projectId: 'proj-002',
+    projectCode: 'MT-2024',
+    title: 'Post-Tensioned Tendon Anchor Shop Drawings',
+    specSection: '03 38 00 - Post-Tensioned Concrete',
+    type: 'SHOP_DRAWING',
+    status: 'APPROVED',
+    submittedBy: 'Prime Builders PH',
+    reviewedBy: 'Arch. Carlos Mendoza',
+    actionNotes: 'Approved as submitted. Rebar tie clearances verified with Rev 02 drawings.',
+    sampleDate: '2026-09-18',
+    createdAt: '2026-09-18',
+    previewUrl: 'https://images.unsplash.com/photo-1541888946425-d0fbb18f15f7?w=600&q=80',
+  },
+  {
+    id: 'sub-003',
+    submittalNumber: 'SUB-CV2024-001',
+    projectId: 'proj-001',
+    projectCode: 'CV-2024',
+    title: 'Honed Italian Carrara Marble 20mm Slab Sample',
+    specSection: '09 30 33 - Stone Tiling & Slabs',
+    type: 'MATERIAL_SAMPLE',
+    status: 'APPROVED',
+    submittedBy: 'MarbleStone Imports',
+    reviewedBy: 'Arch. Leandro Locsin',
+    actionNotes: 'Approved bookmatched veining sample for foyer and master bath.',
+    sampleDate: '2026-09-20',
+    createdAt: '2026-09-20',
+    previewUrl: 'https://images.unsplash.com/photo-1600566753376-12c8ab7fb75b?w=600&q=80',
+  },
+  {
+    id: 'sub-004',
+    submittalNumber: 'SUB-BCP2024-001',
+    projectId: 'proj-003',
+    projectCode: 'BCP-2024',
+    title: 'Acoustic Baffle Perforated Timber Product Data',
+    specSection: '09 84 00 - Acoustic Room Components',
+    type: 'PRODUCT_DATA',
+    status: 'REVISE_RESUBMIT',
+    submittedBy: 'Acoustic Arts Ltd',
+    reviewedBy: 'Arch. Sofia Reyes',
+    actionNotes: 'Resubmit with certified Class A fire rating test certificate (ASTM E84).',
+    sampleDate: '2026-09-15',
+    createdAt: '2026-09-15',
+    previewUrl: 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=600&q=80',
+  },
+];
+
 const INITIAL_ENRICHED_PROJECTS: EnrichedProject[] = [
-  // 1. NEW INQUIRIES
   {
     id: 'proj-006',
     name: 'Oak Street Residence',
@@ -181,8 +336,6 @@ const INITIAL_ENRICHED_PROJECTS: EnrichedProject[] = [
     heroImage: 'https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=800&q=80',
     folderCategory: 'IMPORTANT',
   },
-
-  // 2. ACTIVE DESIGN
   {
     id: 'proj-008',
     name: 'Smith Residence',
@@ -237,8 +390,6 @@ const INITIAL_ENRICHED_PROJECTS: EnrichedProject[] = [
     heroImage: 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=800&q=80',
     folderCategory: 'DRAFTS',
   },
-
-  // 3. DOCUMENTATION
   {
     id: 'proj-003',
     name: 'Riverside Office & Pavilion',
@@ -275,8 +426,6 @@ const INITIAL_ENRICHED_PROJECTS: EnrichedProject[] = [
     heroImage: 'https://images.unsplash.com/photo-1600585154526-990dced4db0d?w=800&q=80',
     folderCategory: 'REVIEWS',
   },
-
-  // 4. CONSTRUCTION
   {
     id: 'proj-011',
     name: 'Hilltop Residence',
@@ -331,8 +480,6 @@ const INITIAL_ENRICHED_PROJECTS: EnrichedProject[] = [
     heroImage: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800&q=80',
     folderCategory: 'IN_PROGRESS',
   },
-
-  // 5. ON HOLD
   {
     id: 'proj-013',
     name: 'Sunset Pavilion',
@@ -392,12 +539,11 @@ const INITIAL_ENRICHED_PROJECTS: EnrichedProject[] = [
 export default function ProjectsPage() {
   const router = useRouter();
   const { user } = useAuth();
-  const { tasks } = useTasks();
 
   const isContractor = user?.role === 'contractor';
   const assignedCodes = useMemo(() => user?.assignedProjectCodes || [], [user?.assignedProjectCodes]);
 
-  // View mode and filters (Default to BOARD / Pipeline view matching Image 2!)
+  // View mode and filters
   const [viewMode, setViewMode] = useState<'BOARD' | 'GRID' | 'TABLE'>('BOARD');
   const [statusFilter, setStatusFilter] = useState<'ALL' | ProjectStage>('ALL');
   const [sortBy, setSortBy] = useState<'UPDATED' | 'CODE' | 'BUDGET' | 'NAME'>('UPDATED');
@@ -410,7 +556,8 @@ export default function ProjectsPage() {
   // Modals state
   const [isAddFolderModalOpen, setIsAddFolderModalOpen] = useState(false);
   const [isAddProjectModalOpen, setIsAddProjectModalOpen] = useState(false);
-  const [isEditFoldersModalOpen, setIsEditFoldersModalOpen] = useState(false);
+  const [isCreateRFIModalOpen, setIsCreateRFIModalOpen] = useState(false);
+  const [isCreateSubmittalModalOpen, setIsCreateSubmittalModalOpen] = useState(false);
 
   // Projects list
   const [projectsList, setProjectsList] = useState<EnrichedProject[]>(INITIAL_ENRICHED_PROJECTS);
@@ -420,8 +567,7 @@ export default function ProjectsPage() {
     return projectsList.filter((p) => assignedCodes.includes(p.code));
   }, [isContractor, assignedCodes, projectsList]);
 
-  // Active working project context
-  const [workingProject, setWorkingProject] = useState<string>('proj-002');
+  // Active working project context & Project Detail Modal
   const [selectedProjectForDetail, setSelectedProjectForDetail] = useState<EnrichedProject | null>(null);
   const [activeDetailTab, setActiveDetailTab] = useState<'DRAWINGS' | 'CA_ADMIN' | 'PRE_DESIGN' | 'CONTRACTS' | 'MINUTES'>('DRAWINGS');
 
@@ -446,7 +592,35 @@ export default function ProjectsPage() {
   const [isUploadingSheet, setIsUploadingSheet] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Form states
+  // RFI & Submittal State
+  const [rfis, setRfis] = useState<RFIItem[]>(INITIAL_RFIS);
+  const [submittals, setSubmittals] = useState<SubmittalItem[]>(INITIAL_SUBMITTALS);
+  const [rfiStatusFilter, setRfiStatusFilter] = useState<'ALL' | RFIStatus>('ALL');
+  const [rfiCategoryFilter, setRfiCategoryFilter] = useState<'ALL' | RFICategory>('ALL');
+  const [expandedRfiId, setExpandedRfiId] = useState<string | null>(null);
+  const [rfiResponseInputs, setRfiResponseInputs] = useState<Record<string, string>>({});
+
+  // Submittal Filters & Review State
+  const [submittalTypeFilter, setSubmittalTypeFilter] = useState<'ALL' | SubmittalType>('ALL');
+  const [submittalStatusFilter, setSubmittalStatusFilter] = useState<'ALL' | SubmittalStatus>('ALL');
+  const [expandedSubmittalId, setExpandedSubmittalId] = useState<string | null>(null);
+  const [submittalReviewNotes, setSubmittalReviewNotes] = useState<Record<string, string>>({});
+
+  // New RFI Form
+  const [newRFISubject, setNewRFISubject] = useState('');
+  const [newRFICategory, setNewRFICategory] = useState<RFICategory>('STRUCTURAL');
+  const [newRFIPriority, setNewRFIPriority] = useState<RFIPriority>('MEDIUM');
+  const [newRFIQuestion, setNewRFIQuestion] = useState('');
+  const [newRFIDueDate, setNewRFIDueDate] = useState('2026-10-05');
+  const [newRFICostImpact, setNewRFICostImpact] = useState(false);
+  const [newRFIScheduleImpact, setNewRFIScheduleImpact] = useState(false);
+
+  // New Submittal Form
+  const [newSubmittalTitle, setNewSubmittalTitle] = useState('');
+  const [newSubmittalSpec, setNewSubmittalSpec] = useState('08 44 00 - Curtain Wall & Glazing');
+  const [newSubmittalType, setNewSubmittalType] = useState<SubmittalType>('MATERIAL_SAMPLE');
+
+  // New Project Form states
   const [newProjectName, setNewProjectName] = useState('');
   const [newProjectCode, setNewProjectCode] = useState('');
   const [newProjectClient, setNewProjectClient] = useState('');
@@ -461,6 +635,61 @@ export default function ProjectsPage() {
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3500);
+  };
+
+  // Export Projects to CSV
+  const exportProjectsToCSV = () => {
+    const headers = ['Project Code', 'Project Name', 'Client', 'Location', 'Stage', 'Budget', 'Progress (%)', 'Sheet Count'];
+    const rows = filteredProjects.map((p) => [
+      p.code,
+      `"${p.name.replace(/"/g, '""')}"`,
+      `"${(p.clientName || '').replace(/"/g, '""')}"`,
+      `"${(p.location || '').replace(/"/g, '""')}"`,
+      p.stage || 'DESIGN',
+      `"${p.budget || '$1.0M'}"`,
+      p.progress || 0,
+      p.sheetCount || 0,
+    ]);
+
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `estudio_projects_ledger_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast('✓ Project ledger exported to CSV!');
+  };
+
+  // Export Project RFIs to CSV
+  const exportRFIsToCSV = () => {
+    if (!selectedProjectForDetail) return;
+    const projectRfisList = rfis.filter((r) => r.projectCode === selectedProjectForDetail.code);
+    const headers = ['RFI Number', 'Project Code', 'Subject', 'Category', 'Priority', 'Status', 'Submitted By', 'Due Date', 'Cost Impact', 'Schedule Impact', 'Response'];
+    const rows = projectRfisList.map((r) => [
+      r.rfiNumber,
+      r.projectCode || selectedProjectForDetail.code,
+      `"${(r.subject || r.title || '').replace(/"/g, '""')}"`,
+      r.category || 'ARCHITECTURAL',
+      r.priority || 'MEDIUM',
+      r.status,
+      `"${(r.submittedBy || r.assignedTo || '').replace(/"/g, '""')}"`,
+      r.dueDate || '',
+      r.costImpact ? 'YES' : 'NO',
+      r.scheduleImpact ? 'YES' : 'NO',
+      `"${(r.response || '').replace(/"/g, '""')}"`,
+    ]);
+
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `estudio_rfis_${selectedProjectForDetail.code}_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast(`✓ RFIs for ${selectedProjectForDetail.code} exported to CSV!`);
   };
 
   // Close filter popover on outside click
@@ -478,17 +707,8 @@ export default function ProjectsPage() {
   const filteredProjects = useMemo(() => {
     return visibleProjects
       .filter((project) => {
-        // Stage status filter
-        if (statusFilter !== 'ALL' && project.stage !== statusFilter) {
-          return false;
-        }
-
-        // Folder filter
-        if (activeFolderFilter && project.folderCategory !== activeFolderFilter) {
-          return false;
-        }
-
-        // Search query
+        if (statusFilter !== 'ALL' && project.stage !== statusFilter) return false;
+        if (activeFolderFilter && project.folderCategory !== activeFolderFilter) return false;
         if (searchQuery.trim()) {
           const q = searchQuery.toLowerCase();
           const matchName = project.name.toLowerCase().includes(q);
@@ -498,7 +718,6 @@ export default function ProjectsPage() {
           const matchPhase = project.phase?.toLowerCase().includes(q) || false;
           return matchName || matchCode || matchClient || matchLoc || matchPhase;
         }
-
         return true;
       })
       .sort((a, b) => {
@@ -519,12 +738,47 @@ export default function ProjectsPage() {
       if (match) {
         const timer = setTimeout(() => {
           setSelectedProjectForDetail(match);
-          setWorkingProject(match.id);
         }, 0);
         return () => clearTimeout(timer);
       }
     }
   }, [visibleProjects]);
+
+  // Universal Escape Key Handler
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (isCreateRFIModalOpen) {
+          setIsCreateRFIModalOpen(false);
+        } else if (isCreateSubmittalModalOpen) {
+          setIsCreateSubmittalModalOpen(false);
+        } else if (isUploadSheetModalOpen) {
+          setIsUploadSheetModalOpen(false);
+        } else if (isAddProjectModalOpen) {
+          setIsAddProjectModalOpen(false);
+        } else if (isAddFolderModalOpen) {
+          setIsAddFolderModalOpen(false);
+        } else if (isFilterPopoverOpen) {
+          setIsFilterPopoverOpen(false);
+        } else if (selectedProjectForDetail) {
+          setSelectedProjectForDetail(null);
+        } else if (activeFolderFilter) {
+          setActiveFolderFilter(null);
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [
+    isCreateRFIModalOpen,
+    isCreateSubmittalModalOpen,
+    isUploadSheetModalOpen,
+    isAddProjectModalOpen,
+    isAddFolderModalOpen,
+    isFilterPopoverOpen,
+    selectedProjectForDetail,
+    activeFolderFilter
+  ]);
 
   // Handle Sheet File Selection
   const handleSheetFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -546,7 +800,7 @@ export default function ProjectsPage() {
     setNewSheetFileUrl(objectUrl);
   };
 
-  // Submit Upload Drawing Sheet to Supabase Storage & State
+  // Submit Upload Drawing Sheet
   const handleSubmitNewSheet = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newSheetNumber.trim() || !newSheetTitle.trim() || !selectedProjectForDetail) {
@@ -597,15 +851,129 @@ export default function ProjectsPage() {
   };
 
   // Redline in Sketch Studio link
-  const handleRedlineInSketch = (sheet: DrawingSheet) => {
+  const handleRedlineInSketch = (sheet: DrawingSheet | { previewUrl: string; sheetNumber?: string; title: string }) => {
     try {
-      localStorage.setItem('arkipelago_sketch_background', sheet.previewUrl);
-      localStorage.setItem('arkipelago_sketch_project', selectedProjectForDetail?.code || 'STUDIO');
-      localStorage.setItem('arkipelago_sketch_sheet_title', `${sheet.sheetNumber} - ${sheet.title}`);
+      localStorage.setItem('arkipelago_pending_sketch_bg', sheet.previewUrl);
+      localStorage.setItem('arkipelago_pending_sketch_title', `[${sheet.sheetNumber || 'RFI'}] ${sheet.title}`);
     } catch {
       // fallback
     }
     router.push('/sketch');
+  };
+
+  // Handle Submit New RFI
+  const handleCreateRFI = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newRFISubject.trim() || !newRFIQuestion.trim() || !selectedProjectForDetail) {
+      showToast('⚠ Subject and Contractor Question are required.');
+      return;
+    }
+
+    const nextIndex = rfis.filter((r) => r.projectCode === selectedProjectForDetail.code).length + 1;
+    const paddedIndex = String(nextIndex).padStart(3, '0');
+    const rfiNum = `RFI-${selectedProjectForDetail.code.replace(/[^A-Z0-9]/g, '')}-${paddedIndex}`;
+
+    const newRfi: RFIItem = {
+      id: `rfi-${Date.now()}`,
+      rfiNumber: rfiNum,
+      projectId: selectedProjectForDetail.id,
+      projectCode: selectedProjectForDetail.code,
+      subject: newRFISubject.trim(),
+      category: newRFICategory,
+      priority: newRFIPriority,
+      status: 'OPEN',
+      question: newRFIQuestion.trim(),
+      submittedBy: user?.name ? `${user.name} (${user.role.replace('_', ' ')})` : 'Foreman Danilo (Contractor)',
+      assignedTo: 'Studio Architect & Structural Lead',
+      dueDate: newRFIDueDate,
+      createdAt: new Date().toISOString().split('T')[0],
+      costImpact: newRFICostImpact,
+      scheduleImpact: newRFIScheduleImpact,
+      attachmentUrl: 'https://images.unsplash.com/photo-1541888946425-d0fbb18f15f7?w=600&q=80',
+      attachmentTitle: `Site Attachment for ${rfiNum}`,
+    };
+
+    setRfis((prev) => [newRfi, ...prev]);
+    setIsCreateRFIModalOpen(false);
+    setNewRFISubject('');
+    setNewRFIQuestion('');
+    setNewRFICostImpact(false);
+    setNewRFIScheduleImpact(false);
+    showToast(`✓ ${newRfi.rfiNumber} logged successfully!`);
+  };
+
+  // Handle RFI Architect Response
+  const handleRespondRFI = (rfiId: string, nextStatus: RFIStatus = 'RESPONDED') => {
+    const respText = rfiResponseInputs[rfiId];
+    if (!respText && nextStatus === 'RESPONDED') {
+      showToast('⚠ Please type an official architect response.');
+      return;
+    }
+
+    setRfis((prev) =>
+      prev.map((r) => {
+        if (r.id !== rfiId) return r;
+        return {
+          ...r,
+          response: respText || r.response,
+          status: nextStatus,
+          respondedAt: new Date().toISOString().split('T')[0],
+        };
+      })
+    );
+
+    showToast(`✓ RFI status updated to ${nextStatus}!`);
+  };
+
+  // Handle Submit New Material Submittal
+  const handleCreateSubmittal = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newSubmittalTitle.trim() || !selectedProjectForDetail) {
+      showToast('⚠ Submittal title is required.');
+      return;
+    }
+
+    const nextIndex = submittals.filter((s) => s.projectCode === selectedProjectForDetail.code).length + 1;
+    const paddedIndex = String(nextIndex).padStart(3, '0');
+    const subNum = `SUB-${selectedProjectForDetail.code.replace(/[^A-Z0-9]/g, '')}-${paddedIndex}`;
+
+    const newSub: SubmittalItem = {
+      id: `sub-${Date.now()}`,
+      submittalNumber: subNum,
+      projectId: selectedProjectForDetail.id,
+      projectCode: selectedProjectForDetail.code,
+      title: newSubmittalTitle.trim(),
+      specSection: newSubmittalSpec,
+      type: newSubmittalType,
+      status: 'SUBMITTED',
+      submittedBy: user?.name ? `${user.name} (${user.role.replace('_', ' ')})` : 'Supplier Consultant',
+      sampleDate: new Date().toISOString().split('T')[0],
+      createdAt: new Date().toISOString().split('T')[0],
+      previewUrl: 'https://images.unsplash.com/photo-1600566753376-12c8ab7fb75b?w=600&q=80',
+    };
+
+    setSubmittals((prev) => [newSub, ...prev]);
+    setIsCreateSubmittalModalOpen(false);
+    setNewSubmittalTitle('');
+    showToast(`✓ Submittal ${newSub.submittalNumber} logged for review!`);
+  };
+
+  // Handle Stamping Submittal
+  const handleStampSubmittal = (submittalId: string, newStatus: SubmittalStatus) => {
+    const notes = submittalReviewNotes[submittalId];
+    setSubmittals((prev) =>
+      prev.map((s) => {
+        if (s.id !== submittalId) return s;
+        return {
+          ...s,
+          status: newStatus,
+          reviewedBy: user?.name || 'Lead Project Architect',
+          actionNotes: notes || s.actionNotes || `Stamped ${newStatus} on ${new Date().toLocaleDateString()}`,
+        };
+      })
+    );
+
+    showToast(`✓ Submittal stamped: ${newStatus.replace('_', ' ')}`);
   };
 
   // Add Project Submit
@@ -653,10 +1021,24 @@ export default function ProjectsPage() {
     showToast(`✓ Project "${newProj.name}" created!`);
   };
 
-  // Helper for stage badge
+  // Helpers
   const getStageConfig = (stage?: ProjectStage): StageColumnConfig => {
     return STAGE_COLUMNS.find((c) => c.id === stage) || STAGE_COLUMNS[1];
   };
+
+  const projectRfis = useMemo(() => {
+    if (!selectedProjectForDetail) return [];
+    return rfis.filter((r) => r.projectCode === selectedProjectForDetail.code);
+  }, [selectedProjectForDetail, rfis]);
+
+  const projectSubmittals = useMemo(() => {
+    if (!selectedProjectForDetail) return [];
+    return submittals.filter((s) => s.projectCode === selectedProjectForDetail.code);
+  }, [selectedProjectForDetail, submittals]);
+
+  const openRfiCount = useMemo(() => {
+    return projectRfis.filter((r) => r.status === 'OPEN' || r.status === 'UNDER_REVIEW').length;
+  }, [projectRfis]);
 
   return (
     <div className="space-y-5 pb-16 font-sans">
@@ -668,7 +1050,7 @@ export default function ProjectsPage() {
         </div>
       )}
 
-      {/* TOP HEADER & CONTROLS (Image 2 Reference Style) */}
+      {/* TOP HEADER & CONTROLS */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border-main/50 pb-3">
         {/* Title */}
         <div className="flex items-center gap-3">
@@ -683,7 +1065,7 @@ export default function ProjectsPage() {
           </span>
         </div>
 
-        {/* Top-Right Utility Actions: Search, Filter, View Modes, + New Project */}
+        {/* Top-Right Utility Actions: Search, Filter, Export CSV, View Modes, + New Project */}
         <div className="flex items-center gap-2 self-end sm:self-auto">
           {/* Search Control */}
           <div className="relative">
@@ -837,7 +1219,16 @@ export default function ProjectsPage() {
             )}
           </div>
 
-          {/* View Switcher: Pipeline Columns (Image 2) | Grid | Table */}
+          {/* Export Projects Ledger Button */}
+          <button
+            onClick={exportProjectsToCSV}
+            className="w-9 h-9 rounded-xl border border-border-main bg-surface-main hover:bg-surface-hover flex items-center justify-center text-muted-main hover:text-text-main transition-colors shadow-2xs cursor-pointer"
+            title="Export Projects Ledger to CSV"
+          >
+            <Download className="w-4 h-4" />
+          </button>
+
+          {/* View Switcher */}
           <div className="flex items-center border border-border-main rounded-xl p-0.5 bg-surface-main">
             <button
               onClick={() => setViewMode('BOARD')}
@@ -847,7 +1238,7 @@ export default function ProjectsPage() {
                   ? 'bg-surface-hover text-text-main shadow-2xs font-bold'
                   : 'text-muted-main hover:text-text-main'
               )}
-              title="Pipeline Columns View (Image 2)"
+              title="Pipeline Columns View"
             >
               <Columns className="w-4 h-4" />
             </button>
@@ -907,7 +1298,100 @@ export default function ProjectsPage() {
         </div>
       </div>
 
-      {/* ACTIVE FOLDER OR STAGE FILTER INDICATOR BAR (IF ACTIVE) */}
+      {/* VISIBLE STUDIO FOLDERS DIRECTORY EXPLORER */}
+      <div className="bg-surface-main/80 border border-border-main/70 rounded-2xl p-4 shadow-2xs space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Folder className="w-4 h-4 text-accent-cyan" />
+            <h2 className="text-xs font-bold uppercase tracking-wider text-text-main font-sans">
+              Studio Project Folders
+            </h2>
+            <span className="text-[10px] text-muted-main hidden sm:inline">
+              ({customFolders.length} categories)
+            </span>
+          </div>
+          <div className="flex items-center gap-3">
+            {activeFolderFilter && (
+              <button
+                onClick={() => setActiveFolderFilter(null)}
+                className="text-xs font-semibold text-accent-cyan hover:underline cursor-pointer flex items-center gap-1"
+              >
+                <span>View All Projects</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            )}
+            {!isContractor && (
+              <button
+                onClick={() => setIsAddFolderModalOpen(true)}
+                className="text-xs font-semibold text-muted-main hover:text-text-main cursor-pointer"
+              >
+                + New Folder
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Folder Cards Grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2.5">
+          <button
+            onClick={() => setActiveFolderFilter(null)}
+            className={cn(
+              'p-3 rounded-xl border text-left transition-all duration-200 flex flex-col justify-between cursor-pointer',
+              activeFolderFilter === null
+                ? 'bg-black text-white dark:bg-white dark:text-black border-transparent shadow-sm'
+                : 'bg-surface-main border-border-main hover:border-text-main/50 hover:bg-surface-hover'
+            )}
+          >
+            <div className="flex items-center justify-between w-full mb-1.5">
+              <FolderOpen className={cn('w-4 h-4', activeFolderFilter === null ? 'text-accent-cyan' : 'text-muted-main')} />
+              <span className={cn('text-[10px] font-mono font-bold px-1.5 py-0.5 rounded', activeFolderFilter === null ? 'bg-white/20 text-white dark:bg-black/20 dark:text-black' : 'bg-surface-hover text-muted-main border border-border-main')}>
+                {visibleProjects.length}
+              </span>
+            </div>
+            <div>
+              <p className="text-xs font-bold truncate">All Projects</p>
+              <p className={cn('text-[10px]', activeFolderFilter === null ? 'opacity-80' : 'text-muted-main')}>
+                Complete studio index
+              </p>
+            </div>
+          </button>
+
+          {customFolders.map((folder) => {
+            const count = visibleProjects.filter((p) => (p.folderCategory || 'IN_PROGRESS') === folder).length;
+            const isSelected = activeFolderFilter === folder;
+
+            return (
+              <button
+                key={folder}
+                onClick={() => setActiveFolderFilter(isSelected ? null : folder)}
+                className={cn(
+                  'p-3 rounded-xl border text-left transition-all duration-200 flex flex-col justify-between cursor-pointer',
+                  isSelected
+                    ? 'bg-black text-white dark:bg-white dark:text-black border-transparent shadow-sm'
+                    : 'bg-surface-main border-border-main hover:border-text-main/50 hover:bg-surface-hover'
+                )}
+              >
+                <div className="flex items-center justify-between w-full mb-1.5">
+                  <Folder className={cn('w-4 h-4', isSelected ? 'text-accent-cyan' : 'text-accent-cyan/80')} />
+                  <span className={cn('text-[10px] font-mono font-bold px-1.5 py-0.5 rounded', isSelected ? 'bg-white/20 text-white dark:bg-black/20 dark:text-black' : 'bg-surface-hover text-muted-main border border-border-main')}>
+                    {count}
+                  </span>
+                </div>
+                <div>
+                  <p className="text-xs font-bold truncate" title={folder.replace(/_/g, ' ')}>
+                    {folder.replace(/_/g, ' ')}
+                  </p>
+                  <p className={cn('text-[10px]', isSelected ? 'opacity-80' : 'text-muted-main')}>
+                    {count} {count === 1 ? 'project' : 'projects'}
+                  </p>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ACTIVE FOLDER OR STAGE FILTER INDICATOR BAR */}
       {(statusFilter !== 'ALL' || activeFolderFilter || searchQuery) && (
         <div className="flex items-center gap-2 flex-wrap text-xs">
           <span className="text-muted-main">Active filters:</span>
@@ -939,7 +1423,7 @@ export default function ProjectsPage() {
       )}
 
       {/* ============================================================== */}
-      {/* MODE 1: STAGE PIPELINE COLUMNS VIEW (DIRECT ADAPTATION OF IMAGE 2) */}
+      {/* MODE 1: STAGE PIPELINE COLUMNS VIEW */}
       {/* ============================================================== */}
       {viewMode === 'BOARD' && (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 items-start pt-1">
@@ -948,7 +1432,6 @@ export default function ProjectsPage() {
 
             return (
               <div key={col.id} className="flex flex-col space-y-3 min-w-[200px]">
-                {/* Stage Column Header (Image 2 Style with studio font-mono metadata) */}
                 <div className="flex items-center justify-between px-1">
                   <h2 className="text-xs font-bold uppercase tracking-wider font-mono text-muted-main">
                     {col.label}
@@ -958,52 +1441,72 @@ export default function ProjectsPage() {
                   </span>
                 </div>
 
-                {/* Column Project Cards Stack */}
                 <div className="space-y-3">
-                  {colProjects.map((project) => (
-                    <div
-                      key={project.id}
-                      onClick={() => {
-                        setWorkingProject(project.id);
-                        setSelectedProjectForDetail(project);
-                      }}
-                      className="bg-surface-main border border-border-main hover:border-text-main rounded-2xl p-3 space-y-3 cursor-pointer group hover:shadow-md hover:-translate-y-0.5 transition-all flex flex-col justify-between"
-                    >
-                      {/* 1. Architectural Render Thumbnail (Clean isolated rounded card) */}
-                      <div className="relative aspect-[16/10] w-full rounded-xl overflow-hidden bg-surface-hover/80 shrink-0">
-                        {project.heroImage && (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={project.heroImage}
-                            alt={project.name}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                          />
-                        )}
-                      </div>
+                  {colProjects.map((project) => {
+                    const projectActiveRfis = rfis.filter(
+                      (r) => r.projectCode === project.code && (r.status === 'OPEN' || r.status === 'UNDER_REVIEW')
+                    );
+                    const projectActiveSubs = submittals.filter(
+                      (s) => s.projectCode === project.code && (s.status === 'SUBMITTED' || s.status === 'UNDER_REVIEW')
+                    );
 
-                      {/* 2. Project Title & Budget (1 to 2 focal points user eyes land on!) */}
-                      <div className="space-y-1">
-                        <h3 className="text-sm font-bold text-text-main group-hover:text-accent-cyan transition-colors line-clamp-1 leading-snug">
-                          {project.name}
-                        </h3>
-                        <p className="text-xs text-muted-main font-sans">
-                          Budget: <span className="font-semibold text-text-main/90">{project.budget || '$1.2M'}</span>
-                        </p>
-                      </div>
-
-                      {/* 3. Stage Status Badge Pill (Image 2 style with studio monospace precision) */}
-                      <div className="pt-1">
-                        <span
-                          className={cn(
-                            'inline-flex items-center px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase tracking-wider',
-                            col.badgeColor
+                    return (
+                      <div
+                        key={project.id}
+                        onClick={() => setSelectedProjectForDetail(project)}
+                        className="bg-surface-main border border-border-main hover:border-text-main rounded-2xl p-3 space-y-3 cursor-pointer group hover:shadow-md hover:-translate-y-0.5 transition-all flex flex-col justify-between"
+                      >
+                        <div className="relative aspect-[16/10] w-full rounded-xl overflow-hidden bg-surface-hover/80 shrink-0">
+                          {project.heroImage && (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={project.heroImage}
+                              alt={project.name}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                            />
                           )}
-                        >
-                          {col.badgeLabel}
-                        </span>
+                          {/* Live Coordination Badges on Card */}
+                          <div className="absolute top-1.5 right-1.5 flex flex-col gap-1 items-end">
+                            {projectActiveRfis.length > 0 && (
+                              <span className="bg-rose-600/90 text-white font-mono text-[9px] px-1.5 py-0.5 rounded backdrop-blur-xs font-bold shadow-xs flex items-center gap-1">
+                                <HelpCircle className="w-2.5 h-2.5" />
+                                <span>{projectActiveRfis.length} RFI</span>
+                              </span>
+                            )}
+                            {projectActiveSubs.length > 0 && (
+                              <span className="bg-amber-600/90 text-white font-mono text-[9px] px-1.5 py-0.5 rounded backdrop-blur-xs font-bold shadow-xs flex items-center gap-1">
+                                <Stamp className="w-2.5 h-2.5" />
+                                <span>{projectActiveSubs.length} Sub</span>
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="space-y-1">
+                          <h3 className="text-sm font-bold text-text-main group-hover:text-accent-cyan transition-colors line-clamp-1 leading-snug">
+                            {project.name}
+                          </h3>
+                          <p className="text-xs text-muted-main font-sans">
+                            Budget: <span className="font-semibold text-text-main/90">{project.budget || '$1.2M'}</span>
+                          </p>
+                        </div>
+
+                        <div className="pt-1 flex items-center justify-between">
+                          <span
+                            className={cn(
+                              'inline-flex items-center px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase tracking-wider',
+                              col.badgeColor
+                            )}
+                          >
+                            {col.badgeLabel}
+                          </span>
+                          <span className="text-[10px] font-mono text-muted-main">
+                            {project.code}
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
 
                   {colProjects.length === 0 && (
                     <div className="p-6 border-2 border-dashed border-border-main/50 rounded-2xl text-center">
@@ -1024,16 +1527,16 @@ export default function ProjectsPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 pt-1">
           {filteredProjects.map((project) => {
             const stageConfig = getStageConfig(project.stage);
+            const projectActiveRfis = rfis.filter(
+              (r) => r.projectCode === project.code && (r.status === 'OPEN' || r.status === 'UNDER_REVIEW')
+            );
+
             return (
               <div
                 key={project.id}
-                onClick={() => {
-                  setWorkingProject(project.id);
-                  setSelectedProjectForDetail(project);
-                }}
+                onClick={() => setSelectedProjectForDetail(project)}
                 className="bg-surface-main border border-border-main hover:border-text-main rounded-2xl p-3 space-y-3 cursor-pointer group hover:shadow-md hover:-translate-y-0.5 transition-all flex flex-col justify-between"
               >
-                {/* 1. Render Thumbnail */}
                 <div className="relative aspect-[16/10] w-full rounded-xl overflow-hidden bg-surface-hover/80 shrink-0">
                   {project.heroImage && (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -1043,9 +1546,13 @@ export default function ProjectsPage() {
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
                   )}
+                  {projectActiveRfis.length > 0 && (
+                    <div className="absolute top-1.5 right-1.5 bg-rose-600/90 text-white font-mono text-[9px] px-1.5 py-0.5 rounded backdrop-blur-xs font-bold shadow-xs">
+                      {projectActiveRfis.length} Open RFI
+                    </div>
+                  )}
                 </div>
 
-                {/* 2. Project Title & Budget */}
                 <div className="space-y-1">
                   <h3 className="text-sm font-bold text-text-main group-hover:text-accent-cyan transition-colors line-clamp-1 leading-snug">
                     {project.name}
@@ -1055,7 +1562,6 @@ export default function ProjectsPage() {
                   </p>
                 </div>
 
-                {/* 3. Stage Status Badge Pill */}
                 <div className="pt-1 flex items-center justify-between">
                   <span
                     className={cn(
@@ -1076,22 +1582,21 @@ export default function ProjectsPage() {
       )}
 
       {/* ============================================================== */}
-      {/* MODE 3: ENGINEERING DETAIL TABLE / DENSE LIST VIEW */}
+      {/* MODE 3: ENGINEERING DETAIL TABLE */}
       {/* ============================================================== */}
       {viewMode === 'TABLE' && (
         <div className="grid grid-cols-1 gap-2.5 pt-1">
           {filteredProjects.map((project) => {
             const stageConfig = getStageConfig(project.stage);
+            const rfiCount = rfis.filter((r) => r.projectCode === project.code).length;
+            const subCount = submittals.filter((s) => s.projectCode === project.code).length;
+
             return (
               <div
                 key={project.id}
-                onClick={() => {
-                  setWorkingProject(project.id);
-                  setSelectedProjectForDetail(project);
-                }}
+                onClick={() => setSelectedProjectForDetail(project)}
                 className="flex flex-col md:flex-row md:items-center justify-between bg-surface-main border border-border-main rounded-xl p-3.5 hover:border-text-main transition-all gap-4 shadow-2xs cursor-pointer group"
               >
-                {/* Left: Code, Name, Client */}
                 <div className="flex items-center gap-3 min-w-[240px]">
                   <span className="px-2.5 py-1 bg-surface-hover border border-border-main rounded text-xs font-bold text-text-main font-mono shrink-0">
                     {project.code}
@@ -1106,7 +1611,6 @@ export default function ProjectsPage() {
                   </div>
                 </div>
 
-                {/* Center: Stage & Budget */}
                 <div className="flex items-center gap-4 text-xs font-semibold">
                   <span
                     className={cn(
@@ -1121,13 +1625,12 @@ export default function ProjectsPage() {
                   </span>
                 </div>
 
-                {/* Right: Lead Architect & Sheets */}
                 <div className="flex items-center gap-4 text-xs text-muted-main">
                   <span className="font-mono text-[11px]">
-                    {project.sheetCount || 10} Sheets
+                    {rfiCount} RFIs · {subCount} Subs
                   </span>
                   <span className="text-[11px] font-semibold text-accent-cyan group-hover:underline">
-                    Open Vault ↗
+                    Open Project Hub ↗
                   </span>
                 </div>
               </div>
@@ -1137,7 +1640,7 @@ export default function ProjectsPage() {
       )}
 
       {/* ============================================================== */}
-      {/* 4. BLUEPRINT VAULT & PROJECT DETAIL MODAL (ALL FEATURES PRESERVED) */}
+      {/* 4. BLUEPRINT VAULT & RFI / SUBMITTAL TRACKING HUB MODAL */}
       {/* ============================================================== */}
       {selectedProjectForDetail && (
         <div
@@ -1181,32 +1684,9 @@ export default function ProjectsPage() {
               </button>
             </div>
 
-            {/* Quick Actions Bar inside Project Vault */}
-            <div className="flex items-center justify-between bg-surface-hover/50 border border-border-main p-3 rounded-xl">
-              <div className="flex items-center gap-2 text-xs">
-                <span className="text-muted-main">Project Thread:</span>
-                <span className="font-bold text-text-main">#{selectedProjectForDetail.code}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => router.push(`/chat?thread=${selectedProjectForDetail.code}`)}
-                  className="px-3 py-1.5 rounded-lg bg-surface-main hover:bg-surface-hover border border-border-main text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
-                >
-                  <MessageSquare className="w-3.5 h-3.5 text-accent-cyan" />
-                  <span>Open Chat Room</span>
-                </button>
-                <button
-                  onClick={() => setIsUploadSheetModalOpen(true)}
-                  className="px-3.5 py-1.5 rounded-lg bg-black text-white dark:bg-white dark:text-black font-semibold text-xs flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-[0.98] transition-all"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>Upload Sheet</span>
-                </button>
-              </div>
-            </div>
-
             {/* Architectural Modules Navigation Tabs */}
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 border-b border-border-main">
+            <div className="flex items-center justify-between gap-1.5 overflow-x-auto pb-1 border-b border-border-main">
+              <div className="flex items-center gap-1.5 shrink-0">
               <button
                 onClick={() => setActiveDetailTab('DRAWINGS')}
                 className={cn(
@@ -1273,6 +1753,16 @@ export default function ProjectsPage() {
               </button>
             </div>
 
+            {/* Chat room shortcut */}
+            <button
+              onClick={() => router.push(`/chat?thread=${selectedProjectForDetail.code}`)}
+              className="px-3 py-1.5 rounded-lg bg-surface-hover border border-border-main text-xs font-semibold flex items-center gap-1.5 hover:text-accent-cyan cursor-pointer shrink-0"
+            >
+              <MessageSquare className="w-3.5 h-3.5 text-accent-cyan" />
+              <span className="hidden sm:inline">Chat Thread</span>
+            </button>
+          </div>
+
             {/* TAB CONTENT: 1. DRAWING SETS VAULT */}
             {activeDetailTab === 'DRAWINGS' && (
               <DrawingSetsSection
@@ -1337,7 +1827,213 @@ export default function ProjectsPage() {
       )}
 
       {/* ============================================================== */}
-      {/* 5. UPLOAD DRAWING SHEET MODAL */}
+      {/* 5. CREATE NEW RFI MODAL */}
+      {/* ============================================================== */}
+      {isCreateRFIModalOpen && (
+        <div
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setIsCreateRFIModalOpen(false);
+          }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 font-mono cursor-pointer animate-in fade-in duration-150"
+        >
+          <div className="bg-surface-main border border-border-main w-full max-w-lg rounded-2xl shadow-2xl p-6 space-y-4 text-text-main cursor-default">
+            <div className="flex items-center justify-between border-b border-border-main pb-3">
+              <h3 className="text-sm font-bold text-text-main flex items-center gap-2">
+                <HelpCircle className="w-4 h-4 text-rose-500" />
+                <span>Submit Contractor RFI (Request for Info)</span>
+              </h3>
+              <button
+                onClick={() => setIsCreateRFIModalOpen(false)}
+                className="w-6 h-6 rounded-full border border-border-main flex items-center justify-center hover:bg-surface-hover text-xs cursor-pointer"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateRFI} className="space-y-3">
+              <div>
+                <label className="text-[11px] font-semibold text-muted-main block mb-1">Subject / Question Summary *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Beam tendon and MEP sleeve clash on Level 14"
+                  value={newRFISubject}
+                  onChange={(e) => setNewRFISubject(e.target.value)}
+                  className="w-full bg-surface-hover border border-border-main rounded-lg px-3 py-2 text-xs font-sans text-text-main focus:outline-none focus:border-text-main"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[11px] font-semibold text-muted-main block mb-1">Category</label>
+                  <select
+                    value={newRFICategory}
+                    onChange={(e) => setNewRFICategory(e.target.value as RFICategory)}
+                    className="w-full bg-surface-hover border border-border-main rounded-lg px-3 py-2 text-xs font-mono text-text-main focus:outline-none focus:border-text-main cursor-pointer"
+                  >
+                    <option value="STRUCTURAL">Structural</option>
+                    <option value="ARCHITECTURAL">Architectural</option>
+                    <option value="MEP">MEP Engineering</option>
+                    <option value="SITE_CIVIL">Site Civil</option>
+                    <option value="FINISHES">Finishes & Specs</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-semibold text-muted-main block mb-1">Priority</label>
+                  <select
+                    value={newRFIPriority}
+                    onChange={(e) => setNewRFIPriority(e.target.value as RFIPriority)}
+                    className="w-full bg-surface-hover border border-border-main rounded-lg px-3 py-2 text-xs font-mono text-text-main focus:outline-none focus:border-text-main cursor-pointer"
+                  >
+                    <option value="LOW">Low</option>
+                    <option value="MEDIUM">Medium</option>
+                    <option value="HIGH">High (Urgent)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[11px] font-semibold text-muted-main block mb-1">Detailed Question & Site Context *</label>
+                <textarea
+                  rows={4}
+                  required
+                  placeholder="Describe location, grid lines, conflicting drawing sheets, and specific clearance needed from architect/engineer..."
+                  value={newRFIQuestion}
+                  onChange={(e) => setNewRFIQuestion(e.target.value)}
+                  className="w-full bg-surface-hover border border-border-main rounded-lg p-2.5 text-xs font-sans text-text-main focus:outline-none focus:border-text-main"
+                />
+              </div>
+
+              <div className="flex items-center gap-4 text-xs font-semibold py-1">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={newRFICostImpact}
+                    onChange={(e) => setNewRFICostImpact(e.target.checked)}
+                    className="rounded border-border-main text-accent-cyan"
+                  />
+                  <span>Potential Cost Impact ($$)</span>
+                </label>
+
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={newRFIScheduleImpact}
+                    onChange={(e) => setNewRFIScheduleImpact(e.target.checked)}
+                    className="rounded border-border-main text-accent-cyan"
+                  />
+                  <span>Schedule Impact (Delay)</span>
+                </label>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-border-main">
+                <button
+                  type="button"
+                  onClick={() => setIsCreateRFIModalOpen(false)}
+                  className="px-3.5 py-1.5 rounded-lg border border-border-main text-xs font-semibold hover:bg-surface-hover cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-1.5 bg-black text-white dark:bg-white dark:text-black rounded-lg text-xs font-semibold hover:opacity-90 shadow-xs cursor-pointer"
+                >
+                  Submit RFI
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================== */}
+      {/* 6. CREATE NEW MATERIAL SUBMITTAL MODAL */}
+      {/* ============================================================== */}
+      {isCreateSubmittalModalOpen && (
+        <div
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setIsCreateSubmittalModalOpen(false);
+          }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 font-mono cursor-pointer animate-in fade-in duration-150"
+        >
+          <div className="bg-surface-main border border-border-main w-full max-w-lg rounded-2xl shadow-2xl p-6 space-y-4 text-text-main cursor-default">
+            <div className="flex items-center justify-between border-b border-border-main pb-3">
+              <h3 className="text-sm font-bold text-text-main flex items-center gap-2">
+                <Stamp className="w-4 h-4 text-amber-500" />
+                <span>Log Material Submittal / Shop Drawing</span>
+              </h3>
+              <button
+                onClick={() => setIsCreateSubmittalModalOpen(false)}
+                className="w-6 h-6 rounded-full border border-border-main flex items-center justify-center hover:bg-surface-hover text-xs cursor-pointer"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateSubmittal} className="space-y-3">
+              <div>
+                <label className="text-[11px] font-semibold text-muted-main block mb-1">Submittal Title *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Carrara Marble Sample Slab for Master Suite"
+                  value={newSubmittalTitle}
+                  onChange={(e) => setNewSubmittalTitle(e.target.value)}
+                  className="w-full bg-surface-hover border border-border-main rounded-lg px-3 py-2 text-xs font-sans text-text-main focus:outline-none focus:border-text-main"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[11px] font-semibold text-muted-main block mb-1">Spec Section</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. 09 30 33 - Stone Tiling"
+                    value={newSubmittalSpec}
+                    onChange={(e) => setNewSubmittalSpec(e.target.value)}
+                    className="w-full bg-surface-hover border border-border-main rounded-lg px-3 py-2 text-xs font-mono text-text-main focus:outline-none focus:border-text-main"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-semibold text-muted-main block mb-1">Submittal Type</label>
+                  <select
+                    value={newSubmittalType}
+                    onChange={(e) => setNewSubmittalType(e.target.value as SubmittalType)}
+                    className="w-full bg-surface-hover border border-border-main rounded-lg px-3 py-2 text-xs font-mono text-text-main focus:outline-none focus:border-text-main cursor-pointer"
+                  >
+                    <option value="MATERIAL_SAMPLE">Material Sample</option>
+                    <option value="SHOP_DRAWING">Shop Drawing</option>
+                    <option value="PRODUCT_DATA">Product Data Sheet</option>
+                    <option value="TEST_REPORT">Lab / Test Report</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-border-main">
+                <button
+                  type="button"
+                  onClick={() => setIsCreateSubmittalModalOpen(false)}
+                  className="px-3.5 py-1.5 rounded-lg border border-border-main text-xs font-semibold hover:bg-surface-hover cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-1.5 bg-black text-white dark:bg-white dark:text-black rounded-lg text-xs font-semibold hover:opacity-90 shadow-xs cursor-pointer"
+                >
+                  Save Submittal
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================== */}
+      {/* 7. UPLOAD DRAWING SHEET MODAL */}
       {/* ============================================================== */}
       {isUploadSheetModalOpen && (
         <div
@@ -1360,7 +2056,6 @@ export default function ProjectsPage() {
               </button>
             </div>
 
-            {/* Drag & Drop Upload Zone */}
             <div
               onDragOver={(e) => {
                 e.preventDefault();
@@ -1456,7 +2151,7 @@ export default function ProjectsPage() {
       )}
 
       {/* ============================================================== */}
-      {/* 6. CREATE NEW PROJECT MODAL */}
+      {/* 8. CREATE NEW PROJECT MODAL */}
       {/* ============================================================== */}
       {isAddProjectModalOpen && (
         <div
@@ -1589,7 +2284,7 @@ export default function ProjectsPage() {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1.5 bg-black text-white dark:bg-white dark:text-black rounded-lg text-xs font-semibold hover:opacity-90 cursor-pointer shadow-xs"
+                  className="px-4 py-1.5 bg-black text-white dark:bg-white dark:text-black rounded-lg text-xs font-semibold hover:opacity-90 shadow-xs cursor-pointer"
                 >
                   Create Project
                 </button>
@@ -1600,7 +2295,7 @@ export default function ProjectsPage() {
       )}
 
       {/* ============================================================== */}
-      {/* 7. ADD STUDIO FOLDER MODAL */}
+      {/* 9. ADD STUDIO FOLDER MODAL */}
       {/* ============================================================== */}
       {isAddFolderModalOpen && (
         <div
