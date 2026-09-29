@@ -238,7 +238,11 @@ export default function DashboardPage() {
     );
   }, [canReviewRequests, isContractor, requests, userId, userName]);
 
-  const displayName = user?.name ? user.name.split(' ')[0] : 'Architect';
+  const displayName = useMemo(() => {
+    if (!user?.name) return 'Architect';
+    const cleanName = user.name.replace(/^(Arch\.|Engr\.|Foreman)\s+/i, '');
+    return cleanName.split(' ')[0] || 'Architect';
+  }, [user?.name]);
 
   const [taskToConfirm, setTaskToConfirm] = useState<{
     task: (typeof tasks)[0];
@@ -1082,10 +1086,10 @@ export default function DashboardPage() {
                               {task.description}
                             </p>
                           )}
-                          <div className="flex items-center gap-2 text-[10px] text-muted-main font-mono pt-0.5">
-                            <span className="capitalize">{task.projectPhase?.toLowerCase()}</span>
-                            <span>•</span>
-                            <span>{task.assignedMember}</span>
+                          <div className="flex items-center gap-1.5 text-[10px] text-muted-main font-mono pt-0.5 whitespace-nowrap overflow-hidden">
+                            <span className="capitalize shrink-0">{task.projectPhase?.toLowerCase()}</span>
+                            <span className="shrink-0">•</span>
+                            <span className="truncate">{task.assignedMember}</span>
                           </div>
                         </div>
                       </div>

@@ -172,3 +172,211 @@ export interface TaskItem {
   createdAt: string;
 }
 
+// ============================================================
+// Construction Administration (CA) Types
+// ============================================================
+
+export type RFIStatus = 'PENDING' | 'UNDER_REVIEW' | 'ANSWERED' | 'CLOSED';
+
+export interface RFIItem {
+  id: string;
+  projectId: string;
+  rfiNumber: string;
+  title: string;
+  assignedTo?: string;
+  dateReceived: string;
+  dateRequired?: string;
+  dateAnswered?: string;
+  status: RFIStatus;
+  question: string;
+  response?: string;
+  attachments?: string[];
+}
+
+export type RFADecision = 'APPROVED' | 'APPROVED_WITH_COMMENTS' | 'REVISE_RESUBMIT' | 'REJECTED' | 'PENDING';
+
+export interface RFAItem {
+  id: string;
+  projectId: string;
+  rfaNumber: string;
+  title: string;
+  submittalType: 'MATERIAL_SAMPLE' | 'SHOP_DRAWING' | 'PRODUCT_DATA' | 'MOCKUP';
+  supplier?: string;
+  dateSubmitted: string;
+  decision: RFADecision;
+  reviewerNotes?: string;
+  specSection?: string;
+}
+
+export interface WRIItem {
+  id: string;
+  projectId: string;
+  wriNumber: string;
+  title: string;
+  date: string;
+  inspector: string;
+  agenda: string;
+  observations: string;
+  actionItems?: string;
+  severity: 'ROUTINE' | 'ADVISORY' | 'CRITICAL';
+}
+
+export interface SiteDeliveryItem {
+  id: string;
+  projectId: string;
+  finishCode: string;
+  itemDescription: string;
+  supplierContact?: string;
+  quantityOrdered: string;
+  quantityDelivered: string;
+  deliveryDate?: string;
+  status: 'PENDING' | 'IN_TRANSIT' | 'PARTIAL' | 'COMPLETE';
+}
+
+export interface SiteBulletinItem {
+  id: string;
+  projectId: string;
+  bulletinNumber: string;
+  subject: string;
+  description: string;
+  drawingsAffected: string[];
+  issuedDate: string;
+}
+
+// ============================================================
+// Pre-Design & Site Feasibility
+// ============================================================
+
+export type PreliminaryDocStatus = 'RECEIVED' | 'REQUESTED' | 'NOT_APPLICABLE' | 'PENDING';
+
+export interface PreliminaryCheckItem {
+  id: string;
+  projectId: string;
+  title: string;
+  category: 'LEGAL' | 'ZONING' | 'ENVIRONMENTAL' | 'TECHNICAL';
+  status: PreliminaryDocStatus;
+  notes?: string;
+  updatedAt: string;
+}
+
+export interface ClientSpaceProgramItem {
+  id: string;
+  projectId: string;
+  spaceName: string;
+  targetAreaSqM: number;
+  occupancyCount?: number;
+  specialRequirements?: string;
+}
+
+// ============================================================
+// Schematic Design Area Tabulation
+// ============================================================
+
+export interface SchematicAreaItem {
+  id: string;
+  projectId: string;
+  level: string;
+  spaceName: string;
+  areaSqM: number;
+  notes?: string;
+}
+
+// ============================================================
+// Architectural & Engineering Drawing Disciplines
+// ============================================================
+
+export type DrawingDiscipline = 
+  | 'A-000 GENERAL / SITE'
+  | 'A-100 PLANS'
+  | 'A-200 ELEVATIONS'
+  | 'A-300 SECTIONS'
+  | 'A-400 BLOW-UPS & DETAILS'
+  | 'A-500 SCHEDULES'
+  | 'S-100 STRUCTURAL'
+  | 'M-100 MECHANICAL'
+  | 'E-100 ELECTRICAL'
+  | 'P-100 PLUMBING';
+
+export interface ArchitecturalSheet {
+  id: string;
+  projectId: string;
+  code: string;
+  title: string;
+  discipline: DrawingDiscipline;
+  planType: 'BID' | 'PERMIT' | 'BOTH' | 'CONSTRUCTION';
+  assignedTo?: string;
+  status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED';
+  revision: string;
+  updatedAt: string;
+}
+
+// ============================================================
+// Two-Sided Contract & Phase Billing Stepper
+// ============================================================
+
+export type ContractPhaseKey = 'PRE_DESIGN' | 'SCHEMATIC' | 'DESIGN_DEV' | 'CONSTRUCTION_DOCS' | 'CONSTRUCTION';
+
+export interface ContractPhaseStep {
+  phaseKey: ContractPhaseKey;
+  phaseLabel: string;
+  companyContractSent: boolean;
+  companyContractDate?: string;
+  companyInvoiceSent: boolean;
+  companyInvoiceNumber?: string;
+  clientContractSigned: boolean;
+  clientSignedDate?: string;
+  clientPaymentReceived: boolean;
+  clientPaymentRef?: string;
+  amount?: string;
+  isUnlocked: boolean;
+}
+
+// ============================================================
+// Client Meeting Minutes
+// ============================================================
+
+export interface MeetingMinute {
+  id: string;
+  projectId: string;
+  title: string;
+  date: string;
+  location?: string;
+  attendees: string[];
+  agendaSummary: string;
+  notes: string;
+  actionItems: Array<{ task: string; assignee: string; dueDate?: string; done: boolean }>;
+}
+
+// ============================================================
+// Studio Daily Logbook
+// ============================================================
+
+export type DailyLogCategory = 'EMAIL' | 'CLIENT_UPDATE' | 'MEETING_NOTES' | 'PROJECT_PROGRESS' | 'URGENT_ISSUE' | 'GENERAL';
+
+export interface DailyLogEntry {
+  id: string;
+  date: string;
+  category: DailyLogCategory;
+  projectId?: string;
+  projectName?: string;
+  subject: string;
+  content: string;
+  authorName: string;
+  authorRole: string;
+  createdAt: string;
+}
+
+// ============================================================
+// Sticky Notes
+// ============================================================
+
+export interface WorkspaceStickyNote {
+  id: string;
+  title: string;
+  content: string;
+  color: 'yellow' | 'blue' | 'pink' | 'green' | 'amber';
+  x: number;
+  y: number;
+  minimized?: boolean;
+}
+

@@ -8,10 +8,11 @@ import { useTheme } from '@/lib/themeContext';
 import { useTasks } from '@/lib/hooks/useTasks';
 import Logo from '@/components/ui/Logo';
 import { TaskInitializationModal } from '@/components/dashboard/TaskInitializationModal';
+import { DailyLogbookModal } from '@/components/common/DailyLogbookModal';
 import { 
   Sun, Moon, LogOut, Bell, MessageSquare, Clock, Search,
   FolderKanban, BookUser, PenTool, LayoutDashboard, X, ArrowRight, Command, Plus, PanelLeft,
-  FileText
+  FileText, BookOpen
 } from 'lucide-react';
 import { useSidebar } from '@/lib/sidebarContext';
 import { MOCK_PROJECTS } from '@/lib/constants';
@@ -36,6 +37,7 @@ export function TopBar({ user, onInitializeTask }: TopBarProps) {
   const router = useRouter();
   const { addTask } = useTasks();
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
+  const [isDailyLogOpen, setIsDailyLogOpen] = useState(false);
   const [currentDate, setCurrentDate] = useState<Date | null>(() => (typeof window !== 'undefined' ? new Date() : null));
   const { themeMode, toggleThemeMode } = useTheme();
   const [isNotifOpen, setIsNotifOpen] = useState(false);
@@ -396,6 +398,16 @@ export function TopBar({ user, onInitializeTask }: TopBarProps) {
             <span>Task</span>
           </button>
 
+          {/* Daily Studio Logbook Button */}
+          <button
+            onClick={() => setIsDailyLogOpen(true)}
+            className="px-2.5 sm:px-3 py-1.5 sm:py-2 bg-surface-main hover:bg-surface-hover border border-border-main text-text-main font-semibold text-xs tracking-wide flex items-center gap-1.5 rounded-lg shadow-2xs transition-all cursor-pointer shrink-0"
+            title="Studio Daily Logbook"
+          >
+            <BookOpen className="w-3.5 h-3.5 text-accent-cyan" />
+            <span className="hidden sm:inline">Logbook</span>
+          </button>
+
           {/* Mobile search button */}
           <button
             onClick={() => setIsSearchOpen(true)}
@@ -694,6 +706,16 @@ export function TopBar({ user, onInitializeTask }: TopBarProps) {
         isOpen={isTaskModalOpen}
         onClose={() => setIsTaskModalOpen(false)}
         onTaskCreated={handleTaskCreated}
+      />
+
+      {/* Studio Daily Logbook Modal */}
+      <DailyLogbookModal
+        isOpen={isDailyLogOpen}
+        onClose={() => setIsDailyLogOpen(false)}
+        currentUser={{
+          name: user?.name || 'Studio Architect',
+          role: user?.role ? user.role.replace('_', ' ') : 'Junior Architect'
+        }}
       />
     </>
   );

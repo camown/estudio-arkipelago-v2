@@ -20,13 +20,15 @@ async function run() {
     localStorage.setItem(
       'arkipelago_user',
       JSON.stringify({
-        id: '1',
-        name: 'Leandro Locsin',
-        email: 'locsin@arkipelago.ph',
-        role: 'Principal Architect',
+        id: 'usr-partner-001',
+        name: 'Arch. Leandro Locsin',
+        email: 'partner@arkipelago.com',
+        role: 'partner',
         status: 'active',
       })
     );
+    localStorage.removeItem('arkipelago_unified_tasks');
+    localStorage.removeItem('arkipelago_wall_posts');
     localStorage.setItem('arkipelago_theme', 'light');
     document.documentElement.classList.remove('dark');
   });

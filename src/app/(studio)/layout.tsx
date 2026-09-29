@@ -9,6 +9,7 @@ import { ThemeProvider } from '@/lib/themeContext';
 import { SidebarProvider, useSidebar } from '@/lib/sidebarContext';
 import { TimeTrackingNudge } from '@/components/common/TimeTrackingNudge';
 import { CommandPalette } from '@/components/common/CommandPalette';
+import { StickyNotesOverlay } from '@/components/common/StickyNotesOverlay';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { User } from '@/types';
 import { cn } from '@/lib/utils';
@@ -66,6 +67,7 @@ function StudioLayoutContent({
           <ErrorBoundary>{children}</ErrorBoundary>
           <TimeTrackingNudge />
           <CommandPalette />
+          <StickyNotesOverlay />
         </main>
 
         <BottomNav />

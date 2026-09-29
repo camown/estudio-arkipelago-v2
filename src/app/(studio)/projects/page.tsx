@@ -17,6 +17,11 @@ import { Project } from '@/types';
 import { useTasks } from '@/lib/hooks/useTasks';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { uploadStudioAsset } from '@/lib/supabase/storage';
+import { ConstructionAdminSection } from '@/components/projects/ConstructionAdminSection';
+import { PreDesignSection } from '@/components/projects/PreDesignSection';
+import { DrawingSetsSection } from '@/components/projects/DrawingSetsSection';
+import { ContractBillingStepper } from '@/components/projects/ContractBillingStepper';
+import { MeetingMinutesSection } from '@/components/projects/MeetingMinutesSection';
 
 export type ProjectStage = 'INQUIRIES' | 'DESIGN' | 'DOCUMENTATION' | 'CONSTRUCTION' | 'ON_HOLD';
 
@@ -418,6 +423,7 @@ export default function ProjectsPage() {
   // Active working project context
   const [workingProject, setWorkingProject] = useState<string>('proj-002');
   const [selectedProjectForDetail, setSelectedProjectForDetail] = useState<EnrichedProject | null>(null);
+  const [activeDetailTab, setActiveDetailTab] = useState<'DRAWINGS' | 'CA_ADMIN' | 'PRE_DESIGN' | 'CONTRACTS' | 'MINUTES'>('DRAWINGS');
 
   const [customFolders, setCustomFolders] = useState<string[]>([
     'IMPORTANT',
@@ -511,8 +517,11 @@ export default function ProjectsPage() {
     if (codeParam) {
       const match = visibleProjects.find((p) => p.code.toLowerCase() === codeParam.toLowerCase());
       if (match) {
-        setSelectedProjectForDetail(match);
-        setWorkingProject(match.id);
+        const timer = setTimeout(() => {
+          setSelectedProjectForDetail(match);
+          setWorkingProject(match.id);
+        }, 0);
+        return () => clearTimeout(timer);
       }
     }
   }, [visibleProjects]);
@@ -1196,88 +1205,122 @@ export default function ProjectsPage() {
               </div>
             </div>
 
-            {/* ARCHITECTURAL DRAWINGS & BLUEPRINTS VAULT */}
-            <div className="space-y-4 border border-border-main bg-surface-hover/30 p-4 rounded-xl">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border-main/50 pb-3">
-                <div>
-                  <h3 className="text-xs font-bold text-text-main flex items-center gap-2">
-                    <FileText className="w-4 h-4 text-accent-cyan" />
-                    <span>Blueprint & Drawing Sets Vault</span>
-                  </h3>
-                  <p className="text-[11px] text-muted-main">
-                    Official architectural drawing repository & spec sheets
-                  </p>
-                </div>
-                {/* Category Filter Tabs */}
-                <div className="flex items-center gap-1 flex-wrap">
-                  {(['ALL', 'ARCHITECTURAL', 'STRUCTURAL', 'RENDERS', 'MATERIALS'] as const).map((cat) => (
-                    <button
-                      key={cat}
-                      onClick={() => setVaultCategory(cat)}
-                      className={cn(
-                        'px-2.5 py-1 rounded text-[10px] font-semibold transition-colors cursor-pointer',
-                        vaultCategory === cat
-                          ? 'bg-black text-white dark:bg-white dark:text-black'
-                          : 'bg-surface-main border border-border-main text-muted-main hover:text-text-main'
-                      )}
-                    >
-                      {cat}
-                    </button>
-                  ))}
-                </div>
-              </div>
+            {/* Architectural Modules Navigation Tabs */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 border-b border-border-main">
+              <button
+                onClick={() => setActiveDetailTab('DRAWINGS')}
+                className={cn(
+                  'px-3 py-1.5 rounded-lg text-xs font-semibold tracking-wide transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap',
+                  activeDetailTab === 'DRAWINGS'
+                    ? 'bg-black text-white dark:bg-white dark:text-black shadow-xs'
+                    : 'text-muted-main hover:text-text-main hover:bg-surface-hover'
+                )}
+              >
+                <FileText className="w-3.5 h-3.5" />
+                <span>Drawing Sets Vault</span>
+              </button>
 
-              {/* Drawing Sheets Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {drawings
-                  .filter((dwg) => vaultCategory === 'ALL' || dwg.category === vaultCategory)
-                  .map((dwg) => (
-                    <div
-                      key={dwg.id}
-                      className="bg-surface-main border border-border-main rounded-xl p-3 space-y-2.5 shadow-2xs group/card hover:border-text-main transition-colors"
-                    >
-                      <div className="aspect-video bg-black/10 rounded-lg overflow-hidden relative border border-border-main">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={dwg.previewUrl}
-                          alt={dwg.title}
-                          className="w-full h-full object-cover group-hover/card:scale-105 transition-transform duration-300"
-                        />
-                        <span className="absolute top-1.5 left-1.5 bg-black/80 text-white font-mono text-[9px] px-1.5 py-0.5 rounded backdrop-blur-xs font-bold">
-                          {dwg.sheetNumber}
-                        </span>
-                      </div>
+              <button
+                onClick={() => setActiveDetailTab('CA_ADMIN')}
+                className={cn(
+                  'px-3 py-1.5 rounded-lg text-xs font-semibold tracking-wide transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap',
+                  activeDetailTab === 'CA_ADMIN'
+                    ? 'bg-black text-white dark:bg-white dark:text-black shadow-xs'
+                    : 'text-muted-main hover:text-text-main hover:bg-surface-hover'
+                )}
+              >
+                <HardHat className="w-3.5 h-3.5 text-amber-500" />
+                <span>Construction Admin (RFI/RFA)</span>
+              </button>
 
-                      <div className="space-y-1">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[9px] font-semibold text-accent-cyan tracking-wider">
-                            {dwg.category}
-                          </span>
-                          <span className="text-[9px] font-mono text-muted-main">
-                            {dwg.revision}
-                          </span>
-                        </div>
-                        <h4 className="text-xs font-bold text-text-main truncate">
-                          {dwg.title}
-                        </h4>
-                      </div>
+              <button
+                onClick={() => setActiveDetailTab('PRE_DESIGN')}
+                className={cn(
+                  'px-3 py-1.5 rounded-lg text-xs font-semibold tracking-wide transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap',
+                  activeDetailTab === 'PRE_DESIGN'
+                    ? 'bg-black text-white dark:bg-white dark:text-black shadow-xs'
+                    : 'text-muted-main hover:text-text-main hover:bg-surface-hover'
+                )}
+              >
+                <FolderOpen className="w-3.5 h-3.5 text-cyan-500" />
+                <span>Pre-Design & Program</span>
+              </button>
 
-                      <div className="pt-2 border-t border-border-main/50 flex items-center justify-between">
-                        <button
-                          onClick={() => handleRedlineInSketch(dwg)}
-                          className="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded text-[10px] font-semibold flex items-center gap-1 transition-colors cursor-pointer"
-                        >
-                          <PenTool className="w-3 h-3" />
-                          <span>Redline</span>
-                        </button>
-                        <span className="text-[10px] text-muted-main font-mono">
-                          {dwg.updatedAt}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-              </div>
+              <button
+                onClick={() => setActiveDetailTab('CONTRACTS')}
+                className={cn(
+                  'px-3 py-1.5 rounded-lg text-xs font-semibold tracking-wide transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap',
+                  activeDetailTab === 'CONTRACTS'
+                    ? 'bg-black text-white dark:bg-white dark:text-black shadow-xs'
+                    : 'text-muted-main hover:text-text-main hover:bg-surface-hover'
+                )}
+              >
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                <span>Contracts & Billing</span>
+              </button>
+
+              <button
+                onClick={() => setActiveDetailTab('MINUTES')}
+                className={cn(
+                  'px-3 py-1.5 rounded-lg text-xs font-semibold tracking-wide transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap',
+                  activeDetailTab === 'MINUTES'
+                    ? 'bg-black text-white dark:bg-white dark:text-black shadow-xs'
+                    : 'text-muted-main hover:text-text-main hover:bg-surface-hover'
+                )}
+              >
+                <MessageSquare className="w-3.5 h-3.5 text-purple-500" />
+                <span>Client Minutes</span>
+              </button>
             </div>
+
+            {/* TAB CONTENT: 1. DRAWING SETS VAULT */}
+            {activeDetailTab === 'DRAWINGS' && (
+              <DrawingSetsSection
+                projectId={selectedProjectForDetail.id}
+                projectCode={selectedProjectForDetail.code}
+                onRedline={(sheet) => {
+                  setSelectedProjectForDetail(null);
+                  router.push(`/sketch?project=${selectedProjectForDetail.code}&sheet=${encodeURIComponent(sheet.code)}`);
+                }}
+              />
+            )}
+
+            {/* TAB CONTENT: 2. CONSTRUCTION ADMIN */}
+            {activeDetailTab === 'CA_ADMIN' && (
+              <ConstructionAdminSection
+                projectId={selectedProjectForDetail.id}
+                projectCode={selectedProjectForDetail.code}
+                projectName={selectedProjectForDetail.name}
+                isContractor={isContractor}
+              />
+            )}
+
+            {/* TAB CONTENT: 3. PRE-DESIGN */}
+            {activeDetailTab === 'PRE_DESIGN' && (
+              <PreDesignSection
+                projectId={selectedProjectForDetail.id}
+                projectCode={selectedProjectForDetail.code}
+                location={selectedProjectForDetail.location}
+              />
+            )}
+
+            {/* TAB CONTENT: 4. CONTRACTS & BILLING */}
+            {activeDetailTab === 'CONTRACTS' && (
+              <ContractBillingStepper
+                projectId={selectedProjectForDetail.id}
+                projectCode={selectedProjectForDetail.code}
+                projectName={selectedProjectForDetail.name}
+              />
+            )}
+
+            {/* TAB CONTENT: 5. CLIENT MINUTES */}
+            {activeDetailTab === 'MINUTES' && (
+              <MeetingMinutesSection
+                projectId={selectedProjectForDetail.id}
+                projectCode={selectedProjectForDetail.code}
+                projectName={selectedProjectForDetail.name}
+              />
+            )}
 
             {/* Modal Footer */}
             <div className="flex items-center justify-end border-t border-border-main pt-4">
@@ -1286,7 +1329,7 @@ export default function ProjectsPage() {
                 onClick={() => setSelectedProjectForDetail(null)}
                 className="text-xs font-semibold rounded-xl cursor-pointer"
               >
-                Close Vault
+                Close Project Hub
               </Button>
             </div>
           </div>

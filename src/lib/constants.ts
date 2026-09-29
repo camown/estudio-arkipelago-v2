@@ -142,7 +142,7 @@ export const PRESET_ACCOUNTS: PresetAccount[] = [
   {
     id: 'usr-partner-001',
     email: 'partner@arkipelago.com',
-    name: 'Arch. Testing1',
+    name: 'Arch. Leandro Locsin',
     role: 'partner',
     description: 'Partner Management — Full studio clearance, ledgers, approvals',
     accessLevel: 'ADMIN',
@@ -150,7 +150,7 @@ export const PRESET_ACCOUNTS: PresetAccount[] = [
   {
     id: 'usr-senior-002',
     email: 'senior@arkipelago.com',
-    name: 'Arch. Testing2',
+    name: 'Arch. Carlos Mendoza',
     role: 'senior_architect',
     description: 'Senior Architect / Lead — HR review, team oversight, project lead',
     accessLevel: 'LEAD',
@@ -158,7 +158,7 @@ export const PRESET_ACCOUNTS: PresetAccount[] = [
   {
     id: 'usr-junior-003',
     email: 'junior@arkipelago.com',
-    name: 'Arch. Testing3',
+    name: 'Arch. Sofia Reyes',
     role: 'junior_architect',
     description: 'Junior Architect / Staff — Clock-in, wall posting, own HR requests',
     accessLevel: 'STAFF',
@@ -166,7 +166,7 @@ export const PRESET_ACCOUNTS: PresetAccount[] = [
   {
     id: 'usr-contractor-004',
     email: 'contractor@arkipelago.com',
-    name: 'Engr. Testing4',
+    name: 'Engr. Aris Mendoza',
     role: 'contractor',
     description: 'Consultant / External — Scoped strictly to assigned projects (CV-2024, BCP-2024)',
     accessLevel: 'EXTERNAL',
