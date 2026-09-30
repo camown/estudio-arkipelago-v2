@@ -19,6 +19,8 @@ import {
 import { useSidebar } from '@/lib/sidebarContext';
 import { MOCK_PROJECTS, PRESET_ACCOUNTS } from '@/lib/constants';
 import { cn } from '@/lib/utils';
+import { USER_EVENT_NAME, USER_CHANNEL_NAME, saveProfileForEmail } from '@/lib/hooks/useAuth';
+
 
 interface NotificationItem {
   id: string;
@@ -136,11 +138,20 @@ export function TopBar({ user, onInitializeTask }: TopBarProps) {
     };
 
     localStorage.setItem('arkipelago_user', JSON.stringify(newUser));
+    saveProfileForEmail(newUser.email, newUser);
     setIsProfileOpen(false);
-    showToast(`Switched profile to ${newUser.name} (${newUser.role.replace('_', ' ')})`);
-    
-    // Refresh page / state
-    window.location.reload();
+
+    // Dispatch real-time update so layout/sidebar/topbar reflect change instantly
+    window.dispatchEvent(new CustomEvent(USER_EVENT_NAME, { detail: newUser }));
+    if (typeof BroadcastChannel !== 'undefined') {
+      try {
+        const bc = new BroadcastChannel(USER_CHANNEL_NAME);
+        bc.postMessage({ type: 'USER_UPDATED', user: newUser });
+        bc.close();
+      } catch {}
+    }
+
+    showToast(`Switched to ${newUser.name} (${newUser.role.replace('_', ' ')})`);
   };
 
   // Close menus on outside click
@@ -610,6 +621,7 @@ export function TopBar({ user, onInitializeTask }: TopBarProps) {
                     type="button"
                     onClick={() => {
                       localStorage.removeItem('arkipelago_user');
+                      window.dispatchEvent(new CustomEvent(USER_EVENT_NAME, { detail: null }));
                       router.push('/login');
                     }}
                     className="w-full p-2 rounded-xl hover:bg-rose-500/10 flex items-center gap-2 text-rose-500 cursor-pointer text-left"

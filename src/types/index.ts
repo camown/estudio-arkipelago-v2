@@ -8,6 +8,7 @@ export interface User {
   name: string;
   role: Role;
   avatarUrl?: string;
+  phoneNumber?: string;
   assignedProjectCodes?: string[]; // Scoped projects for contractors
 }
 

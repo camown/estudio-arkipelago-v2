@@ -13,12 +13,29 @@ import { StickyNotesOverlay } from '@/components/common/StickyNotesOverlay';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { User } from '@/types';
 import { cn } from '@/lib/utils';
+import {
+  STORAGE_KEY,
+  USER_EVENT_NAME,
+  USER_CHANNEL_NAME,
+  getProfileForEmail,
+} from '@/lib/hooks/useAuth';
 
 function getInitialUser(): User | null {
   if (typeof window === 'undefined') return null;
   try {
-    const storedUser = localStorage.getItem('arkipelago_user');
-    return storedUser ? JSON.parse(storedUser) : null;
+    const storedUser = localStorage.getItem(STORAGE_KEY);
+    if (!storedUser) return null;
+    const parsed: User = JSON.parse(storedUser);
+    const saved = getProfileForEmail(parsed.email);
+    if (saved) {
+      return {
+        ...parsed,
+        name: saved.name || parsed.name,
+        phoneNumber: saved.phoneNumber || parsed.phoneNumber,
+        avatarUrl: saved.avatarUrl || parsed.avatarUrl,
+      };
+    }
+    return parsed;
   } catch {
     return null;
   }
@@ -44,8 +61,49 @@ function StudioLayoutContent({
   children: React.ReactNode;
 }) {
   const router = useRouter();
-  const [user] = useState<User | null>(getInitialUser);
+  const [user, setUser] = useState<User | null>(getInitialUser);
   const { isCollapsed } = useSidebar();
+
+  useEffect(() => {
+    // 1. Sync on custom user updated event in current tab
+    const handleUserUpdated = (e: Event) => {
+      const customEvent = e as CustomEvent<User>;
+      if (customEvent.detail) {
+        setUser(customEvent.detail);
+      } else {
+        setUser(getInitialUser());
+      }
+    };
+
+    // 2. Sync on storage event from another tab
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === STORAGE_KEY || e.key === 'arkipelago_user_profiles') {
+        setUser(getInitialUser());
+      }
+    };
+
+    window.addEventListener(USER_EVENT_NAME, handleUserUpdated);
+    window.addEventListener('storage', handleStorage);
+
+    // 3. BroadcastChannel cross-tab sync
+    let bc: BroadcastChannel | null = null;
+    if (typeof BroadcastChannel !== 'undefined') {
+      try {
+        bc = new BroadcastChannel(USER_CHANNEL_NAME);
+        bc.onmessage = (msg) => {
+          if (msg.data && 'user' in msg.data) {
+            setUser(msg.data.user);
+          }
+        };
+      } catch {}
+    }
+
+    return () => {
+      window.removeEventListener(USER_EVENT_NAME, handleUserUpdated);
+      window.removeEventListener('storage', handleStorage);
+      bc?.close();
+    };
+  }, []);
 
   useEffect(() => {
     if (!user) {
@@ -75,4 +133,3 @@ function StudioLayoutContent({
     </ErrorBoundary>
   );
 }
-

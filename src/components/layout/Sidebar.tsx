@@ -10,6 +10,8 @@ import { LogOut, ChevronLeft, ChevronRight, Clock } from 'lucide-react';
 import { useClockIn } from '@/lib/hooks/useClockIn';
 import { useSidebar } from '@/lib/sidebarContext';
 import Logo from '@/components/ui/Logo';
+import { USER_EVENT_NAME, STORAGE_KEY } from '@/lib/hooks/useAuth';
+
 
 interface SidebarProps {
   user: User | null;
@@ -256,7 +258,8 @@ export function Sidebar({ user }: SidebarProps) {
           </div>
           <button
             onClick={() => {
-              localStorage.removeItem('arkipelago_user');
+              localStorage.removeItem(STORAGE_KEY);
+              window.dispatchEvent(new CustomEvent(USER_EVENT_NAME, { detail: null }));
               router.push('/login');
             }}
             className="text-muted-main hover:text-accent-red transition-colors p-1.5 rounded-lg hover:bg-surface-hover cursor-pointer"
@@ -281,7 +284,8 @@ export function Sidebar({ user }: SidebarProps) {
 
           <button
             onClick={() => {
-              localStorage.removeItem('arkipelago_user');
+              localStorage.removeItem(STORAGE_KEY);
+              window.dispatchEvent(new CustomEvent(USER_EVENT_NAME, { detail: null }));
               router.push('/login');
             }}
             className="p-2 text-muted-main hover:text-accent-red transition-colors rounded-lg hover:bg-surface-hover cursor-pointer"

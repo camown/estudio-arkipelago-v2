@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/useAuth';
+import { getProfileForEmail } from '@/lib/hooks/useAuth';
 import { PRESET_ACCOUNTS } from '@/lib/constants';
 import { Shield, Users, User as UserIcon, Wrench } from 'lucide-react';
 import Logo from '@/components/ui/Logo';
@@ -108,6 +109,9 @@ export function LoginForm() {
             const Icon = ROLE_ICONS[account.role] || UserIcon;
             const borderClass = ROLE_BORDER_COLORS[account.role] || 'border-l-text-main';
             const badgeClass = BADGE_COLORS[account.accessLevel] || 'bg-surface-hover text-text-main';
+            // Show saved custom name if user previously changed it in Settings
+            const savedProfile = getProfileForEmail(account.email);
+            const displayName = savedProfile?.name || account.name;
 
             return (
               <button
@@ -131,7 +135,10 @@ export function LoginForm() {
                   </div>
 
                   <div className="text-xs font-bold text-text-main mb-1">
-                    {account.name}
+                    {displayName}
+                    {savedProfile?.name && savedProfile.name !== account.name && (
+                      <span className="ml-1.5 text-[10px] text-accent-cyan font-normal">(custom)</span>
+                    )}
                   </div>
 
                   <p className="text-[11px] text-muted-main leading-relaxed">

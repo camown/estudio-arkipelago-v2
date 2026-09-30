@@ -1,16 +1,16 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useTheme } from '@/lib/themeContext';
-import { User, Phone, Mail, Camera, RefreshCw, Save, Check, Calendar, ExternalLink, Settings as SettingsIcon } from 'lucide-react';
+import { User, Phone, Mail, Camera, RefreshCw, Save, Check, Calendar, ExternalLink, Settings as SettingsIcon, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function ProfileSettingsPage() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const {
     themeMode,
     customColors,
@@ -18,12 +18,13 @@ export default function ProfileSettingsPage() {
     resetToDefaults,
   } = useTheme();
 
-  const [displayName, setDisplayName] = useState(() => user?.name || 'Testing User');
-  const [phoneNumber, setPhoneNumber] = useState('09173333333');
+  const [displayName, setDisplayName] = useState(() => user?.name || '');
+  const [phoneNumber, setPhoneNumber] = useState(() => user?.phoneNumber || '');
   const emailAddress = user?.email || 'partner@estudioarkipelago.com';
   const [bgColor, setBgColor] = useState(() => customColors.bgColor);
   const [textColor, setTextColor] = useState(() => customColors.textColor);
   const [savedSuccess, setSavedSuccess] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [isGoogleSynced, setIsGoogleSynced] = useState(true);
   const [connectedAccount, setConnectedAccount] = useState(() => user?.email || 'partner@arkipelago.com');
@@ -31,9 +32,18 @@ export default function ProfileSettingsPage() {
 
   const [avatarUrl, setAvatarUrl] = useState<string | null>(() => {
     if (typeof window === 'undefined') return null;
-    return localStorage.getItem('arkipelago_user_avatar');
+    return user?.avatarUrl || localStorage.getItem('arkipelago_user_avatar') || null;
   });
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  // Sync local state if user changes (e.g., after a role switch or cross-tab update)
+  useEffect(() => {
+    if (user) {
+      setDisplayName(user.name || '');
+      setPhoneNumber(user.phoneNumber || '');
+      setAvatarUrl(user.avatarUrl || localStorage.getItem('arkipelago_user_avatar') || null);
+    }
+  }, [user?.email]); // only re-sync when the logged-in account changes, not on every name-keypress
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -47,16 +57,46 @@ export default function ProfileSettingsPage() {
     reader.readAsDataURL(file);
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (user) {
-      const updatedUser = { ...user, name: displayName };
-      localStorage.setItem('arkipelago_user', JSON.stringify(updatedUser));
+    if (!user) return;
+
+    setIsSaving(true);
+    try {
+      const trimmedName = displayName.trim();
+      if (!trimmedName) {
+        setSyncNotice('⚠️ Display name cannot be empty');
+        setTimeout(() => setSyncNotice(null), 3000);
+        setIsSaving(false);
+        return;
+      }
+
+      // Save theme colors
+      setCustomColors({ bgColor, textColor });
+
+      // Persist avatar to user record
+      const avatarToSave = avatarUrl || undefined;
+      if (avatarToSave) {
+        localStorage.setItem('arkipelago_user_avatar', avatarToSave);
+      }
+
+      // updateUser persists name, phoneNumber, avatarUrl to localStorage profile
+      // registry + localStorage session + fires live events to layout/topbar/sidebar
+      await updateUser({
+        name: trimmedName,
+        phoneNumber: phoneNumber.trim() || undefined,
+        avatarUrl: avatarToSave,
+      });
+
+      setSavedSuccess(true);
+      setTimeout(() => setSavedSuccess(false), 3500);
+    } catch (err) {
+      console.error('Settings save error:', err);
+      setSyncNotice('⚠️ Failed to save changes. Please try again.');
+      setTimeout(() => setSyncNotice(null), 4000);
+    } finally {
+      setIsSaving(false);
     }
-    
-    setCustomColors({ bgColor, textColor });
-    setSavedSuccess(true);
-    setTimeout(() => setSavedSuccess(false), 3000);
   };
 
   const handleSyncGoogleCalendar = async () => {
@@ -181,8 +221,12 @@ export default function ProfileSettingsPage() {
               type="text"
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
+              placeholder="Your full name"
               className="w-full bg-surface-hover/70 border border-border-main rounded-xl px-3.5 py-2.5 text-xs font-mono text-text-main focus:border-text-main focus:outline-none transition-colors"
             />
+            <p className="text-[10px] text-muted-main">
+              This name appears in the sidebar, top bar, chat messages, and wall posts.
+            </p>
           </div>
 
           {/* Phone Number */}
@@ -195,6 +239,7 @@ export default function ProfileSettingsPage() {
               type="text"
               value={phoneNumber}
               onChange={(e) => setPhoneNumber(e.target.value)}
+              placeholder="e.g. 09171234567"
               className="w-full bg-surface-hover/70 border border-border-main rounded-xl px-3.5 py-2.5 text-xs font-mono text-text-main focus:border-text-main focus:outline-none transition-colors"
             />
           </div>
@@ -253,7 +298,12 @@ export default function ProfileSettingsPage() {
             </p>
 
             {syncNotice && (
-              <div className="text-xs font-semibold text-accent-cyan bg-accent-cyan/10 px-3 py-1.5 rounded-lg border border-accent-cyan/30">
+              <div className={cn(
+                "text-xs font-semibold px-3 py-1.5 rounded-lg border",
+                syncNotice.startsWith('⚠️')
+                  ? "text-amber-700 dark:text-amber-400 bg-amber-500/10 border-amber-500/30"
+                  : "text-accent-cyan bg-accent-cyan/10 border-accent-cyan/30"
+              )}>
                 {syncNotice}
               </div>
             )}
@@ -357,18 +407,32 @@ export default function ProfileSettingsPage() {
         {/* Save Button & Feedback */}
         <div className="flex items-center justify-between pt-2">
           {savedSuccess ? (
-            <div className="flex items-center gap-2 text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-3.5 py-2 border border-emerald-500/30 rounded-xl">
+            <div className="flex items-center gap-2 text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-3.5 py-2 border border-emerald-500/30 rounded-xl animate-in fade-in duration-200">
               <Check className="w-4 h-4" />
-              <span>Preferences saved</span>
+              <span>Changes saved — name & avatar updated across the app!</span>
+            </div>
+          ) : syncNotice ? (
+            <div className={cn(
+              "text-xs font-semibold px-3.5 py-2 border rounded-xl",
+              syncNotice.startsWith('⚠️')
+                ? "text-amber-700 dark:text-amber-400 bg-amber-500/10 border-amber-500/30"
+                : "text-accent-cyan bg-accent-cyan/10 border-accent-cyan/30"
+            )}>
+              {syncNotice}
             </div>
           ) : <div />}
 
           <button
             type="submit"
-            className="px-6 py-2.5 bg-black text-white dark:bg-white dark:text-black font-semibold text-xs rounded-xl hover:opacity-90 active:scale-[0.98] transition-all flex items-center gap-2 ml-auto shadow-sm cursor-pointer"
+            disabled={isSaving}
+            className="px-6 py-2.5 bg-black text-white dark:bg-white dark:text-black font-semibold text-xs rounded-xl hover:opacity-90 active:scale-[0.98] transition-all flex items-center gap-2 ml-auto shadow-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Save className="w-4 h-4" />
-            <span>Save Changes</span>
+            {isSaving ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Save className="w-4 h-4" />
+            )}
+            <span>{isSaving ? 'Saving...' : 'Save Changes'}</span>
           </button>
         </div>
       </form>
