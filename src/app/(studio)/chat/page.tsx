@@ -167,7 +167,7 @@ const INITIAL_THREADS: ThreadChannel[] = [
     projectCode: 'MT-2024',
     projectName: 'Makati Commercial Tower',
     topicName: 'Schematic Revision & 3D Massing Review',
-    participants: ['Arch. Carlos Mendoza', 'Arch. Testing2', 'Elena Gomez'],
+    participants: ['Arch. Carlos Mendoza', 'Arch. Patricia Ramos', 'Elena Gomez'],
   },
   {
     id: 'thread-002',
@@ -185,7 +185,7 @@ const INITIAL_THREADS: ThreadChannel[] = [
     projectCode: 'BCP-2024',
     projectName: 'BGC Cultural Pavilion',
     topicName: 'Foundation Soil Test & City Permits',
-    participants: ['Arch. Sofia Reyes', 'Arch. Testing1', 'Engr. Roberto Cruz'],
+    participants: ['Arch. Sofia Reyes', 'Arch. Leandro Locsin', 'Engr. Roberto Cruz'],
   },
   {
     id: 'dm-001',
@@ -292,9 +292,14 @@ export default function ChatPage() {
   const [selectedMembersToAdd, setSelectedMembersToAdd] = useState<string[]>([]);
   const [memberSearchQuery, setMemberSearchQuery] = useState('');
 
+  // Direct Message Creation State
+  const [isNewDMModalOpen, setIsNewDMModalOpen] = useState(false);
+  const [newDMSearchQuery, setNewDMSearchQuery] = useState('');
+
   const chatFileRef = useRef<HTMLInputElement>(null);
   const wallFileRef = useRef<HTMLInputElement>(null);
   const rosterRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const wallEmojiRef = useRef<HTMLDivElement>(null);
   const chatEmojiRef = useRef<HTMLDivElement>(null);
   const postMenuRef = useRef<HTMLDivElement>(null);
@@ -628,6 +633,11 @@ export default function ChatPage() {
   const currentThread = threads.find((t) => t.id === selectedThreadId) || threads[0];
   const activeMessages = messages[currentThread?.id] || [];
 
+  // Auto-scroll chat stream to latest message
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [activeMessages.length, selectedThreadId]);
+
   const handlePost = () => {
     if (!postContent.trim() && wallAttachments.length === 0) return;
     if (!user) return;
@@ -751,6 +761,78 @@ export default function ChatPage() {
     showToast(`✓ Added ${selectedMembersToAdd.length} member(s) to #${currentThread.name}!`);
     setSelectedMembersToAdd([]);
     setIsAddMemberModalOpen(false);
+  };
+
+  // Start or open a direct message thread with a studio member
+  const handleStartDirectMessage = async (member: StudioMemberContact) => {
+    const currentUserName = user?.name?.trim() || 'Arch. Leandro Locsin';
+
+    // Check if a direct message thread already exists with this member
+    const existingThread = threads.find(
+      (t) =>
+        t.category === 'DIRECT_MESSAGE' &&
+        (t.name.toLowerCase() === member.name.toLowerCase() ||
+          t.participants.some((p) => p.toLowerCase() === member.name.toLowerCase()))
+    );
+
+    if (existingThread) {
+      setSelectedThreadId(existingThread.id);
+      setIsNewDMModalOpen(false);
+      setIsMembersRosterOpen(false);
+      setMobileActiveView('chat');
+      showToast(`✓ Opened direct message with ${member.name}`);
+      return;
+    }
+
+    const newDmId = 'dm-' + Date.now();
+    const newThread: ThreadChannel = {
+      id: newDmId,
+      name: member.name,
+      category: 'DIRECT_MESSAGE',
+      topicName: `Direct 1-on-1 Consultation`,
+      participants: [currentUserName, member.name],
+    };
+
+    setThreads((prev) => [newThread, ...prev]);
+
+    const sysMsg: ChatMessage = {
+      id: 'sys-dm-' + Date.now(),
+      sender: 'System',
+      text: `Direct message thread started between ${currentUserName} and ${member.name}.`,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      isSystem: true,
+    };
+
+    setMessages((prev) => ({
+      ...prev,
+      [newDmId]: [sysMsg],
+    }));
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase.from('chat_threads').insert({
+          id: newDmId,
+          name: newThread.name,
+          category: newThread.category,
+          topic_name: newThread.topicName,
+          participants: newThread.participants,
+        });
+        await supabase.from('chat_messages').insert({
+          id: sysMsg.id,
+          thread_id: newDmId,
+          sender: sysMsg.sender,
+          text: sysMsg.text,
+        });
+      } catch (err) {
+        console.error('Error saving direct message to Supabase:', err);
+      }
+    }
+
+    setSelectedThreadId(newDmId);
+    setIsNewDMModalOpen(false);
+    setIsMembersRosterOpen(false);
+    setMobileActiveView('chat');
+    showToast(`✓ Started direct message with ${member.name}`);
   };
 
   // Slack/Discord-Style Message Reactions
@@ -1084,6 +1166,140 @@ export default function ChatPage() {
                   Add Selected Members
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* START NEW DIRECT MESSAGE MODAL */}
+      {isNewDMModalOpen && (
+        <div
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setIsNewDMModalOpen(false);
+              setNewDMSearchQuery('');
+            }
+          }}
+          className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 cursor-pointer animate-in fade-in duration-150 overflow-y-auto"
+        >
+          <div className="bg-surface-main border border-border-main rounded-2xl w-full max-w-lg p-6 space-y-4 shadow-2xl cursor-default my-auto">
+            <div className="flex items-center justify-between border-b border-border-main pb-3">
+              <div>
+                <h3 className="font-bold text-base text-text-main flex items-center gap-2">
+                  <Users className="w-4 h-4 text-accent-cyan" />
+                  <span>Start Direct Message</span>
+                </h3>
+                <p className="text-xs text-muted-main mt-0.5">
+                  Select a team member to start a 1-on-1 private consultation thread.
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setIsNewDMModalOpen(false);
+                  setNewDMSearchQuery('');
+                }}
+                className="p-1.5 rounded-lg hover:bg-surface-hover text-muted-main hover:text-text-main transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Search filter */}
+            <div className="relative">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-main" />
+              <input
+                type="text"
+                value={newDMSearchQuery}
+                onChange={(e) => setNewDMSearchQuery(e.target.value)}
+                placeholder="Search studio members by name, discipline, or email..."
+                className="w-full pl-9 pr-4 py-2.5 bg-surface-main border border-border-strong rounded-xl text-xs text-text-main placeholder:text-muted-main placeholder:font-medium outline-hidden focus:border-text-main focus:ring-1 focus:ring-text-main transition-all"
+                autoFocus
+              />
+            </div>
+
+            {/* Members Directory List */}
+            <div className="max-h-72 overflow-y-auto space-y-1.5 pr-1">
+              {ALL_STUDIO_MEMBERS
+                .filter(
+                  (m) =>
+                    m.name.toLowerCase().includes(newDMSearchQuery.toLowerCase()) ||
+                    m.role.toLowerCase().includes(newDMSearchQuery.toLowerCase()) ||
+                    m.roleBadge.toLowerCase().includes(newDMSearchQuery.toLowerCase()) ||
+                    m.email.toLowerCase().includes(newDMSearchQuery.toLowerCase())
+                )
+                .map((member) => {
+                  const currentUserName = user?.name?.trim() || 'Arch. Leandro Locsin';
+                  const isCurrent = member.name.toLowerCase() === currentUserName.toLowerCase();
+                  const hasExistingDM = threads.some(
+                    (t) =>
+                      t.category === 'DIRECT_MESSAGE' &&
+                      (t.name.toLowerCase() === member.name.toLowerCase() ||
+                        t.participants.some((p) => p.toLowerCase() === member.name.toLowerCase()))
+                  );
+
+                  return (
+                    <div
+                      key={member.id}
+                      onClick={() => !isCurrent && handleStartDirectMessage(member)}
+                      className={cn(
+                        'p-3 rounded-xl border flex items-center justify-between text-xs transition-all',
+                        isCurrent
+                          ? 'opacity-50 border-border-main/40 bg-surface-hover/20 cursor-not-allowed'
+                          : 'border-border-main hover:border-text-main bg-surface-hover/40 hover:bg-surface-hover cursor-pointer'
+                      )}
+                    >
+                      <div className="flex items-center gap-3 overflow-hidden">
+                        <div
+                          className={cn(
+                            'w-8 h-8 rounded-full text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-2xs',
+                            member.avatarColor
+                          )}
+                        >
+                          {member.name.replace('Arch. ', '').replace('Engr. ', '').charAt(0)}
+                        </div>
+                        <div className="overflow-hidden space-y-0.5">
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-text-main truncate text-xs">{member.name}</span>
+                            {isCurrent && (
+                              <span className="text-[10px] font-mono text-muted-main">(You)</span>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-muted-main truncate">{member.role}</p>
+                          <p className="text-[10px] font-mono text-muted-main/70 truncate">{member.email}</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-surface-main border border-border-main text-muted-main">
+                          {member.roleBadge}
+                        </span>
+                        {!isCurrent && (
+                          <button
+                            type="button"
+                            className="px-3 py-1 bg-black text-white dark:bg-white dark:text-black rounded-lg text-xs font-semibold hover:opacity-90 transition-opacity flex items-center gap-1.5 shadow-2xs"
+                          >
+                            <MessageSquare className="w-3 h-3" />
+                            <span>{hasExistingDM ? 'Open' : 'Chat'}</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex items-center justify-end pt-3 border-t border-border-main">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsNewDMModalOpen(false);
+                  setNewDMSearchQuery('');
+                }}
+                className="px-4 py-1.5 rounded-xl border border-border-main text-xs font-semibold hover:bg-surface-hover cursor-pointer transition-colors"
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>
@@ -1936,21 +2152,31 @@ export default function ChatPage() {
 
                 {/* 2. DIRECT 1-ON-1 MESSAGES */}
                 <div>
-                  <button
-                    onClick={() => setIsDirectMessagesOpen(!isDirectMessagesOpen)}
-                    className="w-full px-4 py-2 flex items-center justify-between text-[11px] font-bold text-text-main bg-surface-hover/60 tracking-wide border-b border-border-main/30 cursor-pointer"
-                  >
-                    <span className="flex items-center gap-1.5">
+                  <div className="w-full px-4 py-2 flex items-center justify-between text-[11px] font-bold text-text-main bg-surface-hover/60 tracking-wide border-b border-border-main/30">
+                    <button
+                      onClick={() => setIsDirectMessagesOpen(!isDirectMessagesOpen)}
+                      className="flex items-center gap-1.5 flex-1 text-left cursor-pointer"
+                    >
                       <Users className="w-3.5 h-3.5 text-muted-main" />
                       <span>Direct Messages ({threads.filter((t) => t.category === 'DIRECT_MESSAGE').length})</span>
-                    </span>
-                    <ChevronDown
-                      className={cn(
-                        'w-3.5 h-3.5 transition-transform text-muted-main',
-                        isDirectMessagesOpen ? 'rotate-0' : '-rotate-90'
-                      )}
-                    />
-                  </button>
+                      <ChevronDown
+                        className={cn(
+                          'w-3.5 h-3.5 transition-transform text-muted-main ml-0.5',
+                          isDirectMessagesOpen ? 'rotate-0' : '-rotate-90'
+                        )}
+                      />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsNewDMModalOpen(true);
+                      }}
+                      className="p-1 rounded hover:bg-surface-hover text-muted-main hover:text-text-main transition-colors cursor-pointer"
+                      title="Start New Direct Message"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
 
                   {isDirectMessagesOpen && (
                     <div className="divide-y divide-border-main/30">
@@ -1965,6 +2191,9 @@ export default function ChatPage() {
                           const isSelected = selectedThreadId === thread.id;
                           const msgList = messages[thread.id] || [];
                           const lastMsg = msgList[msgList.length - 1];
+                          const memberContact = ALL_STUDIO_MEMBERS.find(
+                            (m) => m.name.toLowerCase() === thread.name.toLowerCase()
+                          );
 
                           return (
                             <div
@@ -1980,12 +2209,22 @@ export default function ChatPage() {
                                   : 'hover:bg-surface-hover/50 border-l-transparent'
                               )}
                             >
-                              <div className="w-7 h-7 rounded-full bg-surface-hover border border-border-main text-text-main flex items-center justify-center shrink-0 mt-0.5 font-bold text-xs">
-                                {thread.name.charAt(0)}
+                              <div
+                                className={cn(
+                                  'w-7 h-7 rounded-full text-white flex items-center justify-center shrink-0 mt-0.5 font-bold text-xs shadow-2xs',
+                                  memberContact?.avatarColor || 'bg-surface-hover border border-border-main text-text-main'
+                                )}
+                              >
+                                {thread.name.replace('Arch. ', '').replace('Engr. ', '').charAt(0)}
                               </div>
                               <div className="overflow-hidden flex-1 space-y-0.5">
                                 <div className="flex items-center justify-between">
                                   <span className="text-[9px] text-muted-main">Direct Chat</span>
+                                  {memberContact?.roleBadge && (
+                                    <span className="text-[9px] font-mono text-muted-main/80">
+                                      {memberContact.roleBadge}
+                                    </span>
+                                  )}
                                 </div>
                                 <div className="text-xs font-semibold truncate text-text-main">
                                   {thread.name}
@@ -1997,6 +2236,16 @@ export default function ChatPage() {
                             </div>
                           );
                         })}
+
+                      <div className="p-2.5">
+                        <button
+                          onClick={() => setIsNewDMModalOpen(true)}
+                          className="w-full py-1.5 px-2.5 rounded-lg border border-dashed border-border-main hover:border-text-main text-[11px] font-semibold text-muted-main hover:text-text-main flex items-center justify-center gap-1.5 transition-colors cursor-pointer bg-surface-main/50"
+                        >
+                          <Plus className="w-3 h-3" />
+                          <span>Start New Direct Message</span>
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -2121,9 +2370,20 @@ export default function ChatPage() {
                                     </div>
                                   </div>
                                 </div>
-                                <span className="text-[9px] px-1.5 py-0.5 rounded bg-surface-main border border-border-main text-muted-main font-mono shrink-0">
-                                  {contact?.roleBadge || 'Member'}
-                                </span>
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-surface-main border border-border-main text-muted-main font-mono shrink-0">
+                                    {contact?.roleBadge || 'Member'}
+                                  </span>
+                                  {contact && pName !== (user?.name || 'Arch. Leandro Locsin') && (
+                                    <button
+                                      onClick={() => handleStartDirectMessage(contact)}
+                                      className="p-1 rounded-md border border-border-main hover:bg-surface-hover text-muted-main hover:text-text-main transition-colors cursor-pointer"
+                                      title={`Direct Message ${pName}`}
+                                    >
+                                      <MessageSquare className="w-3 h-3" />
+                                    </button>
+                                  )}
+                                </div>
                               </div>
                             );
                           })}
@@ -2188,49 +2448,64 @@ export default function ChatPage() {
                         );
                       }
 
-                      const isMe =
-                        msg.sender === (user?.name || 'Arch. Leandro Locsin') ||
-                        msg.sender === 'Arch. Leandro Locsin';
+                      const currentUserName = user?.name?.trim() || 'Arch. Leandro Locsin';
+                      const isMe = msg.sender?.trim().toLowerCase() === currentUserName.toLowerCase();
+                      const memberContact = ALL_STUDIO_MEMBERS.find(
+                        (m) => m.name.toLowerCase() === msg.sender?.trim().toLowerCase()
+                      );
 
                       return (
                         <div
                           key={msg.id}
                           className={cn(
                             'flex gap-2.5 max-w-xl group/msg relative',
-                            isMe ? 'ml-auto flex-row-reverse' : 'mr-auto flex-row'
+                            isMe ? 'ml-auto flex-row-reverse items-start' : 'mr-auto flex-row items-start'
                           )}
                         >
                           {!isMe && (
-                            <div className="w-7 h-7 rounded-full bg-surface-hover border border-border-main flex items-center justify-center text-[10px] font-bold text-text-main shrink-0 mt-1 shadow-2xs">
+                            <div
+                              className={cn(
+                                'w-8 h-8 rounded-full text-white flex items-center justify-center text-xs font-bold shrink-0 mt-0.5 shadow-2xs',
+                                memberContact?.avatarColor || 'bg-accent-cyan text-black'
+                              )}
+                              title={msg.sender}
+                            >
                               {msg.sender.replace('Arch. ', '').replace('Engr. ', '').charAt(0)}
                             </div>
                           )}
 
-                          <div className={cn('space-y-1 relative', isMe ? 'items-end' : 'items-start')}>
+                          <div className={cn('flex flex-col space-y-1 relative', isMe ? 'items-end' : 'items-start')}>
                             <div
                               className={cn(
                                 'flex items-center gap-2 text-[10px] text-muted-main px-1',
-                                isMe ? 'justify-end' : 'justify-start'
+                                isMe ? 'justify-end flex-row-reverse' : 'justify-start'
                               )}
                             >
-                              <span className="font-semibold text-text-main">{msg.sender}</span>
-                              <span className="font-mono">{msg.timestamp}</span>
+                              <span className="font-semibold text-xs text-text-main">
+                                {isMe ? 'You' : msg.sender}
+                              </span>
+                              {!isMe && memberContact?.roleBadge && (
+                                <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-surface-hover border border-border-main text-muted-main">
+                                  {memberContact.roleBadge}
+                                </span>
+                              )}
+                              <span className="font-mono text-[10px] text-muted-main">{msg.timestamp}</span>
                             </div>
 
-                            {/* Message Card */}
+                            {/* Message Card Bubble */}
                             <div
                               className={cn(
-                                'p-3.5 rounded-2xl text-xs font-sans leading-relaxed border space-y-2 shadow-2xs relative',
+                                'p-3.5 text-xs font-sans leading-relaxed border space-y-2 shadow-2xs relative max-w-lg',
                                 isMe
-                                  ? 'bg-black text-white dark:bg-white dark:text-black border-black dark:border-white font-medium'
-                                  : 'bg-surface-hover text-text-main border-border-main'
+                                  ? 'bg-black text-white dark:bg-white dark:text-black border-black dark:border-white font-medium rounded-2xl rounded-tr-xs'
+                                  : 'bg-surface-main dark:bg-surface-hover text-text-main border-border-main rounded-2xl rounded-tl-xs'
                               )}
                             >
                               {/* HOVER SLACK/DISCORD-STYLE REACTION BAR */}
                               <div
                                 className={cn(
                                   'opacity-0 group-hover/msg:opacity-100 transition-opacity absolute -top-3.5 bg-surface-main border border-border-main rounded-xl px-1.5 py-0.5 shadow-md flex items-center gap-0.5 z-20',
-                                  isMe ? 'left-2' : 'right-2'
+                                  isMe ? 'right-2' : 'left-2'
                                 )}
                               >
                                 {['👍', '📐', '✅', '👀', '🔥'].map((emoji) => (
@@ -2283,14 +2558,14 @@ export default function ChatPage() {
                                   </div>
                                 </div>
                               )}
-                              {msg.text && <div>{msg.text}</div>}
+                              {msg.text && <div className="text-xs sm:text-[13px] leading-relaxed break-words">{msg.text}</div>}
                             </div>
 
                             {/* ACTIVE EMOJI REACTION PILLS */}
                             {msg.reactions && Object.keys(msg.reactions).length > 0 && (
                               <div className={cn('flex flex-wrap items-center gap-1 pt-0.5', isMe ? 'justify-end' : 'justify-start')}>
                                 {Object.entries(msg.reactions).map(([emoji, users]) => {
-                                  const hasMe = users.includes(user?.name || 'Arch. Leandro Locsin');
+                                  const hasMe = users.includes(currentUserName);
                                   return (
                                     <button
                                       key={emoji}
@@ -2323,6 +2598,7 @@ export default function ChatPage() {
                         </p>
                       </div>
                     )}
+                    <div ref={messagesEndRef} />
                   </div>
 
                   {/* Pending Attachment Preview Bar */}
@@ -2401,7 +2677,7 @@ export default function ChatPage() {
                       value={chatInput}
                       onChange={(e) => setChatInput(e.target.value)}
                       onKeyDown={handleKeyPress}
-                      className="flex-1 bg-surface-hover border border-border-main rounded-xl px-4 py-2.5 text-xs font-sans text-text-main focus:outline-none focus:border-text-main placeholder:text-muted-main/60"
+                      className="flex-1 bg-surface-main border border-border-strong rounded-xl px-4 py-2.5 text-xs font-sans text-text-main focus:outline-none focus:border-text-main focus:ring-1 focus:ring-text-main placeholder:text-muted-main placeholder:font-medium transition-all shadow-2xs"
                     />
 
                     <button
