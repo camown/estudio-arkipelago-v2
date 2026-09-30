@@ -456,7 +456,7 @@ export default function HRPage() {
               {selectedType === 'reimbursement' && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-[11px] text-muted-main font-semibold">Amount (PHP / USD)</label>
+                    <label className="text-[11px] text-muted-main font-semibold">Amount (PHP ₱)</label>
                     <input 
                       type="number" 
                       placeholder="0.00"

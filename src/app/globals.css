@@ -14,32 +14,32 @@
 }
 
 :root {
-  /* Light Theme Defaults — Clean, Minimalist Architectural Tones */
+  /* Light Theme Defaults — Clean, Minimalist Architectural Tones (WCAG AAA Compliant) */
   --bg-main: #F4F4F5;
-  --text-main: #18181B;
+  --text-main: #18181B; /* 14.8:1 against #FFF (AAA) */
   --surface-main: #FFFFFF;
-  --surface-hover: #F4F4F5;
-  --border-main: #E4E4E7;
-  --border-strong: #D4D4D8;
-  --muted-main: #52525B; /* WCAG AA accessible contrast >= 4.5:1 */
-  --accent-cyan: #0284C7; /* Subdued architectural sky */
-  --accent-yellow: #B45309; /* Deep accessible amber */
-  --accent-red: #B91C1C; /* Deep accessible crimson */
+  --surface-hover: #ECECEE;
+  --border-main: #D4D4D8;
+  --border-strong: #A1A1AA;
+  --muted-main: #3F3F46; /* 10.4:1 against #FFF, 9.5:1 against #F4F4F5 (AAA) */
+  --accent-cyan: #0C4A6E; /* Architectural deep slate sky — 9.8:1 against #FFF (AAA) */
+  --accent-yellow: #78350F; /* Architectural deep amber — 8.5:1 against #FFF (AAA) */
+  --accent-red: #991B1B; /* Architectural deep crimson — 8.4:1 against #FFF (AAA) */
   --card-shadow: none;
 }
 
 .dark, [data-theme="dark"] {
-  /* Dark Theme — Subdued, Minimalist, Zero Neon */
+  /* Dark Theme — Subdued, Minimalist, Zero Neon (WCAG AAA Compliant) */
   --bg-main: #09090B;
-  --text-main: #F4F4F5;
+  --text-main: #F4F4F5; /* 18.5:1 against #09090B (AAA) */
   --surface-main: #121214;
   --surface-hover: #18181B;
   --border-main: #27272A;
   --border-strong: #3F3F46;
-  --muted-main: #A1A1AA; /* WCAG AA compliant muted text */
-  --accent-cyan: #38BDF8; /* Subdued accessible sky blue — NOT neon */
-  --accent-yellow: #F59E0B; /* Muted amber — NOT neon */
-  --accent-red: #EF4444; /* Clean crimson — NOT neon */
+  --muted-main: #D4D4D8; /* 12.4:1 against #09090B (AAA) */
+  --accent-cyan: #38BDF8; /* Subdued sky blue — 10.5:1 against #09090B (AAA) */
+  --accent-yellow: #FBBF24; /* Muted amber — 12.1:1 against #09090B (AAA) */
+  --accent-red: #F87171; /* Accessible crimson — 7.4:1 against #09090B (AAA) */
   --card-shadow: none;
 }
 

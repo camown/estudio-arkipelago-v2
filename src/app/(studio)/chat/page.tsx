@@ -232,6 +232,7 @@ export interface InAppNotification {
   id: string;
   sender: string;
   text: string;
+  count: number;
   threadId: string;
 }
 
@@ -577,10 +578,20 @@ export default function ChatPage() {
 
   // Chat Messages State with Instant SWR LocalStorage Initializer
   const [messages, setMessages] = useState<Record<string, ChatMessage[]>>(getInitialCachedMessages);
+  const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>(() => {
+    if (typeof window === 'undefined') return {};
+    try {
+      return JSON.parse(localStorage.getItem('arkipelago_chat_unread_counts') || '{}');
+    } catch {
+      return {};
+    }
+  });
   const [typingUsers, setTypingUsers] = useState<Record<string, string[]>>({});
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const broadcastSyncRef = useRef<BroadcastChannel | null>(null);
   const [inAppNotifs, setInAppNotifs] = useState<InAppNotification[]>([]);
   const [selectedColorTag, setSelectedColorTag] = useState<string>('indigo');
+  const [mobileReactingMsgId, setMobileReactingMsgId] = useState<string | null>(null);
 
   // Load threads and messages from Supabase + Multi-Event Realtime sync
   useEffect(() => {
@@ -654,13 +665,132 @@ export default function ChatPage() {
     window.addEventListener('online', handleRevalidate);
 
     // Durable Realtime Channel with WebSocket broadcast & Postgres change capture
-    const channelName = `studio_chat_live_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+    const channelName = 'studio_chat_global_room_v1';
     const channel = supabase.channel(channelName, {
       config: {
         broadcast: { self: false },
       },
     });
     channelRef.current = channel;
+
+    // Helper: Unified incoming message processor with Messenger-style unread & grouped notifications
+    const processIncomingMessage = (threadId: string, formattedMsg: ChatMessage) => {
+      setMessages((prev) => {
+        const threadMsgs = prev[threadId] || [];
+        if (threadMsgs.some((existing) => existing.id === formattedMsg.id)) return prev;
+        const updated = {
+          ...prev,
+          [threadId]: [...threadMsgs, formattedMsg],
+        };
+        try {
+          localStorage.setItem(STORAGE_MESSAGES_KEY, JSON.stringify(updated));
+        } catch {}
+        return updated;
+      });
+
+      const currentName = user?.name || 'Arch. Leandro Locsin';
+      const isFromOther = formattedMsg.sender && formattedMsg.sender.trim().toLowerCase() !== currentName.trim().toLowerCase();
+      const isCurrentlyActive = selectedThreadId === threadId && mobileActiveView === 'chat' && typeof document !== 'undefined' && !document.hidden;
+
+      if (isFromOther && !isCurrentlyActive) {
+        setUnreadCounts((prev) => {
+          const updated = { ...prev, [threadId]: (prev[threadId] || 0) + 1 };
+          try {
+            localStorage.setItem('arkipelago_chat_unread_counts', JSON.stringify(updated));
+          } catch {}
+          return updated;
+        });
+
+        // Grouped notifications: "2 new messages from [Sender]"
+        if (!formattedMsg.isSystem) {
+          const senderName = formattedMsg.sender;
+          setInAppNotifs((prev) => {
+            const existing = prev.find((n) => n.sender.trim().toLowerCase() === senderName.trim().toLowerCase());
+            const newCount = existing ? existing.count + 1 : 1;
+            const notifId = existing ? existing.id : 'notif-' + Date.now();
+            const updatedNotif: InAppNotification = {
+              id: notifId,
+              sender: senderName,
+              text: formattedMsg.text || 'Shared an attachment',
+              count: newCount,
+              threadId: threadId,
+            };
+            const others = prev.filter((n) => n.id !== notifId);
+            return [updatedNotif, ...others.slice(0, 1)];
+          });
+
+          setTimeout(() => {
+            setInAppNotifs((prev) => prev.filter((n) => n.sender.trim().toLowerCase() !== senderName.trim().toLowerCase()));
+          }, 5500);
+        }
+      }
+    };
+
+    // Helper: Unified reaction updater
+    const processIncomingReaction = (threadId: string, messageId: string, reactions: Record<string, string[]>) => {
+      setMessages((prev) => {
+        const threadMsgs = prev[threadId] || [];
+        const updated = threadMsgs.map((msg) =>
+          msg.id === messageId ? { ...msg, reactions } : msg
+        );
+        const updatedMap = {
+          ...prev,
+          [threadId]: updated,
+        };
+        try {
+          localStorage.setItem(STORAGE_MESSAGES_KEY, JSON.stringify(updatedMap));
+        } catch {}
+        return updatedMap;
+      });
+    };
+
+    // Local multi-tab zero-latency sync via BroadcastChannel
+    let localBc: BroadcastChannel | null = null;
+    try {
+      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+        localBc = new BroadcastChannel('studio_chat_local_realtime');
+        broadcastSyncRef.current = localBc;
+        localBc.onmessage = (event) => {
+          const data = event.data;
+          if (!data) return;
+          if (data.type === 'new_message' && data.threadId && data.message) {
+            processIncomingMessage(data.threadId, data.message);
+          } else if (data.type === 'message_reaction' && data.threadId && data.messageId && data.reactions) {
+            processIncomingReaction(data.threadId, data.messageId, data.reactions);
+          } else if (data.type === 'user_typing' && data.threadId && data.userName) {
+            const currentName = user?.name || 'Arch. Leandro Locsin';
+            if (data.userName.trim().toLowerCase() !== currentName.trim().toLowerCase()) {
+              setTypingUsers((prev) => {
+                const list = prev[data.threadId] || [];
+                if (list.includes(data.userName)) return prev;
+                return { ...prev, [data.threadId]: [...list, data.userName] };
+              });
+            }
+          } else if (data.type === 'user_stop_typing' && data.threadId && data.userName) {
+            setTypingUsers((prev) => ({
+              ...prev,
+              [data.threadId]: (prev[data.threadId] || []).filter((u) => u !== data.userName),
+            }));
+          }
+        };
+      }
+    } catch {}
+
+    // Storage event for multi-tab fallback
+    const handleStorageEvent = (e: StorageEvent) => {
+      if (e.key === STORAGE_MESSAGES_KEY && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          setMessages(parsed);
+        } catch {}
+      } else if (e.key === 'arkipelago_chat_unread_counts' && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          setUnreadCounts(parsed);
+        } catch {}
+      }
+    };
+    window.addEventListener('storage', handleStorageEvent);
 
     channel
       .on(
@@ -681,19 +811,7 @@ export default function ChatPage() {
             reactions: decoded.meta.reactions || undefined,
             timestamp: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           };
-
-          setMessages((prev) => {
-            const threadMsgs = prev[m.thread_id] || [];
-            if (threadMsgs.some((existing) => existing.id === m.id)) return prev;
-            const updated = {
-              ...prev,
-              [m.thread_id]: [...threadMsgs, formattedMsg],
-            };
-            try {
-              localStorage.setItem(STORAGE_MESSAGES_KEY, JSON.stringify(updated));
-            } catch {}
-            return updated;
-          });
+          processIncomingMessage(m.thread_id, formattedMsg);
         }
       )
       .on(
@@ -703,29 +821,9 @@ export default function ChatPage() {
           const m = payload.new;
           if (!m || !m.id || !m.thread_id) return;
           const decoded = decodeAttachmentTitle(m.attachment_title);
-          setMessages((prev) => {
-            const threadMsgs = prev[m.thread_id] || [];
-            const updatedThreadMsgs = threadMsgs.map((existing) =>
-              existing.id === m.id
-                ? {
-                    ...existing,
-                    text: m.text,
-                    attachment: m.attachment || undefined,
-                    attachmentTitle: decoded.title || undefined,
-                    reactions: decoded.meta.reactions || existing.reactions,
-                    isSystem: existing.isSystem || m.sender?.trim().toLowerCase() === 'system' || !!decoded.meta.isSystem,
-                  }
-                : existing
-            );
-            const updated = {
-              ...prev,
-              [m.thread_id]: updatedThreadMsgs,
-            };
-            try {
-              localStorage.setItem(STORAGE_MESSAGES_KEY, JSON.stringify(updated));
-            } catch {}
-            return updated;
-          });
+          if (decoded.meta.reactions) {
+            processIncomingReaction(m.thread_id, m.id, decoded.meta.reactions);
+          }
         }
       )
       .on(
@@ -811,55 +909,12 @@ export default function ChatPage() {
       .on('broadcast', { event: 'new_message' }, (event) => {
         const payload = event.payload;
         if (!payload || !payload.threadId || !payload.message) return;
-        setMessages((prev) => {
-          const threadMsgs = prev[payload.threadId] || [];
-          if (threadMsgs.some((existing) => existing.id === payload.message.id)) return prev;
-          const updated = {
-            ...prev,
-            [payload.threadId]: [...threadMsgs, payload.message],
-          };
-          try {
-            localStorage.setItem(STORAGE_MESSAGES_KEY, JSON.stringify(updated));
-          } catch {}
-          return updated;
-        });
-
-        // Trigger in-app notification if message is from another user
-        const currentName = user?.name || 'Arch. Leandro Locsin';
-        const isFromOther = payload.message.sender && payload.message.sender.trim().toLowerCase() !== currentName.trim().toLowerCase();
-        if (isFromOther && !payload.message.isSystem) {
-          const notifId = 'notif-' + Date.now();
-          setInAppNotifs((prev) => [
-            {
-              id: notifId,
-              sender: payload.message.sender,
-              text: payload.message.text || 'Shared an attachment',
-              threadId: payload.threadId,
-            },
-            ...prev.slice(0, 1),
-          ]);
-          setTimeout(() => {
-            setInAppNotifs((prev) => prev.filter((n) => n.id !== notifId));
-          }, 4500);
-        }
+        processIncomingMessage(payload.threadId, payload.message);
       })
       .on('broadcast', { event: 'message_reaction' }, (event) => {
         const payload = event.payload;
         if (!payload || !payload.threadId || !payload.messageId) return;
-        setMessages((prev) => {
-          const threadMsgs = prev[payload.threadId] || [];
-          const updated = threadMsgs.map((msg) =>
-            msg.id === payload.messageId ? { ...msg, reactions: payload.reactions } : msg
-          );
-          const updatedMap = {
-            ...prev,
-            [payload.threadId]: updated,
-          };
-          try {
-            localStorage.setItem(STORAGE_MESSAGES_KEY, JSON.stringify(updatedMap));
-          } catch {}
-          return updatedMap;
-        });
+        processIncomingReaction(payload.threadId, payload.messageId, payload.reactions);
       })
       .on('broadcast', { event: 'user_typing' }, (event) => {
         const payload = event.payload;
@@ -891,11 +946,15 @@ export default function ChatPage() {
     return () => {
       window.removeEventListener('focus', handleRevalidate);
       window.removeEventListener('online', handleRevalidate);
+      window.removeEventListener('storage', handleStorageEvent);
+      if (localBc) {
+        localBc.close();
+      }
       if (channelRef.current) {
         supabase?.removeChannel(channelRef.current);
       }
     };
-  }, [user?.name]);
+  }, [user?.name, selectedThreadId, mobileActiveView]);
 
   const [chatInput, setChatInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -1132,6 +1191,16 @@ export default function ChatPage() {
     }
 
     // Ultra-fast peer broadcast
+    if (broadcastSyncRef.current && currentThread) {
+      try {
+        broadcastSyncRef.current.postMessage({
+          type: 'new_message',
+          threadId: currentThread.id,
+          message: newMsg,
+        });
+      } catch {}
+    }
+
     if (channelRef.current) {
       try {
         channelRef.current.send({
@@ -1384,7 +1453,18 @@ export default function ChatPage() {
       return updatedMap;
     });
 
-    // Fast broadcast to peers
+    // Fast broadcast to peers on global WebSocket channel & local tabs
+    if (broadcastSyncRef.current) {
+      try {
+        broadcastSyncRef.current.postMessage({
+          type: 'message_reaction',
+          threadId: currentThread.id,
+          messageId,
+          reactions: nextReactionsForMsg,
+        });
+      } catch {}
+    }
+
     if (channelRef.current) {
       try {
         channelRef.current.send({
@@ -2719,6 +2799,8 @@ export default function ChatPage() {
                           const msgList = messages[thread.id] || [];
                           const lastMsg = msgList[msgList.length - 1];
                           const threadColor = getThreadColor(thread);
+                          const unreadCount = unreadCounts[thread.id] || 0;
+                          const hasUnread = unreadCount > 0;
 
                           return (
                             <div
@@ -2726,35 +2808,54 @@ export default function ChatPage() {
                               onClick={() => {
                                 setSelectedThreadId(thread.id);
                                 setMobileActiveView('chat');
+                                setUnreadCounts((prev) => {
+                                  const updated = { ...prev, [thread.id]: 0 };
+                                  try {
+                                    localStorage.setItem('arkipelago_chat_unread_counts', JSON.stringify(updated));
+                                  } catch {}
+                                  return updated;
+                                });
                               }}
                               className={cn(
                                 'p-3 flex items-start gap-3 cursor-pointer transition-all border-l-4',
                                 isSelected
                                   ? 'bg-surface-hover border-l-black dark:border-l-white font-semibold'
+                                  : hasUnread
+                                  ? 'bg-surface-hover/30 border-l-accent-cyan hover:bg-surface-hover/60'
                                   : 'hover:bg-surface-hover/50 border-l-transparent'
                               )}
                             >
                               <div className={cn(
-                                'w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5 border font-bold text-xs shadow-2xs',
+                                'w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5 border font-bold text-xs shadow-2xs relative',
                                 threadColor.bg,
                                 threadColor.border,
                                 threadColor.text
                               )}>
                                 <Hash className="w-3.5 h-3.5" />
+                                {hasUnread && (
+                                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-accent-cyan border-2 border-surface-main animate-pulse" />
+                                )}
                               </div>
                               <div className="overflow-hidden flex-1 space-y-0.5">
                                 <div className="flex items-center justify-between">
                                   <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-surface-hover text-text-main border border-border-main">
                                     {thread.projectCode || 'PROJECT'}
                                   </span>
-                                  <span className="text-[9px] text-muted-main font-mono">
-                                    {thread.participants.length} members
-                                  </span>
+                                  <div className="flex items-center gap-1.5">
+                                    {hasUnread && (
+                                      <span className="px-1.5 py-0.2 rounded-full text-[9px] font-bold font-mono bg-black text-white dark:bg-white dark:text-black shadow-2xs">
+                                        {unreadCount}
+                                      </span>
+                                    )}
+                                    <span className="text-[9px] text-muted-main font-mono">
+                                      {thread.participants.length}m
+                                    </span>
+                                  </div>
                                 </div>
-                                <div className="text-xs font-semibold truncate text-text-main">
+                                <div className={cn('text-xs truncate', hasUnread ? 'font-black text-text-main dark:text-white' : 'font-semibold text-text-main')}>
                                   {thread.name}
                                 </div>
-                                <div className="text-[11px] text-muted-main truncate font-sans">
+                                <div className={cn('text-[11px] truncate font-sans', hasUnread ? 'font-bold text-text-main dark:text-zinc-100' : 'text-muted-main')}>
                                   {lastMsg ? `${lastMsg.sender}: ${lastMsg.text}` : thread.topicName || 'Topic room ready'}
                                 </div>
                               </div>
@@ -2803,6 +2904,8 @@ export default function ChatPage() {
                           const memberContact = ALL_STUDIO_MEMBERS.find(
                             (m) => m.name.toLowerCase() === displayName.toLowerCase()
                           );
+                          const unreadCount = unreadCounts[thread.id] || 0;
+                          const hasUnread = unreadCount > 0;
 
                           return (
                             <div
@@ -2810,35 +2913,54 @@ export default function ChatPage() {
                               onClick={() => {
                                 setSelectedThreadId(thread.id);
                                 setMobileActiveView('chat');
+                                setUnreadCounts((prev) => {
+                                  const updated = { ...prev, [thread.id]: 0 };
+                                  try {
+                                    localStorage.setItem('arkipelago_chat_unread_counts', JSON.stringify(updated));
+                                  } catch {}
+                                  return updated;
+                                });
                               }}
                               className={cn(
                                 'p-3 flex items-start gap-3 cursor-pointer transition-all border-l-4',
                                 isSelected
                                   ? 'bg-surface-hover border-l-black dark:border-l-white font-semibold'
+                                  : hasUnread
+                                  ? 'bg-surface-hover/30 border-l-accent-cyan hover:bg-surface-hover/60'
                                   : 'hover:bg-surface-hover/50 border-l-transparent'
                               )}
                             >
                               <div
                                 className={cn(
-                                  'w-7 h-7 rounded-full text-white flex items-center justify-center shrink-0 mt-0.5 font-bold text-xs shadow-2xs',
+                                  'w-7 h-7 rounded-full text-white flex items-center justify-center shrink-0 mt-0.5 font-bold text-xs shadow-2xs relative',
                                   memberContact?.avatarColor || 'bg-surface-hover border border-border-main text-text-main'
                                 )}
                               >
                                 {displayName.replace('Arch. ', '').replace('Engr. ', '').charAt(0)}
+                                {hasUnread && (
+                                  <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-accent-cyan border-2 border-surface-main animate-pulse" />
+                                )}
                               </div>
                               <div className="overflow-hidden flex-1 space-y-0.5">
                                 <div className="flex items-center justify-between">
                                   <span className="text-[9px] text-muted-main">Direct Chat</span>
-                                  {memberContact?.roleBadge && (
-                                    <span className="text-[9px] font-mono text-muted-main/80">
-                                      {memberContact.roleBadge}
-                                    </span>
-                                  )}
+                                  <div className="flex items-center gap-1.5">
+                                    {hasUnread && (
+                                      <span className="px-1.5 py-0.2 rounded-full text-[9px] font-bold font-mono bg-black text-white dark:bg-white dark:text-black shadow-2xs">
+                                        {unreadCount}
+                                      </span>
+                                    )}
+                                    {memberContact?.roleBadge && (
+                                      <span className="text-[9px] font-mono text-muted-main/80">
+                                        {memberContact.roleBadge}
+                                      </span>
+                                    )}
+                                  </div>
                                 </div>
-                                <div className="text-xs font-semibold truncate text-text-main">
+                                <div className={cn('text-xs truncate', hasUnread ? 'font-black text-text-main dark:text-white' : 'font-semibold text-text-main')}>
                                   {displayName}
                                 </div>
-                                <div className="text-[11px] text-muted-main truncate font-sans">
+                                <div className={cn('text-[11px] truncate font-sans', hasUnread ? 'font-bold text-text-main dark:text-zinc-100' : 'text-muted-main')}>
                                   {lastMsg ? lastMsg.text : 'Direct chat active'}
                                 </div>
                               </div>
@@ -3263,30 +3385,62 @@ export default function ChatPage() {
                               {msg.text && <div className="text-xs sm:text-[13px] leading-relaxed break-words">{msg.text}</div>}
                             </div>
 
-                            {/* ACTIVE EMOJI REACTION PILLS */}
-                            {msg.reactions && Object.keys(msg.reactions).length > 0 && (
-                              <div className={cn('flex flex-wrap items-center gap-1 pt-0.5', isMe ? 'justify-end' : 'justify-start')}>
-                                {Object.entries(msg.reactions).map(([emoji, users]) => {
-                                  const hasMe = users.includes(currentUserName);
-                                  return (
-                                    <button
-                                      key={emoji}
-                                      onClick={() => handleToggleReaction(msg.id, emoji)}
-                                      className={cn(
-                                        'px-2 py-0.5 rounded-lg border text-[11px] font-semibold flex items-center gap-1 transition-all cursor-pointer shadow-2xs',
-                                        hasMe
-                                          ? 'bg-accent-cyan/20 border-accent-cyan text-accent-cyan font-bold'
-                                          : 'bg-surface-hover/80 border-border-main text-muted-main hover:text-text-main'
-                                      )}
-                                      title={`Reacted by: ${users.join(', ')}`}
-                                    >
-                                      <span>{emoji}</span>
-                                      <span className="font-mono text-[10px]">{users.length}</span>
-                                    </button>
-                                  );
-                                })}
+                            {/* ACTIVE EMOJI REACTION PILLS & TAP-TO-REACT BUTTON */}
+                            <div className={cn('flex flex-wrap items-center gap-1 pt-0.5', isMe ? 'justify-end' : 'justify-start')}>
+                              {msg.reactions && Object.keys(msg.reactions).length > 0 && Object.entries(msg.reactions).map(([emoji, users]) => {
+                                const hasMe = users.includes(currentUserName);
+                                return (
+                                  <button
+                                    key={emoji}
+                                    onClick={() => handleToggleReaction(msg.id, emoji)}
+                                    className={cn(
+                                      'px-2 py-0.5 rounded-lg border text-[11px] font-semibold flex items-center gap-1 transition-all cursor-pointer shadow-2xs active:scale-95',
+                                      hasMe
+                                        ? 'bg-accent-cyan/20 border-accent-cyan text-accent-cyan font-bold'
+                                        : 'bg-surface-hover/80 border-border-main text-muted-main hover:text-text-main'
+                                    )}
+                                    title={`Reacted by: ${users.join(', ')}`}
+                                  >
+                                    <span>{emoji}</span>
+                                    <span className="font-mono text-[10px]">{users.length}</span>
+                                  </button>
+                                );
+                              })}
+
+                              {/* Quick React Picker Trigger (Works on Mobile/Touch & Desktop) */}
+                              <div className="relative">
+                                <button
+                                  type="button"
+                                  onClick={() => setMobileReactingMsgId(mobileReactingMsgId === msg.id ? null : msg.id)}
+                                  className="px-1.5 py-0.5 rounded-lg border border-border-main/60 bg-surface-hover/50 hover:bg-surface-hover text-muted-main hover:text-text-main text-[10px] transition-all cursor-pointer shadow-2xs flex items-center gap-0.5 active:scale-95"
+                                  title="Add reaction"
+                                >
+                                  <Smile className="w-3 h-3 text-muted-main" />
+                                  <span className="font-mono leading-none">+</span>
+                                </button>
+
+                                {mobileReactingMsgId === msg.id && (
+                                  <div className={cn(
+                                    'absolute bottom-full mb-1.5 bg-surface-main border border-border-main rounded-xl p-1 shadow-2xl flex items-center gap-1 z-30 animate-in fade-in zoom-in-95 duration-150',
+                                    isMe ? 'right-0' : 'left-0'
+                                  )}>
+                                    {['👍', '📐', '✅', '👀', '🔥', '❤️', '👏', '🎉'].map((emoji) => (
+                                      <button
+                                        key={emoji}
+                                        type="button"
+                                        onClick={() => {
+                                          handleToggleReaction(msg.id, emoji);
+                                          setMobileReactingMsgId(null);
+                                        }}
+                                        className="p-1 hover:bg-surface-hover rounded-lg text-sm transition-transform hover:scale-125 cursor-pointer active:scale-95"
+                                      >
+                                        {emoji}
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
                               </div>
-                            )}
+                            </div>
                           </div>
                         </div>
                       );
@@ -3491,10 +3645,19 @@ export default function ChatPage() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-1">
-                    <span className="font-bold text-xs text-text-main truncate">{notif.sender}</span>
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className="font-bold text-xs text-text-main truncate">
+                        {notif.count > 1 ? `${notif.count} new messages from ${notif.sender}` : notif.sender}
+                      </span>
+                      {notif.count > 1 && (
+                        <span className="px-1.5 py-0.2 rounded-full text-[9px] font-mono font-bold bg-accent-cyan text-black shrink-0 shadow-2xs">
+                          {notif.count}
+                        </span>
+                      )}
+                    </div>
                     <button
                       onClick={() => setInAppNotifs((prev) => prev.filter((n) => n.id !== notif.id))}
-                      className="text-muted-main hover:text-text-main p-0.5 rounded cursor-pointer"
+                      className="text-muted-main hover:text-text-main p-0.5 rounded cursor-pointer shrink-0"
                       title="Dismiss"
                     >
                       ✕
@@ -3510,6 +3673,13 @@ export default function ChatPage() {
                         setSelectedThreadId(notif.threadId);
                         setActiveTab('chat');
                         setMobileActiveView('chat');
+                        setUnreadCounts((prev) => {
+                          const updated = { ...prev, [notif.threadId]: 0 };
+                          try {
+                            localStorage.setItem('arkipelago_chat_unread_counts', JSON.stringify(updated));
+                          } catch {}
+                          return updated;
+                        });
                         setInAppNotifs((prev) => prev.filter((n) => n.id !== notif.id));
                       }}
                       className="px-2.5 py-1 bg-black text-white dark:bg-white dark:text-black rounded-lg text-[10px] font-bold hover:opacity-90 transition-opacity cursor-pointer shadow-2xs active:scale-95"

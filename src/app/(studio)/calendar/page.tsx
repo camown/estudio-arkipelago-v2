@@ -869,7 +869,7 @@ export default function CalendarPage() {
                 </div>
 
                 {/* Vertical Divider */}
-                <span className="text-border-strong font-light hidden sm:inline">|</span>
+                <span className="text-border-strong font-light hidden sm:inline" aria-hidden="true">|</span>
 
                 {/* Time Horizon Pills */}
                 <div className="flex items-center gap-1.5 flex-wrap">

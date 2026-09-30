@@ -30,7 +30,7 @@ export function ContractBillingStepper({
       clientSignedDate: '2026-08-18',
       clientPaymentReceived: true,
       clientPaymentRef: 'BDO-TRX-99812',
-      amount: '$15,000 (10% DP)',
+      amount: '₱15,000 (10% DP)',
       isUnlocked: true,
     },
     {
@@ -44,7 +44,7 @@ export function ContractBillingStepper({
       clientSignedDate: '2026-09-05',
       clientPaymentReceived: true,
       clientPaymentRef: 'BPI-TRX-44219',
-      amount: '$30,000 (20%)',
+      amount: '₱30,000 (20%)',
       isUnlocked: true,
     },
     {
@@ -57,7 +57,7 @@ export function ContractBillingStepper({
       clientContractSigned: true,
       clientSignedDate: '2026-09-22',
       clientPaymentReceived: false,
-      amount: '$45,000 (30%)',
+      amount: '₱45,000 (30%)',
       isUnlocked: true,
     },
     {
@@ -67,7 +67,7 @@ export function ContractBillingStepper({
       companyInvoiceSent: false,
       clientContractSigned: false,
       clientPaymentReceived: false,
-      amount: '$45,000 (30%)',
+      amount: '₱45,000 (30%)',
       isUnlocked: false,
     },
     {
@@ -77,7 +77,7 @@ export function ContractBillingStepper({
       companyInvoiceSent: false,
       clientContractSigned: false,
       clientPaymentReceived: false,
-      amount: '$15,000 (10% Retainage)',
+      amount: '₱15,000 (10% Retainage)',
       isUnlocked: false,
     },
   ]);

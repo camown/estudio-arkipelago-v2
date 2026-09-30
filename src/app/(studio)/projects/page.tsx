@@ -306,7 +306,7 @@ const INITIAL_ENRICHED_PROJECTS: EnrichedProject[] = [
     code: 'OSR-2024',
     status: 'active',
     stage: 'INQUIRIES',
-    budget: '$750k',
+    budget: '₱750k',
     clientName: 'The Oakwood Trust',
     location: 'Oak Street, Valley Heights',
     phase: 'Phase 1: Concept & Zoning Inquiries',
@@ -324,7 +324,7 @@ const INITIAL_ENRICHED_PROJECTS: EnrichedProject[] = [
     code: 'LV-2024',
     status: 'active',
     stage: 'INQUIRIES',
-    budget: '$1.2M',
+    budget: '₱1.2M',
     clientName: 'Laguna Escapes Corp',
     location: 'Lakeside Ridge, Caliraya',
     phase: 'Phase 1: Inquiries & Site Feasibility',
@@ -342,7 +342,7 @@ const INITIAL_ENRICHED_PROJECTS: EnrichedProject[] = [
     code: 'SR-2024',
     status: 'active',
     stage: 'DESIGN',
-    budget: '$1.8M',
+    budget: '₱1.8M',
     clientName: 'David & Claire Smith',
     location: 'Forbes Park, Makati',
     phase: 'Phase 2: Schematic Massing',
@@ -360,7 +360,7 @@ const INITIAL_ENRICHED_PROJECTS: EnrichedProject[] = [
     code: 'MT-2024',
     status: 'active',
     stage: 'DESIGN',
-    budget: '$5.4M',
+    budget: '₱5.4M',
     clientName: 'Ayala Horizon Dev',
     location: 'Ayala Ave, Makati City',
     phase: 'Phase 2: Design Development',
@@ -378,7 +378,7 @@ const INITIAL_ENRICHED_PROJECTS: EnrichedProject[] = [
     code: 'DCG-2024',
     status: 'active',
     stage: 'DESIGN',
-    budget: '$850k',
+    budget: '₱850k',
     clientName: 'Artisan Beans PH',
     location: 'Legaspi Village, Makati',
     phase: 'Phase 2: Interior Concept',
@@ -396,7 +396,7 @@ const INITIAL_ENRICHED_PROJECTS: EnrichedProject[] = [
     code: 'ROP-2024',
     status: 'active',
     stage: 'DOCUMENTATION',
-    budget: '$2.3M',
+    budget: '₱2.3M',
     clientName: 'Metro Arts Foundation',
     location: 'Bonifacio Global City, Taguig',
     phase: 'Phase 3: Construction Documentation',
@@ -414,7 +414,7 @@ const INITIAL_ENRICHED_PROJECTS: EnrichedProject[] = [
     code: 'PCH-2024',
     status: 'active',
     stage: 'DOCUMENTATION',
-    budget: '$900k',
+    budget: '₱900k',
     clientName: 'Perez Family Holdings',
     location: 'Tagaytay Highlands',
     phase: 'Phase 3: Working Drawings',
@@ -432,7 +432,7 @@ const INITIAL_ENRICHED_PROJECTS: EnrichedProject[] = [
     code: 'HR-2024',
     status: 'active',
     stage: 'CONSTRUCTION',
-    budget: '$750k',
+    budget: '₱750k',
     clientName: 'Tan-Lim Family',
     location: 'Antipolo Hills',
     phase: 'Phase 4: Structural Pouring',
@@ -450,7 +450,7 @@ const INITIAL_ENRICHED_PROJECTS: EnrichedProject[] = [
     code: 'CLA-2024',
     status: 'active',
     stage: 'CONSTRUCTION',
-    budget: '$5.4M',
+    budget: '₱5.4M',
     clientName: 'City Heritage Council',
     location: 'Intramuros, Manila',
     phase: 'Phase 4: Glazing & Cladding',
@@ -468,7 +468,7 @@ const INITIAL_ENRICHED_PROJECTS: EnrichedProject[] = [
     code: 'CV-2024',
     status: 'active',
     stage: 'CONSTRUCTION',
-    budget: '$1.8M',
+    budget: '₱1.8M',
     clientName: 'Verde Family Estate',
     location: 'Batangas Coastal Ridge',
     phase: 'Phase 4: Site Construction',
@@ -486,7 +486,7 @@ const INITIAL_ENRICHED_PROJECTS: EnrichedProject[] = [
     code: 'SP-2024',
     status: 'on-hold',
     stage: 'ON_HOLD',
-    budget: '$750k',
+    budget: '₱750k',
     clientName: 'Coastal Hospitality Ltd',
     location: 'Nasugbu Coast',
     phase: 'Phase 1: Environmental Clearance',
@@ -504,7 +504,7 @@ const INITIAL_ENRICHED_PROJECTS: EnrichedProject[] = [
     code: 'BRC-2024',
     status: 'on-hold',
     stage: 'ON_HOLD',
-    budget: '$1.1M',
+    budget: '₱1.1M',
     clientName: 'Metro Urban Retailers',
     location: 'Quezon City Avenue',
     phase: 'Phase 2: Commercial Review',
@@ -522,7 +522,7 @@ const INITIAL_ENRICHED_PROJECTS: EnrichedProject[] = [
     code: 'TRH-2024',
     status: 'on-hold',
     stage: 'ON_HOLD',
-    budget: '$750k',
+    budget: '₱750k',
     clientName: 'Montenegro Holdings',
     location: 'Tagaytay Highland Ridge',
     phase: 'Phase 2: Permitting & Grading',
@@ -626,7 +626,7 @@ export default function ProjectsPage() {
   const [newProjectClient, setNewProjectClient] = useState('');
   const [newProjectLocation, setNewProjectLocation] = useState('');
   const [newProjectStage, setNewProjectStage] = useState<ProjectStage>('INQUIRIES');
-  const [newProjectBudget, setNewProjectBudget] = useState('$1.0M');
+  const [newProjectBudget, setNewProjectBudget] = useState('₱1.0M');
   const [newProjectFolder, setNewProjectFolder] = useState('IN_PROGRESS');
   const [newFolderName, setNewFolderName] = useState('');
 
@@ -646,7 +646,7 @@ export default function ProjectsPage() {
       `"${(p.clientName || '').replace(/"/g, '""')}"`,
       `"${(p.location || '').replace(/"/g, '""')}"`,
       p.stage || 'DESIGN',
-      `"${p.budget || '$1.0M'}"`,
+      `"${p.budget || '₱1.0M'}"`,
       p.progress || 0,
       p.sheetCount || 0,
     ]);
@@ -1034,7 +1034,7 @@ export default function ProjectsPage() {
       code: newProjectCode.trim().toUpperCase(),
       status: newProjectStage === 'ON_HOLD' ? 'on-hold' : 'active',
       stage: newProjectStage,
-      budget: newProjectBudget.trim() || '$1.0M',
+      budget: newProjectBudget.trim() || '₱1.0M',
       clientName: newProjectClient.trim() || 'Private Client',
       location: newProjectLocation.trim() || 'Metro Manila',
       phase: stageMap[newProjectStage],
@@ -1053,7 +1053,7 @@ export default function ProjectsPage() {
     setNewProjectCode('');
     setNewProjectClient('');
     setNewProjectLocation('');
-    setNewProjectBudget('$1.0M');
+    setNewProjectBudget('₱1.0M');
     showToast(`✓ Project "${newProj.name}" created!`);
   };
 
@@ -1523,7 +1523,7 @@ export default function ProjectsPage() {
                             {project.name}
                           </h3>
                           <p className="text-xs text-muted-main font-sans">
-                            Budget: <span className="font-semibold text-text-main/90">{project.budget || '$1.2M'}</span>
+                            Budget: <span className="font-semibold text-text-main/90">{project.budget || '₱1.2M'}</span>
                           </p>
                         </div>
 
@@ -1594,7 +1594,7 @@ export default function ProjectsPage() {
                     {project.name}
                   </h3>
                   <p className="text-xs text-muted-main font-sans">
-                    Budget: <span className="font-semibold text-text-main/90">{project.budget || '$1.2M'}</span>
+                    Budget: <span className="font-semibold text-text-main/90">{project.budget || '₱1.2M'}</span>
                   </p>
                 </div>
 
@@ -1657,7 +1657,7 @@ export default function ProjectsPage() {
                     {stageConfig.badgeLabel}
                   </span>
                   <span className="font-mono text-text-main font-bold">
-                    {project.budget || '$1.0M'}
+                    {project.budget || '₱1.0M'}
                   </span>
                 </div>
 
@@ -1702,7 +1702,7 @@ export default function ProjectsPage() {
                       : selectedProjectForDetail.status}
                   </Badge>
                   <span className="text-xs font-mono font-bold text-accent-cyan">
-                    Budget: {selectedProjectForDetail.budget || '$1.2M'}
+                    Budget: {selectedProjectForDetail.budget || '₱1.2M'}
                   </span>
                 </div>
                 <h2 className="text-xl font-bold text-text-main mt-2 font-sans">
@@ -1949,7 +1949,7 @@ export default function ProjectsPage() {
                     onChange={(e) => setNewRFICostImpact(e.target.checked)}
                     className="rounded border-border-main text-accent-cyan"
                   />
-                  <span>Potential Cost Impact ($$)</span>
+                  <span>Potential Cost Impact (₱₱)</span>
                 </label>
 
                 <label className="flex items-center gap-2 cursor-pointer">
@@ -2239,7 +2239,7 @@ export default function ProjectsPage() {
                   <label className="text-[11px] font-semibold text-muted-main block mb-1">Target Budget</label>
                   <input
                     type="text"
-                    placeholder="e.g. $1.5M"
+                    placeholder="e.g. ₱1.5M"
                     value={newProjectBudget}
                     onChange={(e) => setNewProjectBudget(e.target.value)}
                     className="w-full bg-surface-hover border border-border-main rounded-lg px-3 py-2 text-xs font-mono text-text-main focus:outline-none focus:border-text-main"
