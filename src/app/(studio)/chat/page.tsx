@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useWallPosts } from '@/lib/hooks/useWallPosts';
+import type { User } from '@/types';
 import {
   ImagePlus,
   Search,
@@ -33,7 +34,8 @@ import {
   Share2,
   Copy,
   Edit3,
-  Trash2
+  Trash2,
+  Lock,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { MOCK_PROJECTS } from '@/lib/constants';
@@ -203,6 +205,185 @@ const INITIAL_THREADS: ThreadChannel[] = [
   },
 ];
 
+export const INITIAL_MESSAGES: Record<string, ChatMessage[]> = {
+  'thread-001': [
+    {
+      id: 'msg-1',
+      sender: 'Arch. Carlos Mendoza',
+      text: 'Hi team! Here is the latest floor 14-16 massing diagram. Please review cantilever support and core alignment.',
+      timestamp: '10:15 AM',
+      attachment: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=600&q=80',
+      attachmentTitle: 'Makati Tower Massing Diagram - Rev 01',
+      reactions: {
+        '📐': ['Arch. Leandro Locsin'],
+        '👍': ['Elena Gomez', 'Arch. Carlos Mendoza'],
+      },
+    },
+    {
+      id: 'msg-2',
+      sender: 'Arch. Leandro Locsin',
+      text: 'Reviewing now. The cantilever looks structurally viable. I will redline the facade mullions on the sketch board.',
+      timestamp: '10:20 AM',
+      reactions: {
+        '👀': ['Elena Gomez'],
+      },
+    },
+    {
+      id: 'msg-3',
+      sender: 'Elena Gomez',
+      text: 'Ayala dev team reviewed this in our weekly brief. Please ensure all stamped revisions are uploaded to the project vault before Friday.',
+      timestamp: '10:35 AM',
+      reactions: {
+        '✅': ['Arch. Carlos Mendoza', 'Arch. Leandro Locsin'],
+      },
+    },
+  ],
+  'thread-002': [
+    {
+      id: 'msg-4',
+      sender: 'Engr. Roberto Cruz',
+      text: 'For Casa Verde Residence, we received 3 marble sample slabs for the foyer. Photo attached.',
+      timestamp: '09:45 AM',
+      attachment: 'https://images.unsplash.com/photo-1600566753376-12c8ab7fb75b?w=600&q=80',
+      attachmentTitle: 'Carrara Marble Sample Slab',
+      reactions: {
+        '👍': ['Arch. Leandro Locsin'],
+      },
+    },
+    {
+      id: 'msg-5',
+      sender: 'Arch. Leandro Locsin',
+      text: 'Received Engr. Roberto. Let us schedule a material board review with the Verde family this afternoon.',
+      timestamp: '09:50 AM',
+    },
+  ],
+  'thread-003': [
+    {
+      id: 'msg-6',
+      sender: 'Engr. Roberto Cruz',
+      text: 'Foundation soil test report and city structural permits are ready for submission to Taguig City Hall.',
+      timestamp: '08:30 AM',
+      reactions: {
+        '✅': ['Arch. Sofia Reyes'],
+      },
+    },
+  ],
+  'dm-001': [
+    {
+      id: 'msg-7',
+      sender: 'Arch. Carlos Mendoza',
+      text: 'Please review the facade engineering submittal when you get a chance.',
+      timestamp: '11:00 AM',
+    },
+  ],
+  'dm-002': [
+    {
+      id: 'msg-8',
+      sender: 'Engr. Roberto Cruz',
+      text: 'Direct structural channel active for quick consultations on foundation pours.',
+      timestamp: '11:30 AM',
+    },
+  ],
+};
+
+const STORAGE_THREADS_KEY = 'arkipelago_synced_threads_v2';
+const STORAGE_MESSAGES_KEY = 'arkipelago_synced_messages_v2';
+
+function getInitialCachedThreads(): ThreadChannel[] {
+  if (typeof window === 'undefined') return INITIAL_THREADS;
+  try {
+    const cached = localStorage.getItem(STORAGE_THREADS_KEY);
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch {}
+  return INITIAL_THREADS;
+}
+
+function getInitialCachedMessages(): Record<string, ChatMessage[]> {
+  if (typeof window === 'undefined') return INITIAL_MESSAGES;
+  try {
+    const cached = localStorage.getItem(STORAGE_MESSAGES_KEY);
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      if (parsed && typeof parsed === 'object' && Object.keys(parsed).length > 0) {
+        return parsed;
+      }
+    }
+  } catch {}
+  return INITIAL_MESSAGES;
+}
+
+// Scoping & Access Control: Only participants or authorized oversight personnel can view conversations
+export function canUserAccessThread(thread: ThreadChannel, user: User | null): boolean {
+  if (!user) {
+    // If not authenticated, allow open studio topics with 3+ members, block private threads and DMs
+    return thread.category === 'PROJECT_TOPIC' && (thread.participants?.length || 0) >= 3;
+  }
+
+  const currentUserName = user.name?.trim().toLowerCase() || '';
+  const currentUserEmail = user.email?.trim().toLowerCase() || '';
+  const userRole = user.role;
+
+  const isExplicitParticipant = (thread.participants || []).some((p) => {
+    const pTrim = p.trim().toLowerCase();
+    return (
+      pTrim === currentUserName ||
+      pTrim === currentUserEmail ||
+      (currentUserName && (pTrim.includes(currentUserName) || currentUserName.includes(pTrim)))
+    );
+  });
+
+  // 1. Direct Messages: STRICTLY between participants only. Outsiders have ZERO access.
+  if (thread.category === 'DIRECT_MESSAGE') {
+    return isExplicitParticipant;
+  }
+
+  // 2. Explicit participants always have access to topic threads
+  if (isExplicitParticipant) {
+    return true;
+  }
+
+  // 3. Contractors / External consultants: STRICTLY limited to assigned projects & must be an explicit participant
+  if (userRole === 'contractor') {
+    return false;
+  }
+
+  // 4. Partner (Arch. Leandro Locsin): Firm-wide architectural oversight over project topics
+  if (userRole === 'partner') {
+    return thread.category === 'PROJECT_TOPIC';
+  }
+
+  // 5. Senior Architect: Studio lead oversight over project topics
+  if (userRole === 'senior_architect') {
+    return thread.category === 'PROJECT_TOPIC';
+  }
+
+  // 6. Junior Architect: Allowed if in participants or open studio topics (3+ members)
+  if (userRole === 'junior_architect') {
+    return (thread.participants?.length || 0) >= 3;
+  }
+
+  return false;
+}
+
+export function getThreadDisplayName(thread: ThreadChannel, currentUserName: string): string {
+  if (thread.category !== 'DIRECT_MESSAGE') {
+    return thread.name;
+  }
+  const cleanCurrent = currentUserName.trim().toLowerCase();
+  const otherParticipant = (thread.participants || []).find(
+    (p) => p.trim().toLowerCase() !== cleanCurrent
+  );
+  return otherParticipant || thread.name;
+}
+
+export function getThreadDisplayContact(thread: ThreadChannel, currentUserName: string): StudioMemberContact | undefined {
+  const displayName = getThreadDisplayName(thread, currentUserName);
+  return ALL_STUDIO_MEMBERS.find((m) => m.name.toLowerCase() === displayName.toLowerCase());
+}
+
 function getInitialThreadAndTab() {
   if (typeof window === 'undefined') {
     return { threadId: INITIAL_THREADS[0].id, activeTab: 'wall' as const, mobileView: 'list' as const };
@@ -212,28 +393,32 @@ function getInitialThreadAndTab() {
   const targetThread = params.get('thread');
   const targetDm = params.get('dm');
 
-  if (targetTab === 'wall') {
-    return { threadId: INITIAL_THREADS[0].id, activeTab: 'wall' as const, mobileView: 'list' as const };
-  }
-  if (targetTab === 'chat') {
-    return { threadId: INITIAL_THREADS[0].id, activeTab: 'chat' as const, mobileView: 'list' as const };
-  }
+  const cachedThreads = getInitialCachedThreads();
+
   if (targetThread) {
-    const match = INITIAL_THREADS.find(
+    const match = cachedThreads.find(
       (t) => t.id === targetThread || t.projectCode === targetThread || t.name.toLowerCase().includes(targetThread.toLowerCase())
     );
     if (match) {
       return { threadId: match.id, activeTab: 'chat' as const, mobileView: 'chat' as const };
     }
   } else if (targetDm) {
-    const match = INITIAL_THREADS.find(
+    const match = cachedThreads.find(
       (t) => t.category === 'DIRECT_MESSAGE' && t.name.toLowerCase().includes(targetDm.toLowerCase())
     );
     if (match) {
       return { threadId: match.id, activeTab: 'chat' as const, mobileView: 'chat' as const };
     }
   }
-  return { threadId: INITIAL_THREADS[0].id, activeTab: 'wall' as const, mobileView: 'list' as const };
+
+  if (targetTab === 'wall') {
+    return { threadId: cachedThreads[0]?.id || INITIAL_THREADS[0].id, activeTab: 'wall' as const, mobileView: 'list' as const };
+  }
+  if (targetTab === 'chat') {
+    return { threadId: cachedThreads[0]?.id || INITIAL_THREADS[0].id, activeTab: 'chat' as const, mobileView: 'list' as const };
+  }
+
+  return { threadId: cachedThreads[0]?.id || INITIAL_THREADS[0].id, activeTab: 'wall' as const, mobileView: 'list' as const };
 }
 
 function getInitialAttachedSketch(): string | null {
@@ -278,8 +463,8 @@ export default function ChatPage() {
   const [editingPostId, setEditingPostId] = useState<string | null>(null);
   const [editingPostContent, setEditingPostContent] = useState<string>('');
 
-  // Threads & Topics State
-  const [threads, setThreads] = useState<ThreadChannel[]>(INITIAL_THREADS);
+  // Threads & Topics State with Instant SWR LocalStorage Initializer
+  const [threads, setThreads] = useState<ThreadChannel[]>(getInitialCachedThreads);
   const [selectedThreadId, setSelectedThreadId] = useState<string>(initialRouteState.threadId);
   const [mobileActiveView, setMobileActiveView] = useState<'list' | 'chat'>(initialRouteState.mobileView);
   const [isGalleryDrawerOpen, setIsGalleryDrawerOpen] = useState(false);
@@ -296,6 +481,11 @@ export default function ChatPage() {
   const [isNewDMModalOpen, setIsNewDMModalOpen] = useState(false);
   const [newDMSearchQuery, setNewDMSearchQuery] = useState('');
 
+  // Supabase Realtime & Synchronization State
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const [isRealtimeConnected, setIsRealtimeConnected] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+
   const chatFileRef = useRef<HTMLInputElement>(null);
   const wallFileRef = useRef<HTMLInputElement>(null);
   const rosterRef = useRef<HTMLDivElement>(null);
@@ -308,138 +498,89 @@ export default function ChatPage() {
   const [isWallEmojiOpen, setIsWallEmojiOpen] = useState(false);
   const [isChatEmojiOpen, setIsChatEmojiOpen] = useState(false);
 
-  // Chat Messages State per Thread with Sample Blueprints and Reactions
-  const [messages, setMessages] = useState<Record<string, ChatMessage[]>>({
-    'thread-001': [
-      {
-        id: 'msg-1',
-        sender: 'Arch. Carlos Mendoza',
-        text: 'Hi team! Here is the latest floor 14-16 massing diagram. Please review cantilever support and core alignment.',
-        timestamp: '10:15 AM',
-        attachment: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=600&q=80',
-        attachmentTitle: 'Makati Tower Massing Diagram - Rev 01',
-        reactions: {
-          '📐': ['Arch. Leandro Locsin'],
-          '👍': ['Elena Gomez', 'Arch. Carlos Mendoza'],
-        },
-      },
-      {
-        id: 'msg-2',
-        sender: 'Arch. Leandro Locsin',
-        text: 'Reviewing now. The cantilever looks structurally viable. I will redline the facade mullions on the sketch board.',
-        timestamp: '10:20 AM',
-        reactions: {
-          '👀': ['Elena Gomez'],
-        },
-      },
-      {
-        id: 'msg-3',
-        sender: 'Elena Gomez',
-        text: 'Ayala dev team reviewed this in our weekly brief. Please ensure all stamped revisions are uploaded to the project vault before Friday.',
-        timestamp: '10:35 AM',
-        reactions: {
-          '✅': ['Arch. Carlos Mendoza', 'Arch. Leandro Locsin'],
-        },
-      },
-    ],
-    'thread-002': [
-      {
-        id: 'msg-4',
-        sender: 'Engr. Roberto Cruz',
-        text: 'For Casa Verde Residence, we received 3 marble sample slabs for the foyer. Photo attached.',
-        timestamp: '09:45 AM',
-        attachment: 'https://images.unsplash.com/photo-1600566753376-12c8ab7fb75b?w=600&q=80',
-        attachmentTitle: 'Carrara Marble Sample Slab',
-        reactions: {
-          '👍': ['Arch. Leandro Locsin'],
-        },
-      },
-      {
-        id: 'msg-5',
-        sender: 'Arch. Leandro Locsin',
-        text: 'Received Engr. Roberto. Let us schedule a material board review with the Verde family this afternoon.',
-        timestamp: '09:50 AM',
-      },
-    ],
-    'thread-003': [
-      {
-        id: 'msg-6',
-        sender: 'Engr. Roberto Cruz',
-        text: 'Foundation soil test report and city structural permits are ready for submission to Taguig City Hall.',
-        timestamp: '08:30 AM',
-        reactions: {
-          '✅': ['Arch. Sofia Reyes'],
-        },
-      },
-    ],
-    'dm-001': [
-      {
-        id: 'msg-7',
-        sender: 'Arch. Carlos Mendoza',
-        text: 'Please review the facade engineering submittal when you get a chance.',
-        timestamp: '11:00 AM',
-      },
-    ],
-    'dm-002': [
-      {
-        id: 'msg-8',
-        sender: 'Engr. Roberto Cruz',
-        text: 'Direct structural channel active for quick consultations on foundation pours.',
-        timestamp: '11:30 AM',
-      },
-    ],
-  });
+  // Chat Messages State with Instant SWR LocalStorage Initializer
+  const [messages, setMessages] = useState<Record<string, ChatMessage[]>>(getInitialCachedMessages);
 
-  // Load threads and messages from Supabase + Realtime sync
+  // Load threads and messages from Supabase + Multi-Event Realtime sync
   useEffect(() => {
     if (!isSupabaseConfigured || !supabase) return;
 
     const fetchThreadsAndMessages = async () => {
-      const { data: dbThreads, error: threadsErr } = await supabase
-        .from('chat_threads')
-        .select('*')
-        .order('created_at', { ascending: false });
+      try {
+        setIsSyncing(true);
+        const [threadsRes, msgsRes] = await Promise.all([
+          supabase.from('chat_threads').select('*').order('created_at', { ascending: false }),
+          supabase.from('chat_messages').select('*').order('created_at', { ascending: true })
+        ]);
 
-      if (!threadsErr && dbThreads && dbThreads.length > 0) {
-        const mappedThreads: ThreadChannel[] = dbThreads.map((t) => ({
-          id: t.id,
-          name: t.name,
-          category: t.category,
-          projectCode: t.project_code,
-          projectName: t.project_name,
-          topicName: t.topic_name,
-          participants: Array.isArray(t.participants) ? t.participants : [],
-        }));
-        setThreads(mappedThreads);
-      }
+        if (!threadsRes.error && threadsRes.data && threadsRes.data.length > 0) {
+          const mappedThreads: ThreadChannel[] = threadsRes.data.map((t) => ({
+            id: t.id,
+            name: t.name,
+            category: t.category,
+            projectCode: t.project_code,
+            projectName: t.project_name,
+            topicName: t.topic_name,
+            participants: Array.isArray(t.participants) ? t.participants : [],
+          }));
+          setThreads(mappedThreads);
+          try {
+            localStorage.setItem(STORAGE_THREADS_KEY, JSON.stringify(mappedThreads));
+          } catch {
+            // ignore
+          }
+        }
 
-      const { data: dbMessages, error: msgsErr } = await supabase
-        .from('chat_messages')
-        .select('*')
-        .order('created_at', { ascending: true });
-
-      if (!msgsErr && dbMessages && dbMessages.length > 0) {
-        const grouped: Record<string, ChatMessage[]> = {};
-        dbMessages.forEach((m) => {
-          if (!grouped[m.thread_id]) grouped[m.thread_id] = [];
-          grouped[m.thread_id].push({
-            id: m.id,
-            sender: m.sender,
-            text: m.text,
-            attachment: m.attachment || undefined,
-            attachmentTitle: m.attachment_title || undefined,
-            timestamp: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        if (!msgsRes.error && msgsRes.data && msgsRes.data.length > 0) {
+          const grouped: Record<string, ChatMessage[]> = {};
+          msgsRes.data.forEach((m) => {
+            if (!grouped[m.thread_id]) grouped[m.thread_id] = [];
+            grouped[m.thread_id].push({
+              id: m.id,
+              sender: m.sender,
+              text: m.text,
+              attachment: m.attachment || undefined,
+              attachmentTitle: m.attachment_title || undefined,
+              timestamp: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            });
           });
-        });
-        setMessages((prev) => ({ ...prev, ...grouped }));
+
+          setMessages((prev) => {
+            const merged = { ...prev, ...grouped };
+            try {
+              localStorage.setItem(STORAGE_MESSAGES_KEY, JSON.stringify(merged));
+            } catch {
+              // ignore
+            }
+            return merged;
+          });
+        }
+      } catch (err) {
+        console.error('Error fetching chat threads/messages:', err);
+      } finally {
+        setIsSyncing(false);
       }
     };
 
     fetchThreadsAndMessages();
 
-    const channelId = `chat_realtime_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-    const channel = supabase
-      .channel(channelId)
+    // Revalidate when window regains focus or comes back online
+    const handleRevalidate = () => {
+      fetchThreadsAndMessages();
+    };
+    window.addEventListener('focus', handleRevalidate);
+    window.addEventListener('online', handleRevalidate);
+
+    // Durable Realtime Channel with WebSocket broadcast & Postgres change capture
+    const channelName = `studio_chat_live_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+    const channel = supabase.channel(channelName, {
+      config: {
+        broadcast: { self: false },
+      },
+    });
+    channelRef.current = channel;
+
+    channel
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'chat_messages' },
@@ -457,10 +598,32 @@ export default function ChatPage() {
           setMessages((prev) => {
             const threadMsgs = prev[m.thread_id] || [];
             if (threadMsgs.some((existing) => existing.id === m.id)) return prev;
-            return {
+            const updated = {
               ...prev,
               [m.thread_id]: [...threadMsgs, formattedMsg],
             };
+            try {
+              localStorage.setItem(STORAGE_MESSAGES_KEY, JSON.stringify(updated));
+            } catch {}
+            return updated;
+          });
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'chat_messages' },
+        (payload) => {
+          const deletedId = payload.old?.id;
+          if (!deletedId) return;
+          setMessages((prev) => {
+            const updated: Record<string, ChatMessage[]> = {};
+            for (const [tId, msgs] of Object.entries(prev)) {
+              updated[tId] = msgs.filter((m) => m.id !== deletedId);
+            }
+            try {
+              localStorage.setItem(STORAGE_MESSAGES_KEY, JSON.stringify(updated));
+            } catch {}
+            return updated;
           });
         }
       )
@@ -480,7 +643,11 @@ export default function ChatPage() {
           };
           setThreads((prev) => {
             if (prev.some((existing) => existing.id === mappedThread.id)) return prev;
-            return [mappedThread, ...prev];
+            const updated = [mappedThread, ...prev];
+            try {
+              localStorage.setItem(STORAGE_THREADS_KEY, JSON.stringify(updated));
+            } catch {}
+            return updated;
           });
         }
       )
@@ -489,8 +656,8 @@ export default function ChatPage() {
         { event: 'UPDATE', schema: 'public', table: 'chat_threads' },
         (payload) => {
           const t = payload.new;
-          setThreads((prev) =>
-            prev.map((thread) =>
+          setThreads((prev) => {
+            const updated = prev.map((thread) =>
               thread.id === t.id
                 ? {
                     ...thread,
@@ -499,14 +666,55 @@ export default function ChatPage() {
                     participants: Array.isArray(t.participants) ? t.participants : thread.participants,
                   }
                 : thread
-            )
-          );
+            );
+            try {
+              localStorage.setItem(STORAGE_THREADS_KEY, JSON.stringify(updated));
+            } catch {}
+            return updated;
+          });
         }
       )
-      .subscribe();
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'chat_threads' },
+        (payload) => {
+          const deletedId = payload.old?.id;
+          if (!deletedId) return;
+          setThreads((prev) => {
+            const updated = prev.filter((t) => t.id !== deletedId);
+            try {
+              localStorage.setItem(STORAGE_THREADS_KEY, JSON.stringify(updated));
+            } catch {}
+            return updated;
+          });
+        }
+      )
+      .on('broadcast', { event: 'new_message' }, (event) => {
+        const payload = event.payload;
+        if (!payload || !payload.threadId || !payload.message) return;
+        setMessages((prev) => {
+          const threadMsgs = prev[payload.threadId] || [];
+          if (threadMsgs.some((existing) => existing.id === payload.message.id)) return prev;
+          const updated = {
+            ...prev,
+            [payload.threadId]: [...threadMsgs, payload.message],
+          };
+          try {
+            localStorage.setItem(STORAGE_MESSAGES_KEY, JSON.stringify(updated));
+          } catch {}
+          return updated;
+        });
+      })
+      .subscribe((status) => {
+        setIsRealtimeConnected(status === 'SUBSCRIBED');
+      });
 
     return () => {
-      supabase?.removeChannel(channel);
+      window.removeEventListener('focus', handleRevalidate);
+      window.removeEventListener('online', handleRevalidate);
+      if (channelRef.current) {
+        supabase?.removeChannel(channelRef.current);
+      }
     };
   }, []);
 
@@ -630,7 +838,41 @@ export default function ChatPage() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [lightboxImage, isAddMemberModalOpen, isMembersRosterOpen, isWallEmojiOpen, isChatEmojiOpen, postMenuOpenId, editingPostId, isTopicModalOpen]);
 
-  const currentThread = threads.find((t) => t.id === selectedThreadId) || threads[0];
+  // Scoped Accessible Threads for Current User
+  const accessibleThreads = useMemo(() => {
+    return threads.filter((t) => canUserAccessThread(t, user));
+  }, [threads, user]);
+
+  const projectThreads = useMemo(() => {
+    return accessibleThreads.filter(
+      (t) =>
+        t.category === 'PROJECT_TOPIC' &&
+        (t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (t.topicName && t.topicName.toLowerCase().includes(searchQuery.toLowerCase())))
+    );
+  }, [accessibleThreads, searchQuery]);
+
+  const directMessages = useMemo(() => {
+    return accessibleThreads.filter(
+      (t) =>
+        t.category === 'DIRECT_MESSAGE' &&
+        (t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (t.topicName && t.topicName.toLowerCase().includes(searchQuery.toLowerCase())))
+    );
+  }, [accessibleThreads, searchQuery]);
+
+  // Keep selectedThreadId aligned: if selected thread does not exist at all, fall back to first accessible channel
+  useEffect(() => {
+    if (threads.length > 0 && accessibleThreads.length > 0) {
+      const existsInSystem = threads.some((t) => t.id === selectedThreadId);
+      if (!existsInSystem) {
+        setSelectedThreadId(accessibleThreads[0].id);
+      }
+    }
+  }, [threads, accessibleThreads, selectedThreadId]);
+
+  const currentThread = threads.find((t) => t.id === selectedThreadId) || accessibleThreads[0] || threads[0];
+  const isCurrentThreadAccessible = currentThread ? canUserAccessThread(currentThread, user) : false;
   const activeMessages = messages[currentThread?.id] || [];
 
   // Auto-scroll chat stream to latest message
@@ -660,6 +902,12 @@ export default function ChatPage() {
   const handleSendMessage = async () => {
     if (!chatInput.trim() && !attachedImage) return;
     if (!currentThread) return;
+
+    if (!isCurrentThreadAccessible) {
+      showToast('Unauthorized: You are not a participant in this thread');
+      return;
+    }
+
     const messageId = 'msg-' + Date.now();
     const senderName = user?.name ? user.name : 'Arch. Leandro Locsin';
     const messageText = chatInput.trim();
@@ -675,12 +923,35 @@ export default function ChatPage() {
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
 
-    setMessages((prev) => ({
-      ...prev,
-      [currentThread.id]: [...(prev[currentThread.id] || []), newMsg],
-    }));
+    setMessages((prev) => {
+      const updated = {
+        ...prev,
+        [currentThread.id]: [...(prev[currentThread.id] || []), newMsg],
+      };
+      try {
+        localStorage.setItem(STORAGE_MESSAGES_KEY, JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+
     setChatInput('');
     setAttachedImage(null);
+
+    // Ultra-fast peer broadcast
+    if (channelRef.current) {
+      try {
+        channelRef.current.send({
+          type: 'broadcast',
+          event: 'new_message',
+          payload: {
+            threadId: currentThread.id,
+            message: newMsg,
+          },
+        });
+      } catch (err) {
+        console.error('Error broadcasting message:', err);
+      }
+    }
 
     // Save message to Supabase
     if (isSupabaseConfigured && supabase && currentThread?.id) {
@@ -767,12 +1038,12 @@ export default function ChatPage() {
   const handleStartDirectMessage = async (member: StudioMemberContact) => {
     const currentUserName = user?.name?.trim() || 'Arch. Leandro Locsin';
 
-    // Check if a direct message thread already exists with this member
+    // Check if a direct message thread already exists between current user and this member
     const existingThread = threads.find(
       (t) =>
         t.category === 'DIRECT_MESSAGE' &&
-        (t.name.toLowerCase() === member.name.toLowerCase() ||
-          t.participants.some((p) => p.toLowerCase() === member.name.toLowerCase()))
+        t.participants.some((p) => p.trim().toLowerCase() === currentUserName.toLowerCase()) &&
+        t.participants.some((p) => p.trim().toLowerCase() === member.name.toLowerCase())
     );
 
     if (existingThread) {
@@ -2086,7 +2357,7 @@ export default function ChatPage() {
                   >
                     <span className="flex items-center gap-1.5">
                       <FolderKanban className="w-3.5 h-3.5 text-muted-main" />
-                      <span>Project Topic Threads ({threads.filter((t) => t.category === 'PROJECT_TOPIC').length})</span>
+                      <span>Project Topic Threads ({projectThreads.length})</span>
                     </span>
                     <ChevronDown
                       className={cn(
@@ -2098,14 +2369,7 @@ export default function ChatPage() {
 
                   {isProjectThreadsOpen && (
                     <div className="divide-y divide-border-main/30">
-                      {threads
-                        .filter(
-                          (t) =>
-                            t.category === 'PROJECT_TOPIC' &&
-                            (t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                              (t.topicName && t.topicName.toLowerCase().includes(searchQuery.toLowerCase())))
-                        )
-                        .map((thread) => {
+                      {projectThreads.map((thread) => {
                           const isSelected = selectedThreadId === thread.id;
                           const msgList = messages[thread.id] || [];
                           const lastMsg = msgList[msgList.length - 1];
@@ -2158,7 +2422,7 @@ export default function ChatPage() {
                       className="flex items-center gap-1.5 flex-1 text-left cursor-pointer"
                     >
                       <Users className="w-3.5 h-3.5 text-muted-main" />
-                      <span>Direct Messages ({threads.filter((t) => t.category === 'DIRECT_MESSAGE').length})</span>
+                      <span>Direct Messages ({directMessages.length})</span>
                       <ChevronDown
                         className={cn(
                           'w-3.5 h-3.5 transition-transform text-muted-main ml-0.5',
@@ -2180,19 +2444,13 @@ export default function ChatPage() {
 
                   {isDirectMessagesOpen && (
                     <div className="divide-y divide-border-main/30">
-                      {threads
-                        .filter(
-                          (t) =>
-                            t.category === 'DIRECT_MESSAGE' &&
-                            (t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                              (t.topicName && t.topicName.toLowerCase().includes(searchQuery.toLowerCase())))
-                        )
-                        .map((thread) => {
+                      {directMessages.map((thread) => {
                           const isSelected = selectedThreadId === thread.id;
                           const msgList = messages[thread.id] || [];
                           const lastMsg = msgList[msgList.length - 1];
+                          const displayName = getThreadDisplayName(thread, user?.name || 'Arch. Leandro Locsin');
                           const memberContact = ALL_STUDIO_MEMBERS.find(
-                            (m) => m.name.toLowerCase() === thread.name.toLowerCase()
+                            (m) => m.name.toLowerCase() === displayName.toLowerCase()
                           );
 
                           return (
@@ -2215,7 +2473,7 @@ export default function ChatPage() {
                                   memberContact?.avatarColor || 'bg-surface-hover border border-border-main text-text-main'
                                 )}
                               >
-                                {thread.name.replace('Arch. ', '').replace('Engr. ', '').charAt(0)}
+                                {displayName.replace('Arch. ', '').replace('Engr. ', '').charAt(0)}
                               </div>
                               <div className="overflow-hidden flex-1 space-y-0.5">
                                 <div className="flex items-center justify-between">
@@ -2227,7 +2485,7 @@ export default function ChatPage() {
                                   )}
                                 </div>
                                 <div className="text-xs font-semibold truncate text-text-main">
-                                  {thread.name}
+                                  {displayName}
                                 </div>
                                 <div className="text-[11px] text-muted-main truncate font-sans">
                                   {lastMsg ? lastMsg.text : 'Direct chat active'}
@@ -2269,9 +2527,24 @@ export default function ChatPage() {
                   >
                     <ArrowLeft className="w-4 h-4" />
                   </button>
-                  <div className="w-8 h-8 rounded-xl bg-surface-hover border border-border-main text-text-main flex items-center justify-center shrink-0 font-bold text-xs">
+                  <div className="w-8 h-8 rounded-xl bg-surface-hover border border-border-main text-text-main flex items-center justify-center shrink-0 font-bold text-xs overflow-hidden">
                     {currentThread?.category === 'DIRECT_MESSAGE' ? (
-                      currentThread?.name?.charAt(0) || 'D'
+                      (() => {
+                        const displayName = currentThread ? getThreadDisplayName(currentThread, user?.name || 'Arch. Leandro Locsin') : '';
+                        const contact = currentThread ? getThreadDisplayContact(currentThread, user?.name || 'Arch. Leandro Locsin') : undefined;
+                        return contact ? (
+                          <div
+                            className={cn(
+                              'w-full h-full text-white flex items-center justify-center font-bold text-xs shadow-2xs',
+                              contact.avatarColor || 'bg-accent-cyan text-black'
+                            )}
+                          >
+                            {displayName.replace('Arch. ', '').replace('Engr. ', '').charAt(0)}
+                          </div>
+                        ) : (
+                          displayName.charAt(0) || 'D'
+                        );
+                      })()
                     ) : (
                       <Hash className="w-4 h-4 text-accent-cyan" />
                     )}
@@ -2292,13 +2565,44 @@ export default function ChatPage() {
                       </span>
                     </div>
                     <h2 className="text-xs sm:text-sm font-bold text-text-main truncate mt-0.5">
-                      {currentThread?.name}
+                      {currentThread ? getThreadDisplayName(currentThread, user?.name || 'Arch. Leandro Locsin') : ''}
                     </h2>
                   </div>
                 </div>
 
-                {/* Right Header Actions: Member Stack, + Add Member, Gallery Drawer */}
-                <div className="flex items-center gap-2.5 shrink-0">
+                {/* Right Header Actions: Connection Status Pill, Member Stack, + Add Member, Gallery Drawer */}
+                <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+                  {/* Realtime Live Connection Status Pill */}
+                  <div
+                    className={cn(
+                      'flex items-center gap-1.5 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full border text-[9px] sm:text-[10px] font-mono font-medium select-none',
+                      isRealtimeConnected
+                        ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                        : isSyncing
+                        ? 'border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400'
+                        : 'border-border-main bg-surface-hover text-muted-main'
+                    )}
+                    title={
+                      isRealtimeConnected
+                        ? 'Connected to live Supabase WebSocket & Database'
+                        : isSyncing
+                        ? 'Synchronizing messages with database...'
+                        : 'Using cached offline data'
+                    }
+                  >
+                    <span
+                      className={cn(
+                        'w-1.5 h-1.5 rounded-full',
+                        isRealtimeConnected
+                          ? 'bg-emerald-500'
+                          : isSyncing
+                          ? 'bg-amber-500'
+                          : 'bg-muted-main'
+                      )}
+                    />
+                    <span>{isRealtimeConnected ? 'Realtime Live' : isSyncing ? 'Syncing...' : 'Cached'}</span>
+                  </div>
+
                   {/* Interactive Member Avatars Stack with Roster Popover */}
                   <div className="relative" ref={rosterRef}>
                     <div
@@ -2403,38 +2707,69 @@ export default function ChatPage() {
                     )}
                   </div>
 
-                  {/* + Add Member Header Action Button */}
-                  <button
-                    onClick={() => setIsAddMemberModalOpen(true)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border-main hover:border-text-main bg-surface-main hover:bg-surface-hover text-xs font-semibold text-text-main transition-all cursor-pointer shadow-2xs"
-                    title="Invite members to this topic thread"
-                  >
-                    <UserPlus className="w-3.5 h-3.5 text-accent-cyan" />
-                    <span className="hidden sm:inline">Add Member</span>
-                  </button>
+                  {isCurrentThreadAccessible && (
+                    <>
+                      {/* + Add Member Header Action Button */}
+                      <button
+                        onClick={() => setIsAddMemberModalOpen(true)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border-main hover:border-text-main bg-surface-main hover:bg-surface-hover text-xs font-semibold text-text-main transition-all cursor-pointer shadow-2xs"
+                        title="Invite members to this topic thread"
+                      >
+                        <UserPlus className="w-3.5 h-3.5 text-accent-cyan" />
+                        <span className="hidden sm:inline">Add Member</span>
+                      </button>
 
-                  {/* Toggle Thread Drawing Gallery Drawer */}
-                  <button
-                    onClick={() => setIsGalleryDrawerOpen(!isGalleryDrawerOpen)}
-                    className={cn(
-                      'flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold tracking-wide transition-colors cursor-pointer shadow-2xs',
-                      isGalleryDrawerOpen
-                        ? 'bg-accent-cyan/20 border-accent-cyan text-accent-cyan'
-                        : 'border-border-main hover:bg-surface-hover text-text-main'
-                    )}
-                    title="Open Blueprint & Drawing Gallery for this Thread"
-                  >
-                    <Images className="w-3.5 h-3.5" />
-                    <span className="hidden sm:inline">Blueprints ({threadMediaList.length})</span>
-                  </button>
+                      {/* Toggle Thread Drawing Gallery Drawer */}
+                      <button
+                        onClick={() => setIsGalleryDrawerOpen(!isGalleryDrawerOpen)}
+                        className={cn(
+                          'flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold tracking-wide transition-colors cursor-pointer shadow-2xs',
+                          isGalleryDrawerOpen
+                            ? 'bg-accent-cyan/20 border-accent-cyan text-accent-cyan'
+                            : 'border-border-main hover:bg-surface-hover text-text-main'
+                        )}
+                        title="Open Blueprint & Drawing Gallery for this Thread"
+                      >
+                        <Images className="w-3.5 h-3.5" />
+                        <span className="hidden sm:inline">Blueprints ({threadMediaList.length})</span>
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
 
               {/* Chat Body & Media Gallery Split */}
               <div className="flex-1 flex overflow-hidden">
-                {/* Message Stream */}
-                <div className="flex-1 flex flex-col overflow-hidden">
-                  <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 bg-surface-main">
+                {!isCurrentThreadAccessible ? (
+                  <div className="flex-1 flex flex-col items-center justify-center p-8 text-center max-w-md mx-auto space-y-4">
+                    <div className="w-12 h-12 rounded-2xl bg-surface-hover border border-border-main flex items-center justify-center text-text-main shadow-xs">
+                      <Lock className="w-6 h-6 text-muted-main" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <h3 className="text-sm font-bold text-text-main uppercase tracking-wider font-mono">
+                        Restricted Thread Access
+                      </h3>
+                      <p className="text-xs text-muted-main leading-relaxed">
+                        You are not an authorized participant in this conversation. Messages, blueprints, and architectural markups in this thread are private and restricted strictly to authorized participants.
+                      </p>
+                    </div>
+                    {accessibleThreads.length > 0 && (
+                      <button
+                        onClick={() => {
+                          setSelectedThreadId(accessibleThreads[0].id);
+                          setMobileActiveView('chat');
+                        }}
+                        className="px-4 py-2 bg-black text-white dark:bg-white dark:text-black hover:opacity-90 rounded-xl text-xs font-semibold transition-all cursor-pointer shadow-xs active:scale-[0.98]"
+                      >
+                        Return to Accessible Threads
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <>
+                    {/* Message Stream */}
+                    <div className="flex-1 flex flex-col overflow-hidden">
+                      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 bg-surface-main">
                     {activeMessages.map((msg) => {
                       if (msg.isSystem) {
                         return (
@@ -2750,7 +3085,9 @@ export default function ChatPage() {
                     </div>
                   </div>
                 )}
-              </div>
+              </>
+            )}
+          </div>
             </div>
           </div>
         )}
