@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   Clock, 
   Calendar, 
@@ -66,6 +66,7 @@ export default function HRPage() {
   const [genericDate, setGenericDate] = useState(todayStr);
 
   const [filterTab, setFilterTab] = useState<'all' | 'requests' | 'complaints'>('all');
+  const [statusFilter, setStatusFilter] = useState<'pending' | 'cleared' | 'all'>('pending');
   const [actionNotice, setActionNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [investigationNotes, setInvestigationNotes] = useState<Record<string, string>>({});
 
@@ -206,25 +207,59 @@ export default function HRPage() {
       showNotice('error', res.error || 'Failed to update complaint status.');
     } else {
       showNotice('success', `Complaint stage updated to: ${nextStatus.replace('_', ' ')}`);
+      setInvestigationNotes((prev) => {
+        const next = { ...prev };
+        delete next[complaintId];
+        return next;
+      });
     }
   };
 
   const activeTypeDef = HR_REQUEST_TYPES.find(t => t.id === selectedType);
 
-  const visibleRequests = requests.filter((r) => {
-    const isComplaint = r.type === 'submit_complaint';
-    const isOwner = (r.userId && r.userId === user?.id) || (r.userName && r.userName.toLowerCase() === user?.name.toLowerCase());
-
-    if (isComplaint) {
-      if (!isPartner && !isOwner) return false;
-    } else {
-      if (!canReviewRequests && !isOwner) return false;
+  const isRequestPending = (r: HRRequest) => {
+    if (r.type === 'submit_complaint') {
+      return r.complaintStatus !== 'resolved' && r.complaintStatus !== 'dismissed' && r.status === 'pending';
     }
+    return r.status === 'pending';
+  };
 
-    if (filterTab === 'requests') return !isComplaint;
-    if (filterTab === 'complaints') return isComplaint;
-    return true;
-  });
+  const eligibleRequests = useMemo(() => {
+    return requests.filter((r) => {
+      const isComplaint = r.type === 'submit_complaint';
+      const isOwner = (r.userId && r.userId === user?.id) || (r.userName && r.userName.toLowerCase() === user?.name?.toLowerCase());
+
+      if (isComplaint) {
+        if (!isPartner && !isOwner) return false;
+      } else {
+        if (!canReviewRequests && !isOwner) return false;
+      }
+      return true;
+    });
+  }, [requests, isPartner, canReviewRequests, user]);
+
+  const pendingCount = useMemo(() => {
+    return eligibleRequests.filter(isRequestPending).length;
+  }, [eligibleRequests]);
+
+  const clearedCount = useMemo(() => {
+    return eligibleRequests.filter((r) => !isRequestPending(r)).length;
+  }, [eligibleRequests]);
+
+  const visibleRequests = useMemo(() => {
+    return eligibleRequests.filter((r) => {
+      const isComplaint = r.type === 'submit_complaint';
+
+      if (filterTab === 'requests' && isComplaint) return false;
+      if (filterTab === 'complaints' && !isComplaint) return false;
+
+      const isPending = isRequestPending(r);
+      if (statusFilter === 'pending' && !isPending) return false;
+      if (statusFilter === 'cleared' && isPending) return false;
+
+      return true;
+    });
+  }, [eligibleRequests, filterTab, statusFilter]);
 
   const exportHRRequestsToCSV = () => {
     if (visibleRequests.length === 0) {
@@ -560,41 +595,66 @@ export default function HRPage() {
         {/* RIGHT COLUMN: REQUESTS LEDGER & COMPLAINTS WORKFLOW */}
         <div className="lg:w-[45%]">
           <section className="bg-surface-main border border-border-main rounded-xl p-6 shadow-sm h-full flex flex-col">
-            <div className="border-b border-border-main pb-4 mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div>
-                <h2 className="text-xs font-bold uppercase tracking-wider text-text-main mb-0.5">Requests & Clearances Ledger</h2>
-                <p className="text-muted-main text-xs">
-                  Registered submittals & confidential audits
-                </p>
-              </div>
+            <div className="border-b border-border-main pb-4 mb-4 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-xs font-bold uppercase tracking-wider text-text-main mb-0.5">Requests & Clearances Ledger</h2>
+                  <p className="text-muted-main text-xs">
+                    Registered submittals & confidential audits
+                  </p>
+                </div>
 
-              {/* Actions & Filter Tabs */}
-              <div className="flex items-center gap-2">
                 <button
                   onClick={exportHRRequestsToCSV}
                   title="Export requests to CSV"
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 bg-surface-hover hover:bg-surface-main text-muted-main hover:text-text-main border border-border-main rounded-lg text-xs font-semibold transition-all cursor-pointer shadow-xs"
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 bg-surface-hover hover:bg-surface-main text-muted-main hover:text-text-main border border-border-main rounded-lg text-xs font-semibold transition-all cursor-pointer shadow-xs self-start sm:self-auto"
                 >
                   <Download className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Export CSV</span>
+                  <span>Export CSV</span>
                 </button>
+              </div>
 
+              {/* Status and Category Control Bar */}
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-border-main/40">
+                {/* Primary Status Filter */}
                 <div className="flex items-center gap-1 bg-surface-hover p-1 rounded-lg border border-border-main text-xs font-semibold">
                   <button
-                    onClick={() => setFilterTab('all')}
-                    className={`px-2.5 py-1 rounded transition-all cursor-pointer ${filterTab === 'all' ? 'bg-surface-main text-text-main shadow-xs' : 'text-muted-main'}`}
+                    onClick={() => setStatusFilter('pending')}
+                    className={`px-2.5 py-1 rounded transition-all cursor-pointer ${statusFilter === 'pending' ? 'bg-surface-main text-text-main font-bold shadow-xs' : 'text-muted-main'}`}
                   >
-                    All ({visibleRequests.length})
+                    Pending ({pendingCount})
+                  </button>
+                  <button
+                    onClick={() => setStatusFilter('cleared')}
+                    className={`px-2.5 py-1 rounded transition-all cursor-pointer ${statusFilter === 'cleared' ? 'bg-surface-main text-text-main font-bold shadow-xs' : 'text-muted-main'}`}
+                  >
+                    Approved & Cleared ({clearedCount})
+                  </button>
+                  <button
+                    onClick={() => setStatusFilter('all')}
+                    className={`px-2.5 py-1 rounded transition-all cursor-pointer ${statusFilter === 'all' ? 'bg-surface-main text-text-main font-bold shadow-xs' : 'text-muted-main'}`}
+                  >
+                    All ({eligibleRequests.length})
+                  </button>
+                </div>
+
+                {/* Sub-filter by Category */}
+                <div className="flex items-center gap-1 bg-surface-hover/60 p-0.5 rounded-lg border border-border-main text-[11px] font-semibold">
+                  <button
+                    onClick={() => setFilterTab('all')}
+                    className={`px-2 py-0.5 rounded transition-all cursor-pointer ${filterTab === 'all' ? 'bg-surface-main text-text-main font-bold shadow-2xs' : 'text-muted-main'}`}
+                  >
+                    All
                   </button>
                   <button
                     onClick={() => setFilterTab('requests')}
-                    className={`px-2.5 py-1 rounded transition-all cursor-pointer ${filterTab === 'requests' ? 'bg-surface-main text-text-main shadow-xs' : 'text-muted-main'}`}
+                    className={`px-2 py-0.5 rounded transition-all cursor-pointer ${filterTab === 'requests' ? 'bg-surface-main text-text-main font-bold shadow-2xs' : 'text-muted-main'}`}
                   >
                     Requests
                   </button>
                   <button
                     onClick={() => setFilterTab('complaints')}
-                    className={`px-2.5 py-1 rounded transition-all cursor-pointer ${filterTab === 'complaints' ? 'bg-surface-main text-rose-600 dark:text-rose-400 shadow-xs' : 'text-muted-main'}`}
+                    className={`px-2 py-0.5 rounded transition-all cursor-pointer ${filterTab === 'complaints' ? 'bg-surface-main text-rose-600 dark:text-rose-400 font-bold shadow-2xs' : 'text-muted-main'}`}
                   >
                     Complaints
                   </button>
@@ -723,8 +783,8 @@ export default function HRPage() {
                           </div>
                         )}
 
-                        {/* 2. COMPLAINT INVESTIGATION & RESOLUTION CONSOLE (PARTNER ONLY) */}
-                        {isComplaint && (
+                        {/* 2. COMPLAINT INVESTIGATION & RESOLUTION CONSOLE (PARTNER ONLY - ACTIVE COMPLAINTS ONLY) */}
+                        {isComplaint && req.complaintStatus !== 'resolved' && req.complaintStatus !== 'dismissed' && req.status !== 'rejected' && req.status !== 'approved' && (
                           <div className="pt-2 border-t border-border-main/40 space-y-2.5">
                             {isPartner ? (
                               <div className="space-y-2">
@@ -779,6 +839,20 @@ export default function HRPage() {
                                 </span>
                               </div>
                             )}
+                          </div>
+                        )}
+
+                        {/* Reopen option for resolved/dismissed complaints (Partner only) */}
+                        {isComplaint && (req.complaintStatus === 'resolved' || req.complaintStatus === 'dismissed' || req.status === 'approved' || req.status === 'rejected') && isPartner && (
+                          <div className="pt-2 border-t border-border-main/30 flex justify-end">
+                            <button
+                              onClick={() => handleComplaintStatusChange(req.id, 'investigating')}
+                              className="text-[10px] font-semibold text-muted-main hover:text-text-main flex items-center gap-1 cursor-pointer transition-colors"
+                              title="Re-open investigation for this grievance"
+                            >
+                              <RefreshCw className="w-3 h-3" />
+                              <span>Reopen Investigation</span>
+                            </button>
                           </div>
                         )}
 

@@ -87,9 +87,21 @@ export function useTasks() {
 
     window.addEventListener('storage', handleStorage);
     window.addEventListener(EVENT_NAME, handleCustom);
+
+    let bc: BroadcastChannel | null = null;
+    if (typeof BroadcastChannel !== 'undefined') {
+      try {
+        bc = new BroadcastChannel('arkipelago_tasks_channel');
+        bc.onmessage = () => syncTasks();
+      } catch (e) {
+        console.error('BroadcastChannel error', e);
+      }
+    }
+
     return () => {
       window.removeEventListener('storage', handleStorage);
       window.removeEventListener(EVENT_NAME, handleCustom);
+      if (bc) bc.close();
     };
   }, [syncTasks]);
 
@@ -116,6 +128,11 @@ export function useTasks() {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
       window.dispatchEvent(new Event(EVENT_NAME));
+      if (typeof BroadcastChannel !== 'undefined') {
+        const bc = new BroadcastChannel('arkipelago_tasks_channel');
+        bc.postMessage('tasks_updated');
+        bc.close();
+      }
     } catch (e) {
       console.error('Error saving task', e);
     }
@@ -129,6 +146,11 @@ export function useTasks() {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
       window.dispatchEvent(new Event(EVENT_NAME));
+      if (typeof BroadcastChannel !== 'undefined') {
+        const bc = new BroadcastChannel('arkipelago_tasks_channel');
+        bc.postMessage('tasks_updated');
+        bc.close();
+      }
     } catch (e) {
       console.error('Error updating task', e);
     }

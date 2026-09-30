@@ -5,6 +5,8 @@ import { SEED_WALL_POSTS } from '@/lib/constants';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase/client';
 
 const STORAGE_KEY = 'arkipelago_wall_posts';
+const WALL_EVENT_NAME = 'arkipelago_wall_updated';
+const WALL_CHANNEL_NAME = 'arkipelago_wall_channel';
 
 function getInitialPosts(): WallPost[] {
   if (typeof window === 'undefined') return SEED_WALL_POSTS;
@@ -25,6 +27,12 @@ function persistPosts(posts: WallPost[]) {
   if (typeof window !== 'undefined') {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(posts));
+      window.dispatchEvent(new Event(WALL_EVENT_NAME));
+      if (typeof BroadcastChannel !== 'undefined') {
+        const bc = new BroadcastChannel(WALL_CHANNEL_NAME);
+        bc.postMessage('wall_updated');
+        bc.close();
+      }
     } catch {
       // Ignore storage quotas
     }
@@ -141,6 +149,32 @@ export function useWallPosts() {
   const loadPosts = useCallback(() => {
     setPosts(getInitialPosts());
   }, []);
+
+  useEffect(() => {
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === STORAGE_KEY) loadPosts();
+    };
+    const handleCustom = () => loadPosts();
+
+    window.addEventListener('storage', handleStorage);
+    window.addEventListener(WALL_EVENT_NAME, handleCustom);
+
+    let bc: BroadcastChannel | null = null;
+    if (typeof BroadcastChannel !== 'undefined') {
+      try {
+        bc = new BroadcastChannel(WALL_CHANNEL_NAME);
+        bc.onmessage = () => loadPosts();
+      } catch (err) {
+        console.error('Wall BroadcastChannel error', err);
+      }
+    }
+
+    return () => {
+      window.removeEventListener('storage', handleStorage);
+      window.removeEventListener(WALL_EVENT_NAME, handleCustom);
+      if (bc) bc.close();
+    };
+  }, [loadPosts]);
 
   const addPost = useCallback(async (content: string, author: User, attachments?: string[]) => {
     const newPost: WallPost = {

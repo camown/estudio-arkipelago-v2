@@ -1,11 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-export const dynamic = 'force-static';
-
 export async function GET(request: NextRequest) {
-  if (process.env.NEXT_PHASE === 'phase-production-build') {
-    return NextResponse.json({ status: 'static_export' });
-  }
 
   const { searchParams } = new URL(request.url);
   const code = searchParams.get('code');

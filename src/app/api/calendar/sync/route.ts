@@ -10,8 +10,6 @@ interface GoogleCalendarEventItem {
   location?: string;
 }
 
-export const dynamic = 'force-static';
-
 export async function GET() {
   let token: string | undefined;
   let userEmail: string = 'Gmail User';

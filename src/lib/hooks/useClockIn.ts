@@ -7,6 +7,8 @@ import { useAuth } from '@/lib/hooks/useAuth';
 
 const CLOCKIN_STATE_KEY = 'arkipelago_clockin_state';
 const TIME_ENTRIES_KEY = 'arkipelago_time_entries';
+const CLOCK_EVENT_NAME = 'arkipelago_clock_updated';
+const CLOCK_CHANNEL_NAME = 'arkipelago_clock_channel';
 
 interface StoredClockInState {
   isClocked: boolean;
@@ -40,9 +42,6 @@ function getStoredClockInState(userId?: string) {
     const rawState = (userKey && localStorage.getItem(userKey)) || localStorage.getItem(CLOCKIN_STATE_KEY);
     if (rawState) {
       const parsed: StoredClockInState = JSON.parse(rawState);
-      if (parsed.userId && userId && parsed.userId !== userId) {
-        return { isClocked: false, startTime: null, elapsed: 0, selectedProjectId: null };
-      }
       if (parsed.isClocked && parsed.startTime) {
         const start = new Date(parsed.startTime);
         const now = new Date();
@@ -103,40 +102,89 @@ export function useClockIn() {
   const [isClocked, setIsClocked] = useState<boolean>(() => getStoredClockInState(userId).isClocked);
   const [startTime, setStartTime] = useState<Date | null>(() => getStoredClockInState(userId).startTime);
   const [elapsed, setElapsed] = useState<number>(() => getStoredClockInState(userId).elapsed);
-  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(() => getStoredClockInState(userId).selectedProjectId);
+  const [selectedProjectId, setSelectedProjectIdState] = useState<string | null>(() => getStoredClockInState(userId).selectedProjectId);
   const [todayEntries, setTodayEntries] = useState<TimeEntry[]>([]);
 
-  const [prevUserId, setPrevUserId] = useState<string | undefined>(userId);
-  if (userId !== prevUserId) {
-    setPrevUserId(userId);
+  // Synchronize state across all instances on the same page and cross-tab
+  const syncStateFromStorage = useCallback(() => {
     const stored = getStoredClockInState(userId);
     setIsClocked(stored.isClocked);
     setStartTime(stored.startTime);
     setElapsed(stored.elapsed);
-    setSelectedProjectId(stored.selectedProjectId);
-  }
-
-  const refreshTodayEntries = useCallback(() => {
+    if (stored.selectedProjectId) {
+      setSelectedProjectIdState(stored.selectedProjectId);
+    }
     setTodayEntries(getTodayEntries());
-  }, [getTodayEntries]);
+  }, [userId, getTodayEntries]);
+
+  // Set selected project and synchronize across components
+  const setSelectedProjectId = useCallback((projId: string | null) => {
+    setSelectedProjectIdState(projId);
+    try {
+      const stored = getStoredClockInState(userId);
+      if (stored.isClocked && stored.startTime) {
+        const stateToStore: StoredClockInState = {
+          isClocked: true,
+          startTime: stored.startTime.toISOString(),
+          selectedProjectId: projId,
+          userId,
+        };
+        localStorage.setItem(userClockKey, JSON.stringify(stateToStore));
+        localStorage.setItem(CLOCKIN_STATE_KEY, JSON.stringify(stateToStore));
+        window.dispatchEvent(new CustomEvent(CLOCK_EVENT_NAME));
+      }
+    } catch (e) {
+      console.error('Error updating clock-in project', e);
+    }
+  }, [userId, userClockKey]);
 
   useEffect(() => {
-    setTodayEntries(getTodayEntries());
-  }, [getTodayEntries, userId]);
+    syncStateFromStorage();
+  }, [syncStateFromStorage, userId]);
+
+  // Event & BroadcastChannel listeners for instant 0ms cross-component and cross-tab sync
+  useEffect(() => {
+    const handleSync = () => {
+      syncStateFromStorage();
+    };
+
+    window.addEventListener(CLOCK_EVENT_NAME, handleSync);
+    window.addEventListener('storage', handleSync);
+
+    let bc: BroadcastChannel | null = null;
+    if (typeof BroadcastChannel !== 'undefined') {
+      try {
+        bc = new BroadcastChannel(CLOCK_CHANNEL_NAME);
+        bc.onmessage = () => {
+          syncStateFromStorage();
+        };
+      } catch (err) {
+        console.error('BroadcastChannel initialization error', err);
+      }
+    }
+
+    return () => {
+      window.removeEventListener(CLOCK_EVENT_NAME, handleSync);
+      window.removeEventListener('storage', handleSync);
+      if (bc) bc.close();
+    };
+  }, [syncStateFromStorage]);
+
   // Tick elapsed duration every second while clocked in
   useEffect(() => {
     if (!isClocked || !startTime) {
       return;
     }
 
-    const intervalId = setInterval(() => {
-      const now = new Date();
-      const diffSeconds = Math.max(
-        0,
-        Math.floor((now.getTime() - new Date(startTime).getTime()) / 1000)
-      );
+    const updateTimer = () => {
+      const now = Date.now();
+      const startMs = new Date(startTime).getTime();
+      const diffSeconds = Math.max(0, Math.floor((now - startMs) / 1000));
       setElapsed(diffSeconds);
-    }, 1000);
+    };
+
+    updateTimer();
+    const intervalId = setInterval(updateTimer, 1000);
 
     return () => clearInterval(intervalId);
   }, [isClocked, startTime]);
@@ -146,16 +194,25 @@ export function useClockIn() {
     setIsClocked(true);
     setStartTime(now);
     setElapsed(0);
-    setSelectedProjectId(projectId);
+    setSelectedProjectIdState(projectId);
+
+    const stateToStore: StoredClockInState = {
+      isClocked: true,
+      startTime: now.toISOString(),
+      selectedProjectId: projectId,
+      userId,
+    };
 
     try {
-      const stateToStore: StoredClockInState = {
-        isClocked: true,
-        startTime: now.toISOString(),
-        selectedProjectId: projectId,
-        userId,
-      };
       localStorage.setItem(userClockKey, JSON.stringify(stateToStore));
+      localStorage.setItem(CLOCKIN_STATE_KEY, JSON.stringify(stateToStore));
+      window.dispatchEvent(new CustomEvent(CLOCK_EVENT_NAME));
+
+      if (typeof BroadcastChannel !== 'undefined') {
+        const bc = new BroadcastChannel(CLOCK_CHANNEL_NAME);
+        bc.postMessage({ type: 'CLOCK_IN', state: stateToStore });
+        bc.close();
+      }
     } catch (error) {
       console.error('Failed to persist clock-in state:', error);
     }
@@ -199,6 +256,14 @@ export function useClockIn() {
       localStorage.setItem(TIME_ENTRIES_KEY, JSON.stringify(updatedEntries));
       localStorage.removeItem(userClockKey);
       localStorage.removeItem(CLOCKIN_STATE_KEY);
+
+      window.dispatchEvent(new CustomEvent(CLOCK_EVENT_NAME));
+
+      if (typeof BroadcastChannel !== 'undefined') {
+        const bc = new BroadcastChannel(CLOCK_CHANNEL_NAME);
+        bc.postMessage({ type: 'CLOCK_OUT' });
+        bc.close();
+      }
     } catch (error) {
       console.error('Failed to persist time entry:', error);
     }
@@ -206,12 +271,12 @@ export function useClockIn() {
     setIsClocked(false);
     setStartTime(null);
     setElapsed(0);
-    setSelectedProjectId(null);
+    setSelectedProjectIdState(null);
 
-    refreshTodayEntries();
+    setTodayEntries(getTodayEntries());
 
     return newEntry;
-  }, [isClocked, startTime, selectedProjectId, userId, userClockKey, refreshTodayEntries]);
+  }, [isClocked, startTime, selectedProjectId, userId, userClockKey, getTodayEntries]);
 
   const activeSession: ActiveSession | null =
     isClocked && startTime
@@ -222,7 +287,6 @@ export function useClockIn() {
       : null;
 
   return {
-    // Prompt specification
     isClocked,
     startTime,
     elapsed,

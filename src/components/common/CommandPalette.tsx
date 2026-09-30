@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { 
   Search, FolderKanban, MessageSquare, PenTool, 
   Calendar, FileText, HardHat, Moon, Sun, Clock,
-  ArrowRight, X, Command
+  ArrowRight, X, Command, Plus, BookUser
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { MOCK_PROJECTS } from '@/lib/constants';
@@ -145,6 +145,28 @@ export function CommandPalette() {
       },
     },
     // Studio Actions
+    {
+      id: 'act-new-task',
+      title: 'Initialize New Studio Task',
+      subtitle: 'Create a deliverable, workshop or site visit assignment',
+      category: 'STUDIO ACTIONS' as const,
+      icon: Plus,
+      action: () => {
+        setIsOpen(false);
+        window.dispatchEvent(new CustomEvent('open-task-modal'));
+      },
+    },
+    {
+      id: 'act-directory',
+      title: 'Open Studio Staff Directory',
+      subtitle: 'Architect roster, consultants, and contractors',
+      category: 'STUDIO ACTIONS' as const,
+      icon: BookUser,
+      action: () => {
+        setIsOpen(false);
+        router.push('/directory');
+      },
+    },
     {
       id: 'act-sketch',
       title: 'Launch Sketch Studio & Redline Board',

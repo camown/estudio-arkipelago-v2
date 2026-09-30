@@ -237,8 +237,8 @@ export function useHRRequests() {
           status: newStatus === 'resolved' ? ('approved' as const) : newStatus === 'dismissed' ? ('rejected' as const) : ('pending' as const),
           reviewedBy: reviewer.name,
           reviewedAt: new Date().toISOString(),
-          investigatorNotes: notes !== undefined ? notes : r.investigatorNotes,
-          resolutionNotes: newStatus === 'resolved' || newStatus === 'dismissed' ? (notes || r.resolutionNotes) : r.resolutionNotes,
+          investigatorNotes: (notes && notes.trim() !== '') ? notes : r.investigatorNotes,
+          resolutionNotes: newStatus === 'resolved' || newStatus === 'dismissed' ? ((notes && notes.trim() !== '') ? notes : r.resolutionNotes) : r.resolutionNotes,
         };
       }
       return r;
