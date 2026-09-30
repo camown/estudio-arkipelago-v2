@@ -483,8 +483,6 @@ export default function ChatPage() {
 
   // Supabase Realtime & Synchronization State
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
-  const [isRealtimeConnected, setIsRealtimeConnected] = useState(false);
-  const [isSyncing, setIsSyncing] = useState(false);
 
   const chatFileRef = useRef<HTMLInputElement>(null);
   const wallFileRef = useRef<HTMLInputElement>(null);
@@ -507,7 +505,6 @@ export default function ChatPage() {
 
     const fetchThreadsAndMessages = async () => {
       try {
-        setIsSyncing(true);
         const [threadsRes, msgsRes] = await Promise.all([
           supabase.from('chat_threads').select('*').order('created_at', { ascending: false }),
           supabase.from('chat_messages').select('*').order('created_at', { ascending: true })
@@ -557,8 +554,6 @@ export default function ChatPage() {
         }
       } catch (err) {
         console.error('Error fetching chat threads/messages:', err);
-      } finally {
-        setIsSyncing(false);
       }
     };
 
@@ -705,9 +700,7 @@ export default function ChatPage() {
           return updated;
         });
       })
-      .subscribe((status) => {
-        setIsRealtimeConnected(status === 'SUBSCRIBED');
-      });
+      .subscribe();
 
     return () => {
       window.removeEventListener('focus', handleRevalidate);
@@ -1178,32 +1171,70 @@ export default function ChatPage() {
       });
     }
 
+    const openSysId = 'sys-open-' + Date.now();
+    const openSysMsg: ChatMessage = {
+      id: openSysId,
+      sender: 'System',
+      text: `${creatorName} created this thread`,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      isSystem: true,
+    };
+
+    const initialThreadMessages: ChatMessage[] = [openSysMsg];
+
     if (initialNote.trim()) {
       const initMsgId = 'msg-init-' + Date.now();
       const initText = initialNote.trim();
-      setMessages((prev) => ({
-        ...prev,
-        [newId]: [
-          {
-            id: initMsgId,
-            sender: creatorName,
-            text: initText,
-            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          },
-        ],
-      }));
+      initialThreadMessages.push({
+        id: initMsgId,
+        sender: creatorName,
+        text: initText,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      });
+    }
 
-      if (isSupabaseConfigured && supabase) {
-        await supabase.from('chat_messages').insert({
-          id: initMsgId,
+    setMessages((prev) => {
+      const updated = {
+        ...prev,
+        [newId]: initialThreadMessages,
+      };
+      try {
+        localStorage.setItem(STORAGE_MESSAGES_KEY, JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const inserts = initialThreadMessages.map((m) => ({
+          id: m.id,
           thread_id: newId,
-          sender: creatorName,
-          text: initText,
-        });
+          sender: m.sender,
+          text: m.text,
+        }));
+        await supabase.from('chat_messages').insert(inserts);
+      } catch (err) {
+        console.error('Error saving thread messages to Supabase:', err);
       }
     }
 
+    if (channelRef.current) {
+      try {
+        initialThreadMessages.forEach((msg) => {
+          channelRef.current?.send({
+            type: 'broadcast',
+            event: 'new_message',
+            payload: {
+              threadId: newId,
+              message: msg,
+            },
+          });
+        });
+      } catch {}
+    }
+
     setSelectedThreadId(newId);
+    setMobileActiveView('chat');
     setIsTopicModalOpen(false);
     setNewTopicName('');
     setInitialNote('');
@@ -2303,7 +2334,7 @@ export default function ChatPage() {
 
         {/* CHAT & THREADS VIEW */}
         {activeTab === 'chat' && (
-          <div className="flex h-[calc(100vh-12rem)] border border-border-main rounded-2xl overflow-hidden bg-surface-main shadow-xs">
+          <div className="flex h-[calc(100dvh-9rem)] sm:h-[calc(100vh-12rem)] border border-border-main rounded-2xl overflow-hidden bg-surface-main shadow-xs">
             
             {/* LEFT SIDEBAR: THREADS & TOPIC CHANNELS */}
             <div
@@ -2570,38 +2601,8 @@ export default function ChatPage() {
                   </div>
                 </div>
 
-                {/* Right Header Actions: Connection Status Pill, Member Stack, + Add Member, Gallery Drawer */}
+                {/* Right Header Actions: Member Stack, + Add Member, Gallery Drawer */}
                 <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
-                  {/* Realtime Live Connection Status Pill */}
-                  <div
-                    className={cn(
-                      'flex items-center gap-1.5 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full border text-[9px] sm:text-[10px] font-mono font-medium select-none',
-                      isRealtimeConnected
-                        ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
-                        : isSyncing
-                        ? 'border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400'
-                        : 'border-border-main bg-surface-hover text-muted-main'
-                    )}
-                    title={
-                      isRealtimeConnected
-                        ? 'Connected to live Supabase WebSocket & Database'
-                        : isSyncing
-                        ? 'Synchronizing messages with database...'
-                        : 'Using cached offline data'
-                    }
-                  >
-                    <span
-                      className={cn(
-                        'w-1.5 h-1.5 rounded-full',
-                        isRealtimeConnected
-                          ? 'bg-emerald-500'
-                          : isSyncing
-                          ? 'bg-amber-500'
-                          : 'bg-muted-main'
-                      )}
-                    />
-                    <span>{isRealtimeConnected ? 'Realtime Live' : isSyncing ? 'Syncing...' : 'Cached'}</span>
-                  </div>
 
                   {/* Interactive Member Avatars Stack with Roster Popover */}
                   <div className="relative" ref={rosterRef}>
@@ -2739,7 +2740,7 @@ export default function ChatPage() {
               </div>
 
               {/* Chat Body & Media Gallery Split */}
-              <div className="flex-1 flex overflow-hidden">
+              <div className="relative flex-1 flex overflow-hidden">
                 {!isCurrentThreadAccessible ? (
                   <div className="flex-1 flex flex-col items-center justify-center p-8 text-center max-w-md mx-auto space-y-4">
                     <div className="w-12 h-12 rounded-2xl bg-surface-hover border border-border-main flex items-center justify-center text-text-main shadow-xs">
@@ -2770,18 +2771,45 @@ export default function ChatPage() {
                     {/* Message Stream */}
                     <div className="flex-1 flex flex-col overflow-hidden">
                       <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 bg-surface-main">
-                    {activeMessages.map((msg) => {
-                      if (msg.isSystem) {
-                        return (
-                          <div key={msg.id} className="w-full flex items-center justify-center my-3">
-                            <div className="px-3.5 py-1.5 rounded-full bg-surface-hover border border-border-main text-[11px] text-muted-main font-semibold flex items-center gap-2 shadow-2xs">
-                              <Info className="w-3.5 h-3.5 text-muted-main" />
-                              <span>{msg.text}</span>
-                              <span className="text-[10px] font-mono opacity-60">· {msg.timestamp}</span>
-                            </div>
+                        {/* Centered Thread Opening Header at the Middle */}
+                        <div className="w-full flex flex-col items-center justify-center pt-2 pb-5 text-center select-none border-b border-border-main/30 mb-2">
+                          <div className="w-9 h-9 rounded-xl bg-surface-hover border border-border-main flex items-center justify-center text-text-main font-bold mb-2 shadow-2xs">
+                            {currentThread?.category === 'DIRECT_MESSAGE' ? (
+                              <MessageSquare className="w-4 h-4 text-text-main" />
+                            ) : (
+                              <Hash className="w-4 h-4 text-text-main" />
+                            )}
                           </div>
-                        );
-                      }
+                          <h3 className="text-xs sm:text-sm font-bold text-text-main">
+                            {currentThread ? getThreadDisplayName(currentThread, user?.name || 'Arch. Leandro Locsin') : ''}
+                          </h3>
+                          <div className="mt-1.5 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface-hover border border-border-main text-[11px] text-muted-main font-medium">
+                            <span>
+                              {currentThread?.category === 'DIRECT_MESSAGE'
+                                ? `Direct conversation with ${getThreadDisplayName(currentThread, user?.name || 'Arch. Leandro Locsin')}`
+                                : `${currentThread?.participants?.[0] || 'Arch. Carlos Mendoza'} created this thread`}
+                            </span>
+                          </div>
+                          {currentThread?.projectCode && (
+                            <div className="mt-2 flex items-center gap-2 text-[10px] font-mono text-muted-main">
+                              <span>Project: {currentThread.projectCode}</span>
+                              <span>•</span>
+                              <span>{currentThread.participants?.length || 0} participants</span>
+                            </div>
+                          )}
+                        </div>
+
+                        {activeMessages.map((msg) => {
+                          if (msg.isSystem) {
+                            return (
+                              <div key={msg.id} className="w-full flex items-center justify-center my-3">
+                                <div className="px-3.5 py-1.5 rounded-full bg-surface-hover border border-border-main text-[11px] text-muted-main font-medium flex items-center gap-2 shadow-2xs">
+                                  <span>{msg.text}</span>
+                                  <span className="text-[10px] font-mono opacity-60">· {msg.timestamp}</span>
+                                </div>
+                              </div>
+                            );
+                          }
 
                       const currentUserName = user?.name?.trim() || 'Arch. Leandro Locsin';
                       const isMe = msg.sender?.trim().toLowerCase() === currentUserName.toLowerCase();
@@ -2926,10 +2954,10 @@ export default function ChatPage() {
                     })}
 
                     {activeMessages.length === 0 && (
-                      <div className="h-full flex flex-col items-center justify-center text-center p-8 space-y-2">
-                        <MessageSquare className="w-10 h-10 text-muted-main/40" />
+                      <div className="py-12 flex flex-col items-center justify-center text-center p-6 space-y-2">
+                        <MessageSquare className="w-8 h-8 text-muted-main/40" />
                         <p className="text-xs text-muted-main font-mono">
-                          This topic thread is ready for discussion. Send a message below.
+                          This conversation is ready. Send a message below to start.
                         </p>
                       </div>
                     )}
@@ -2958,7 +2986,7 @@ export default function ChatPage() {
                   )}
 
                   {/* Chat Input Field Bar */}
-                  <div className="p-4 border-t border-border-main bg-surface-main flex items-center gap-3 shrink-0">
+                  <div className="p-3 sm:p-4 border-t border-border-main bg-surface-main flex items-center gap-2 sm:gap-3 shrink-0">
                     <input
                       type="file"
                       ref={chatFileRef}
@@ -3027,7 +3055,7 @@ export default function ChatPage() {
 
                 {/* THREAD DRAWING & MEDIA GALLERY SLIDE-OUT DRAWER */}
                 {isGalleryDrawerOpen && (
-                  <div className="w-72 border-l border-border-main bg-surface-main flex flex-col shrink-0 animate-in slide-in-from-right-4">
+                  <div className="absolute inset-y-0 right-0 z-30 w-full sm:w-80 md:relative md:w-72 border-l border-border-main bg-surface-main flex flex-col shrink-0 shadow-2xl md:shadow-none animate-in slide-in-from-right-4">
                     <div className="p-3.5 border-b border-border-main flex items-center justify-between">
                       <div className="flex items-center gap-1.5">
                         <Images className="w-4 h-4 text-accent-cyan" />

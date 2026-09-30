@@ -593,15 +593,6 @@ export function TopBar({ user, onInitializeTask }: TopBarProps) {
             <span className="hidden sm:inline">Logbook</span>
           </button>
 
-          {/* Keyboard Shortcuts Trigger Button */}
-          <button
-            onClick={() => setIsShortcutsModalOpen(true)}
-            className="p-2 rounded-xl border border-border-main bg-surface-main hover:bg-surface-hover active:scale-[0.95] transition-all text-muted-main hover:text-text-main shadow-2xs cursor-pointer hidden sm:flex"
-            title="Keyboard Shortcuts Cheatsheet (?)"
-          >
-            <Keyboard className="w-4 h-4" />
-          </button>
-
           {/* Mobile search button */}
           <button
             onClick={() => setIsSearchOpen(true)}
