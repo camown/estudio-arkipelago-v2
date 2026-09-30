@@ -33,10 +33,13 @@ export function StickyNotesOverlay() {
       const saved = localStorage.getItem('estudio_workspace_notes');
       if (saved) {
         const parsed: WorkspaceStickyNote[] = JSON.parse(saved);
-        // Ensure notes are not tucked behind the sidebar (x < 280)
-        return parsed.map(n => ({
+        const isDesktop = window.innerWidth >= 768;
+        const minX = isDesktop ? 280 : 12;
+        const maxX = Math.max(minX, window.innerWidth - 270);
+        return parsed.map((n) => ({
           ...n,
-          x: Math.max(280, n.x)
+          x: Math.max(minX, Math.min(maxX, n.x)),
+          y: Math.max(10, Math.min(window.innerHeight - 100, n.y)),
         }));
       }
       return DEFAULT_NOTES;
@@ -67,13 +70,17 @@ export function StickyNotesOverlay() {
   const addNote = () => {
     const screenW = typeof window !== 'undefined' ? window.innerWidth : 1200;
     const screenH = typeof window !== 'undefined' ? window.innerHeight : 800;
+    const isDesktop = screenW >= 768;
+    const minX = isDesktop ? 280 : 16;
+    const maxX = Math.max(minX, screenW - 270);
+
     const newNote: WorkspaceStickyNote = {
       id: `sn-${Date.now()}`,
       title: 'New Memo',
       content: '',
       color: COLORS[notes.length % COLORS.length].key,
-      x: Math.max(290, Math.min(screenW - 290, 320 + (notes.length * 20))),
-      y: Math.min(screenH - 220, 110 + (notes.length * 20)),
+      x: Math.max(minX, Math.min(maxX, (isDesktop ? 300 : 16) + (notes.length * 15))),
+      y: Math.min(screenH - 220, 110 + (notes.length * 15)),
       minimized: false,
     };
     setNotes([...notes, newNote]);
@@ -144,8 +151,8 @@ export function StickyNotesOverlay() {
 
   return (
     <>
-      {/* Floating Toggle Button */}
-      <div className="fixed bottom-6 right-6 z-40 flex items-center gap-2">
+      {/* Floating Toggle Button - positioned above BottomNav on mobile */}
+      <div className="fixed bottom-20 md:bottom-6 right-4 sm:right-6 z-40 flex items-center gap-2">
         <button
           onClick={() => setIsOpen(!isOpen)}
           className={cn(
@@ -188,7 +195,7 @@ export function StickyNotesOverlay() {
                   transform: `translate(${note.x}px, ${note.y}px)`,
                 }}
                 className={cn(
-                  'absolute pointer-events-auto w-64 rounded-xl shadow-lg border p-3 select-none transition-shadow',
+                  'absolute pointer-events-auto w-64 max-w-[calc(100vw-32px)] rounded-xl shadow-lg border p-3 select-none transition-shadow',
                   colorCfg.bg,
                   colorCfg.text,
                   colorCfg.border,

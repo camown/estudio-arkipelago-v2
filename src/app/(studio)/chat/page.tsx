@@ -159,6 +159,80 @@ interface ThreadChannel {
   projectName?: string;
   topicName?: string;
   participants: string[];
+  colorTag?: string;
+}
+
+export interface ThreadColorOption {
+  id: string;
+  name: string;
+  bg: string;
+  border: string;
+  text: string;
+  dot: string;
+}
+
+export const THREAD_COLORS: Record<string, ThreadColorOption> = {
+  indigo: { id: 'indigo', name: 'Indigo', bg: 'bg-indigo-500/10', border: 'border-indigo-500/30', text: 'text-indigo-600 dark:text-indigo-400', dot: 'bg-indigo-500' },
+  emerald: { id: 'emerald', name: 'Emerald', bg: 'bg-emerald-500/10', border: 'border-emerald-500/30', text: 'text-emerald-600 dark:text-emerald-400', dot: 'bg-emerald-500' },
+  amber: { id: 'amber', name: 'Amber', bg: 'bg-amber-500/10', border: 'border-amber-500/30', text: 'text-amber-600 dark:text-amber-400', dot: 'bg-amber-500' },
+  rose: { id: 'rose', name: 'Rose', bg: 'bg-rose-500/10', border: 'border-rose-500/30', text: 'text-rose-600 dark:text-rose-400', dot: 'bg-rose-500' },
+  cyan: { id: 'cyan', name: 'Cyan', bg: 'bg-cyan-500/10', border: 'border-cyan-500/30', text: 'text-cyan-600 dark:text-cyan-400', dot: 'bg-cyan-500' },
+  purple: { id: 'purple', name: 'Purple', bg: 'bg-purple-500/10', border: 'border-purple-500/30', text: 'text-purple-600 dark:text-purple-400', dot: 'bg-purple-500' },
+};
+
+export function getThreadColor(thread?: ThreadChannel | null): ThreadColorOption {
+  if (!thread) return THREAD_COLORS.indigo;
+  if (thread.colorTag && THREAD_COLORS[thread.colorTag]) {
+    return THREAD_COLORS[thread.colorTag];
+  }
+  const key = thread.projectCode || thread.id || thread.name || 'default';
+  let hash = 0;
+  for (let i = 0; i < key.length; i++) {
+    hash = (hash << 5) - hash + key.charCodeAt(i);
+  }
+  const colorKeys = Object.keys(THREAD_COLORS);
+  const colorKey = colorKeys[Math.abs(hash) % colorKeys.length];
+  return THREAD_COLORS[colorKey];
+}
+
+interface MessageMeta {
+  reactions?: Record<string, string[]>;
+  isSystem?: boolean;
+}
+
+export function encodeAttachmentTitle(title: string | undefined | null, meta: MessageMeta): string | null {
+  const hasReactions = meta.reactions && Object.keys(meta.reactions).length > 0;
+  const isSystem = !!meta.isSystem;
+  if (!hasReactions && !isSystem) return title || null;
+  const payload: MessageMeta = {};
+  if (hasReactions) payload.reactions = meta.reactions;
+  if (isSystem) payload.isSystem = isSystem;
+  return `__META__${JSON.stringify(payload)}__END__${title || ''}`;
+}
+
+export function decodeAttachmentTitle(raw: string | undefined | null): { title?: string; meta: MessageMeta } {
+  if (!raw) return { meta: {} };
+  if (typeof raw === 'string' && raw.startsWith('__META__')) {
+    const endIdx = raw.indexOf('__END__');
+    if (endIdx !== -1) {
+      try {
+        const metaJson = raw.slice('__META__'.length, endIdx);
+        const meta = JSON.parse(metaJson) as MessageMeta;
+        const title = raw.slice(endIdx + '__END__'.length) || undefined;
+        return { title, meta };
+      } catch {
+        return { title: raw, meta: {} };
+      }
+    }
+  }
+  return { title: raw || undefined, meta: {} };
+}
+
+export interface InAppNotification {
+  id: string;
+  sender: string;
+  text: string;
+  threadId: string;
 }
 
 const INITIAL_THREADS: ThreadChannel[] = [
@@ -170,6 +244,7 @@ const INITIAL_THREADS: ThreadChannel[] = [
     projectName: 'Makati Commercial Tower',
     topicName: 'Schematic Revision & 3D Massing Review',
     participants: ['Arch. Carlos Mendoza', 'Arch. Patricia Ramos', 'Elena Gomez'],
+    colorTag: 'indigo',
   },
   {
     id: 'thread-002',
@@ -179,6 +254,7 @@ const INITIAL_THREADS: ThreadChannel[] = [
     projectName: 'Casa Verde Residence',
     topicName: 'Italian Marble & Timber Veneer Selection',
     participants: ['Arch. Leandro Locsin', 'Engr. Roberto Cruz', 'Foreman Danilo'],
+    colorTag: 'emerald',
   },
   {
     id: 'thread-003',
@@ -188,6 +264,7 @@ const INITIAL_THREADS: ThreadChannel[] = [
     projectName: 'BGC Cultural Pavilion',
     topicName: 'Foundation Soil Test & City Permits',
     participants: ['Arch. Sofia Reyes', 'Arch. Leandro Locsin', 'Engr. Roberto Cruz'],
+    colorTag: 'amber',
   },
   {
     id: 'dm-001',
@@ -195,6 +272,7 @@ const INITIAL_THREADS: ThreadChannel[] = [
     category: 'DIRECT_MESSAGE',
     topicName: 'Direct 1-on-1 Consultation',
     participants: ['Arch. Leandro Locsin', 'Arch. Carlos Mendoza'],
+    colorTag: 'cyan',
   },
   {
     id: 'dm-002',
@@ -202,6 +280,7 @@ const INITIAL_THREADS: ThreadChannel[] = [
     category: 'DIRECT_MESSAGE',
     topicName: 'Direct 1-on-1 Structural Consultation',
     participants: ['Arch. Leandro Locsin', 'Engr. Roberto Cruz'],
+    colorTag: 'rose',
   },
 ];
 
@@ -498,6 +577,10 @@ export default function ChatPage() {
 
   // Chat Messages State with Instant SWR LocalStorage Initializer
   const [messages, setMessages] = useState<Record<string, ChatMessage[]>>(getInitialCachedMessages);
+  const [typingUsers, setTypingUsers] = useState<Record<string, string[]>>({});
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [inAppNotifs, setInAppNotifs] = useState<InAppNotification[]>([]);
+  const [selectedColorTag, setSelectedColorTag] = useState<string>('indigo');
 
   // Load threads and messages from Supabase + Multi-Event Realtime sync
   useEffect(() => {
@@ -532,12 +615,16 @@ export default function ChatPage() {
           const grouped: Record<string, ChatMessage[]> = {};
           msgsRes.data.forEach((m) => {
             if (!grouped[m.thread_id]) grouped[m.thread_id] = [];
+            const decoded = decodeAttachmentTitle(m.attachment_title);
+            const isSystemMsg = m.sender?.trim().toLowerCase() === 'system' || !!decoded.meta.isSystem;
             grouped[m.thread_id].push({
               id: m.id,
               sender: m.sender,
               text: m.text,
               attachment: m.attachment || undefined,
-              attachmentTitle: m.attachment_title || undefined,
+              attachmentTitle: decoded.title || undefined,
+              isSystem: isSystemMsg,
+              reactions: decoded.meta.reactions || undefined,
               timestamp: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
             });
           });
@@ -581,12 +668,17 @@ export default function ChatPage() {
         { event: 'INSERT', schema: 'public', table: 'chat_messages' },
         (payload) => {
           const m = payload.new;
+          if (!m || !m.id || !m.thread_id) return;
+          const decoded = decodeAttachmentTitle(m.attachment_title);
+          const isSystemMsg = m.sender?.trim().toLowerCase() === 'system' || !!decoded.meta.isSystem;
           const formattedMsg: ChatMessage = {
             id: m.id,
             sender: m.sender,
             text: m.text,
             attachment: m.attachment || undefined,
-            attachmentTitle: m.attachment_title || undefined,
+            attachmentTitle: decoded.title || undefined,
+            isSystem: isSystemMsg,
+            reactions: decoded.meta.reactions || undefined,
             timestamp: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           };
 
@@ -596,6 +688,38 @@ export default function ChatPage() {
             const updated = {
               ...prev,
               [m.thread_id]: [...threadMsgs, formattedMsg],
+            };
+            try {
+              localStorage.setItem(STORAGE_MESSAGES_KEY, JSON.stringify(updated));
+            } catch {}
+            return updated;
+          });
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'chat_messages' },
+        (payload) => {
+          const m = payload.new;
+          if (!m || !m.id || !m.thread_id) return;
+          const decoded = decodeAttachmentTitle(m.attachment_title);
+          setMessages((prev) => {
+            const threadMsgs = prev[m.thread_id] || [];
+            const updatedThreadMsgs = threadMsgs.map((existing) =>
+              existing.id === m.id
+                ? {
+                    ...existing,
+                    text: m.text,
+                    attachment: m.attachment || undefined,
+                    attachmentTitle: decoded.title || undefined,
+                    reactions: decoded.meta.reactions || existing.reactions,
+                    isSystem: existing.isSystem || m.sender?.trim().toLowerCase() === 'system' || !!decoded.meta.isSystem,
+                  }
+                : existing
+            );
+            const updated = {
+              ...prev,
+              [m.thread_id]: updatedThreadMsgs,
             };
             try {
               localStorage.setItem(STORAGE_MESSAGES_KEY, JSON.stringify(updated));
@@ -699,6 +823,68 @@ export default function ChatPage() {
           } catch {}
           return updated;
         });
+
+        // Trigger in-app notification if message is from another user
+        const currentName = user?.name || 'Arch. Leandro Locsin';
+        const isFromOther = payload.message.sender && payload.message.sender.trim().toLowerCase() !== currentName.trim().toLowerCase();
+        if (isFromOther && !payload.message.isSystem) {
+          const notifId = 'notif-' + Date.now();
+          setInAppNotifs((prev) => [
+            {
+              id: notifId,
+              sender: payload.message.sender,
+              text: payload.message.text || 'Shared an attachment',
+              threadId: payload.threadId,
+            },
+            ...prev.slice(0, 1),
+          ]);
+          setTimeout(() => {
+            setInAppNotifs((prev) => prev.filter((n) => n.id !== notifId));
+          }, 4500);
+        }
+      })
+      .on('broadcast', { event: 'message_reaction' }, (event) => {
+        const payload = event.payload;
+        if (!payload || !payload.threadId || !payload.messageId) return;
+        setMessages((prev) => {
+          const threadMsgs = prev[payload.threadId] || [];
+          const updated = threadMsgs.map((msg) =>
+            msg.id === payload.messageId ? { ...msg, reactions: payload.reactions } : msg
+          );
+          const updatedMap = {
+            ...prev,
+            [payload.threadId]: updated,
+          };
+          try {
+            localStorage.setItem(STORAGE_MESSAGES_KEY, JSON.stringify(updatedMap));
+          } catch {}
+          return updatedMap;
+        });
+      })
+      .on('broadcast', { event: 'user_typing' }, (event) => {
+        const payload = event.payload;
+        if (!payload || !payload.threadId || !payload.userName) return;
+        const currentName = user?.name || 'Arch. Leandro Locsin';
+        if (payload.userName.trim().toLowerCase() === currentName.trim().toLowerCase()) return;
+        setTypingUsers((prev) => {
+          const existingList = prev[payload.threadId] || [];
+          if (existingList.includes(payload.userName)) return prev;
+          return {
+            ...prev,
+            [payload.threadId]: [...existingList, payload.userName],
+          };
+        });
+      })
+      .on('broadcast', { event: 'user_stop_typing' }, (event) => {
+        const payload = event.payload;
+        if (!payload || !payload.threadId || !payload.userName) return;
+        setTypingUsers((prev) => {
+          const existingList = prev[payload.threadId] || [];
+          return {
+            ...prev,
+            [payload.threadId]: existingList.filter((u) => u !== payload.userName),
+          };
+        });
       })
       .subscribe();
 
@@ -709,7 +895,7 @@ export default function ChatPage() {
         supabase?.removeChannel(channelRef.current);
       }
     };
-  }, []);
+  }, [user?.name]);
 
   const [chatInput, setChatInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -930,6 +1116,21 @@ export default function ChatPage() {
     setChatInput('');
     setAttachedImage(null);
 
+    // Stop typing indicator on send
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+    if (channelRef.current && currentThread) {
+      channelRef.current.send({
+        type: 'broadcast',
+        event: 'user_stop_typing',
+        payload: {
+          threadId: currentThread.id,
+          userName: senderName,
+        },
+      });
+    }
+
     // Ultra-fast peer broadcast
     if (channelRef.current) {
       try {
@@ -963,6 +1164,44 @@ export default function ChatPage() {
       } catch (err) {
         console.error('Exception inserting message to Supabase:', err);
       }
+    }
+  };
+
+  const handleChatInputChange = (val: string) => {
+    setChatInput(val);
+    const senderName = user?.name ? user.name : 'Arch. Leandro Locsin';
+    if (!channelRef.current || !currentThread) return;
+
+    if (val.trim()) {
+      channelRef.current.send({
+        type: 'broadcast',
+        event: 'user_typing',
+        payload: {
+          threadId: currentThread.id,
+          userName: senderName,
+        },
+      });
+
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = setTimeout(() => {
+        channelRef.current?.send({
+          type: 'broadcast',
+          event: 'user_stop_typing',
+          payload: {
+            threadId: currentThread.id,
+            userName: senderName,
+          },
+        });
+      }, 2500);
+    } else {
+      channelRef.current.send({
+        type: 'broadcast',
+        event: 'user_stop_typing',
+        payload: {
+          threadId: currentThread.id,
+          userName: senderName,
+        },
+      });
     }
   };
 
@@ -1102,10 +1341,17 @@ export default function ChatPage() {
   // Slack/Discord-Style Message Reactions
   const handleToggleReaction = async (messageId: string, emoji: string) => {
     const currentUserName = user?.name || 'Arch. Leandro Locsin';
+    let nextReactionsForMsg: Record<string, string[]> = {};
+    let targetAttachmentTitle: string | undefined = undefined;
+    let targetIsSystem = false;
+
     setMessages((prev) => {
       const threadMsgs = prev[currentThread.id] || [];
       const updated = threadMsgs.map((msg) => {
         if (msg.id !== messageId) return msg;
+        targetAttachmentTitle = msg.attachmentTitle;
+        targetIsSystem = !!msg.isSystem;
+
         const currentReactions = { ...(msg.reactions || {}) };
         const usersReacted = currentReactions[emoji] || [];
         const hasReacted = usersReacted.includes(currentUserName);
@@ -1121,20 +1367,58 @@ export default function ChatPage() {
           currentReactions[emoji] = [...usersReacted, currentUserName];
         }
 
+        nextReactionsForMsg = currentReactions;
         return {
           ...msg,
           reactions: currentReactions,
         };
       });
 
-      return {
+      const updatedMap = {
         ...prev,
         [currentThread.id]: updated,
       };
+      try {
+        localStorage.setItem(STORAGE_MESSAGES_KEY, JSON.stringify(updatedMap));
+      } catch {}
+      return updatedMap;
     });
+
+    // Fast broadcast to peers
+    if (channelRef.current) {
+      try {
+        channelRef.current.send({
+          type: 'broadcast',
+          event: 'message_reaction',
+          payload: {
+            threadId: currentThread.id,
+            messageId,
+            reactions: nextReactionsForMsg,
+          },
+        });
+      } catch (err) {
+        console.error('Error broadcasting reaction:', err);
+      }
+    }
+
+    // Persist to Supabase chat_messages
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const encoded = encodeAttachmentTitle(targetAttachmentTitle, {
+          reactions: nextReactionsForMsg,
+          isSystem: targetIsSystem,
+        });
+        await supabase
+          .from('chat_messages')
+          .update({ attachment_title: encoded })
+          .eq('id', messageId);
+      } catch (err) {
+        console.error('Error persisting reaction to Supabase:', err);
+      }
+    }
   };
 
-  // Create new topic thread with multi-member selection
+  // Create new topic thread with multi-member selection & color styling
   const handleCreateTopicThread = async () => {
     if (!newTopicName.trim()) {
       setTopicError('Topic name / title is required.');
@@ -1155,6 +1439,7 @@ export default function ChatPage() {
       projectName: matchedProject?.name || 'Studio Project',
       topicName: newTopicName,
       participants: participantsList,
+      colorTag: selectedColorTag,
     };
 
     setThreads((prev) => [createdThread, ...prev]);
@@ -1211,6 +1496,7 @@ export default function ChatPage() {
           thread_id: newId,
           sender: m.sender,
           text: m.text,
+          attachment_title: encodeAttachmentTitle(null, { isSystem: !!m.isSystem, reactions: m.reactions }),
         }));
         await supabase.from('chat_messages').insert(inserts);
       } catch (err) {
@@ -1678,6 +1964,34 @@ export default function ChatPage() {
                     <span>⚠</span> {topicError}
                   </p>
                 )}
+              </div>
+
+              {/* Thread Color & Visual Accent */}
+              <div>
+                <label className="block text-xs font-semibold text-muted-main mb-1.5">
+                  Thread Color & Badge Accent
+                </label>
+                <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                  {Object.values(THREAD_COLORS).map((c) => {
+                    const isSelected = selectedColorTag === c.id;
+                    return (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => setSelectedColorTag(c.id)}
+                        className={cn(
+                          'p-2 rounded-xl border flex flex-col items-center gap-1 transition-all cursor-pointer',
+                          isSelected
+                            ? `${c.bg} ${c.border} ring-2 ring-black dark:ring-white scale-105 font-bold`
+                            : 'border-border-main hover:bg-surface-hover/60 text-muted-main'
+                        )}
+                      >
+                        <span className={cn('w-3.5 h-3.5 rounded-full', c.dot)} />
+                        <span className={cn('text-[10px]', c.text)}>{c.name}</span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
               {/* MULTI-MEMBER SELECTOR */}
@@ -2404,6 +2718,7 @@ export default function ChatPage() {
                           const isSelected = selectedThreadId === thread.id;
                           const msgList = messages[thread.id] || [];
                           const lastMsg = msgList[msgList.length - 1];
+                          const threadColor = getThreadColor(thread);
 
                           return (
                             <div
@@ -2419,7 +2734,12 @@ export default function ChatPage() {
                                   : 'hover:bg-surface-hover/50 border-l-transparent'
                               )}
                             >
-                              <div className="w-7 h-7 rounded-lg bg-surface-hover border border-border-main text-text-main flex items-center justify-center shrink-0 mt-0.5">
+                              <div className={cn(
+                                'w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5 border font-bold text-xs shadow-2xs',
+                                threadColor.bg,
+                                threadColor.border,
+                                threadColor.text
+                              )}>
                                 <Hash className="w-3.5 h-3.5" />
                               </div>
                               <div className="overflow-hidden flex-1 space-y-0.5">
@@ -2558,28 +2878,37 @@ export default function ChatPage() {
                   >
                     <ArrowLeft className="w-4 h-4" />
                   </button>
-                  <div className="w-8 h-8 rounded-xl bg-surface-hover border border-border-main text-text-main flex items-center justify-center shrink-0 font-bold text-xs overflow-hidden">
-                    {currentThread?.category === 'DIRECT_MESSAGE' ? (
-                      (() => {
-                        const displayName = currentThread ? getThreadDisplayName(currentThread, user?.name || 'Arch. Leandro Locsin') : '';
-                        const contact = currentThread ? getThreadDisplayContact(currentThread, user?.name || 'Arch. Leandro Locsin') : undefined;
-                        return contact ? (
-                          <div
-                            className={cn(
-                              'w-full h-full text-white flex items-center justify-center font-bold text-xs shadow-2xs',
-                              contact.avatarColor || 'bg-accent-cyan text-black'
-                            )}
-                          >
-                            {displayName.replace('Arch. ', '').replace('Engr. ', '').charAt(0)}
-                          </div>
+                  {(() => {
+                    const headerColor = getThreadColor(currentThread);
+                    const isDM = currentThread?.category === 'DIRECT_MESSAGE';
+                    return (
+                      <div className={cn(
+                        'w-8 h-8 rounded-xl flex items-center justify-center shrink-0 font-bold text-xs overflow-hidden border shadow-2xs',
+                        isDM ? 'bg-surface-hover border-border-main text-text-main' : `${headerColor.bg} ${headerColor.border}`
+                      )}>
+                        {isDM ? (
+                          (() => {
+                            const displayName = currentThread ? getThreadDisplayName(currentThread, user?.name || 'Arch. Leandro Locsin') : '';
+                            const contact = currentThread ? getThreadDisplayContact(currentThread, user?.name || 'Arch. Leandro Locsin') : undefined;
+                            return contact ? (
+                              <div
+                                className={cn(
+                                  'w-full h-full text-white flex items-center justify-center font-bold text-xs shadow-2xs',
+                                  contact.avatarColor || 'bg-accent-cyan text-black'
+                                )}
+                              >
+                                {displayName.replace('Arch. ', '').replace('Engr. ', '').charAt(0)}
+                              </div>
+                            ) : (
+                              displayName.charAt(0) || 'D'
+                            );
+                          })()
                         ) : (
-                          displayName.charAt(0) || 'D'
-                        );
-                      })()
-                    ) : (
-                      <Hash className="w-4 h-4 text-accent-cyan" />
-                    )}
-                  </div>
+                          <Hash className={cn('w-4 h-4', headerColor.text)} />
+                        )}
+                      </div>
+                    );
+                  })()}
                   <div className="overflow-hidden">
                     <div className="flex items-center gap-2">
                       {currentThread?.projectCode && (
@@ -2773,13 +3102,22 @@ export default function ChatPage() {
                       <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 bg-surface-main">
                         {/* Centered Thread Opening Header at the Middle */}
                         <div className="w-full flex flex-col items-center justify-center pt-2 pb-5 text-center select-none border-b border-border-main/30 mb-2">
-                          <div className="w-9 h-9 rounded-xl bg-surface-hover border border-border-main flex items-center justify-center text-text-main font-bold mb-2 shadow-2xs">
-                            {currentThread?.category === 'DIRECT_MESSAGE' ? (
-                              <MessageSquare className="w-4 h-4 text-text-main" />
-                            ) : (
-                              <Hash className="w-4 h-4 text-text-main" />
-                            )}
-                          </div>
+                          {(() => {
+                            const openingColor = getThreadColor(currentThread);
+                            const isDM = currentThread?.category === 'DIRECT_MESSAGE';
+                            return (
+                              <div className={cn(
+                                'w-9 h-9 rounded-xl flex items-center justify-center font-bold mb-2 shadow-2xs border',
+                                isDM ? 'bg-surface-hover border-border-main text-text-main' : `${openingColor.bg} ${openingColor.border} ${openingColor.text}`
+                              )}>
+                                {isDM ? (
+                                  <MessageSquare className="w-4 h-4" />
+                                ) : (
+                                  <Hash className="w-4 h-4" />
+                                )}
+                              </div>
+                            );
+                          })()}
                           <h3 className="text-xs sm:text-sm font-bold text-text-main">
                             {currentThread ? getThreadDisplayName(currentThread, user?.name || 'Arch. Leandro Locsin') : ''}
                           </h3>
@@ -2800,10 +3138,11 @@ export default function ChatPage() {
                         </div>
 
                         {activeMessages.map((msg) => {
-                          if (msg.isSystem) {
+                          const isSystemMessage = msg.isSystem || msg.sender?.trim().toLowerCase() === 'system';
+                          if (isSystemMessage) {
                             return (
                               <div key={msg.id} className="w-full flex items-center justify-center my-3">
-                                <div className="px-3.5 py-1.5 rounded-full bg-surface-hover border border-border-main text-[11px] text-muted-main font-medium flex items-center gap-2 shadow-2xs">
+                                <div className="px-3.5 py-1.5 rounded-full bg-surface-hover/80 border border-border-main text-[11px] text-muted-main font-medium flex items-center gap-1.5 shadow-2xs">
                                   <span>{msg.text}</span>
                                   <span className="text-[10px] font-mono opacity-60">· {msg.timestamp}</span>
                                 </div>
@@ -2985,6 +3324,21 @@ export default function ChatPage() {
                     </div>
                   )}
 
+                  {/* Live Peer Typing Indicator */}
+                  {currentThread && typingUsers[currentThread.id]?.length > 0 && (
+                    <div className="px-4 py-1.5 bg-surface-hover/60 border-t border-border-main/40 flex items-center gap-2 text-xs text-muted-main animate-in fade-in duration-150">
+                      <div className="flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-accent-cyan animate-bounce" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-accent-cyan animate-bounce [animation-delay:0.2s]" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-accent-cyan animate-bounce [animation-delay:0.4s]" />
+                      </div>
+                      <span className="text-[11px] font-medium text-text-main">
+                        {typingUsers[currentThread.id].join(', ')}{' '}
+                        {typingUsers[currentThread.id].length > 1 ? 'are typing...' : 'is typing...'}
+                      </span>
+                    </div>
+                  )}
+
                   {/* Chat Input Field Bar */}
                   <div className="p-3 sm:p-4 border-t border-border-main bg-surface-main flex items-center gap-2 sm:gap-3 shrink-0">
                     <input
@@ -3038,7 +3392,7 @@ export default function ChatPage() {
                       type="text"
                       placeholder={`Send a message to ${currentThread?.name || 'thread'}...`}
                       value={chatInput}
-                      onChange={(e) => setChatInput(e.target.value)}
+                      onChange={(e) => handleChatInputChange(e.target.value)}
                       onKeyDown={handleKeyPress}
                       className="flex-1 bg-surface-main border border-border-strong rounded-xl px-4 py-2.5 text-xs font-sans text-text-main focus:outline-none focus:border-text-main focus:ring-1 focus:ring-text-main placeholder:text-muted-main placeholder:font-medium transition-all shadow-2xs"
                     />
@@ -3120,6 +3474,55 @@ export default function ChatPage() {
           </div>
         )}
       </div>
+
+      {/* Non-Spammy In-App Message Notifications (Facebook / Slack Style) */}
+      {inAppNotifs.length > 0 && (
+        <div className="fixed bottom-20 sm:bottom-6 right-4 sm:right-6 z-50 flex flex-col gap-2 max-w-sm pointer-events-auto">
+          {inAppNotifs.map((notif) => {
+            const targetThread = threads.find((t) => t.id === notif.threadId);
+            const threadLabel = targetThread ? targetThread.name : 'Thread';
+            return (
+              <div
+                key={notif.id}
+                className="bg-surface-main dark:bg-[#18181B] border border-border-strong rounded-2xl p-3.5 shadow-2xl flex items-start gap-3 animate-in slide-in-from-right-4 fade-in duration-200 ring-1 ring-black/5 dark:ring-white/10"
+              >
+                <div className="w-8 h-8 rounded-full bg-accent-cyan text-black font-bold flex items-center justify-center text-xs shrink-0 mt-0.5 shadow-2xs">
+                  {notif.sender.replace('Arch. ', '').replace('Engr. ', '').charAt(0)}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="font-bold text-xs text-text-main truncate">{notif.sender}</span>
+                    <button
+                      onClick={() => setInAppNotifs((prev) => prev.filter((n) => n.id !== notif.id))}
+                      className="text-muted-main hover:text-text-main p-0.5 rounded cursor-pointer"
+                      title="Dismiss"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-muted-main truncate font-sans mt-0.5">{notif.text}</p>
+                  <div className="mt-2 flex items-center justify-between pt-1 border-t border-border-main/40">
+                    <span className="text-[10px] font-mono text-muted-main truncate max-w-[140px]">
+                      in #{threadLabel}
+                    </span>
+                    <button
+                      onClick={() => {
+                        setSelectedThreadId(notif.threadId);
+                        setActiveTab('chat');
+                        setMobileActiveView('chat');
+                        setInAppNotifs((prev) => prev.filter((n) => n.id !== notif.id));
+                      }}
+                      className="px-2.5 py-1 bg-black text-white dark:bg-white dark:text-black rounded-lg text-[10px] font-bold hover:opacity-90 transition-opacity cursor-pointer shadow-2xs active:scale-95"
+                    >
+                      View
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Floating Toast Notification */}
       {toastMessage && (

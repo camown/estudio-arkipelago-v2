@@ -205,6 +205,7 @@ export default function CalendarPage() {
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
   const [copiedLinkNotice, setCopiedLinkNotice] = useState(false);
+  const [copiedMeetingLinkId, setCopiedMeetingLinkId] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Reference UI toolbar controls state
@@ -1331,12 +1332,12 @@ export default function CalendarPage() {
           onClick={(e) => {
             if (e.target === e.currentTarget) setSelectedMeeting(null);
           }}
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-150 cursor-pointer"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-150 cursor-pointer overflow-y-auto"
         >
-          <div className="bg-surface-main border border-border-main rounded-2xl max-w-lg w-full p-6 sm:p-8 space-y-5 shadow-2xl relative text-text-main cursor-default">
+          <div className="bg-surface-main border border-border-main rounded-2xl max-w-lg w-full p-5 sm:p-7 space-y-4 shadow-2xl relative text-text-main cursor-default my-auto max-h-[90dvh] overflow-y-auto">
             {/* Header */}
-            <div className="flex items-start justify-between border-b border-border-main pb-4">
-              <div className="space-y-1.5">
+            <div className="flex items-start justify-between border-b border-border-main pb-3.5">
+              <div className="space-y-1">
                 <div className="flex items-center gap-2">
                   <span className="px-2.5 py-0.5 rounded bg-surface-hover border border-border-main text-[11px] font-mono font-bold">
                     {selectedMeeting.projectCode}
@@ -1358,15 +1359,15 @@ export default function CalendarPage() {
               </div>
               <button
                 onClick={() => setSelectedMeeting(null)}
-                className="w-7 h-7 rounded-full bg-surface-hover hover:bg-border-main text-muted-main hover:text-text-main flex items-center justify-center transition-colors text-xs font-bold cursor-pointer"
+                className="w-7 h-7 rounded-full bg-surface-hover hover:bg-border-main text-muted-main hover:text-text-main flex items-center justify-center transition-colors text-xs font-bold cursor-pointer shrink-0"
               >
                 ✕
               </button>
             </div>
 
             {/* Meta Grid */}
-            <div className="space-y-4 text-xs">
-              <div className="grid grid-cols-2 gap-3 bg-surface-hover/60 p-4 rounded-xl border border-border-main font-mono">
+            <div className="space-y-3.5 text-xs">
+              <div className="grid grid-cols-2 gap-3 bg-surface-hover/60 p-3.5 sm:p-4 rounded-xl border border-border-main font-mono">
                 <div>
                   <span className="text-[10px] font-semibold text-muted-main uppercase tracking-wider block mb-0.5 font-sans">
                     Date & Time
@@ -1400,6 +1401,57 @@ export default function CalendarPage() {
                 </div>
               </div>
 
+              {/* Meeting Link & Copy Link Section */}
+              <div className="space-y-1.5 font-sans">
+                <span className="text-[10px] font-semibold text-muted-main uppercase tracking-wider block">
+                  Virtual Meeting Link / Booking URL
+                </span>
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                  <div className="flex-1 flex items-center gap-2 px-3 py-2 bg-surface-hover/70 border border-border-main rounded-xl overflow-hidden text-xs">
+                    <Video className="w-3.5 h-3.5 text-accent-cyan shrink-0" />
+                    <input
+                      type="text"
+                      readOnly
+                      value={selectedMeeting.meetingLink || `${typeof window !== 'undefined' ? window.location.origin : ''}/calendar?meeting=${selectedMeeting.id}`}
+                      placeholder="https://meet.google.com/ark-..."
+                      className="bg-transparent border-0 outline-none w-full text-xs font-mono text-text-main truncate select-all cursor-pointer"
+                      onClick={(e) => (e.target as HTMLInputElement).select()}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const linkToCopy = selectedMeeting.meetingLink || `${window.location.origin}/calendar?meeting=${selectedMeeting.id}`;
+                      if (typeof navigator !== 'undefined' && navigator.clipboard) {
+                        navigator.clipboard.writeText(linkToCopy);
+                        setCopiedMeetingLinkId(selectedMeeting.id);
+                        showToast('✓ Meeting link copied to clipboard!');
+                        setTimeout(() => setCopiedMeetingLinkId(null), 2500);
+                      }
+                    }}
+                    className={cn(
+                      'px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer shrink-0 border shadow-2xs active:scale-95',
+                      copiedMeetingLinkId === selectedMeeting.id
+                        ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-600 dark:text-emerald-400 font-bold'
+                        : 'bg-surface-main border-border-main hover:border-text-main text-text-main hover:bg-surface-hover'
+                    )}
+                    title="Copy Meeting Link"
+                  >
+                    {copiedMeetingLinkId === selectedMeeting.id ? (
+                      <>
+                        <Check className="w-3.5 h-3.5 text-emerald-500" />
+                        <span>Copied!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Link2 className="w-3.5 h-3.5" />
+                        <span>Copy Link</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+
               {/* Attendees List */}
               <div className="space-y-1.5">
                 <span className="text-[10px] font-semibold text-muted-main uppercase tracking-wider block">
@@ -1422,20 +1474,20 @@ export default function CalendarPage() {
                 <span className="text-[10px] font-semibold text-muted-main uppercase tracking-wider block">
                   Meeting Brief & Agenda
                 </span>
-                <div className="p-3.5 rounded-xl bg-surface-hover/60 border border-border-main text-text-main text-xs leading-relaxed whitespace-pre-wrap">
+                <div className="p-3 rounded-xl bg-surface-hover/60 border border-border-main text-text-main text-xs leading-relaxed whitespace-pre-wrap">
                   {selectedMeeting.description}
                 </div>
               </div>
             </div>
 
             {/* Footer Actions */}
-            <div className="flex items-center justify-between border-t border-border-main pt-4">
+            <div className="flex items-center justify-between border-t border-border-main pt-3.5">
               {selectedMeeting.meetingLink ? (
                 <a
                   href={selectedMeeting.meetingLink}
                   target="_blank"
                   rel="noreferrer"
-                  className="px-4 py-2 rounded-xl bg-accent-cyan text-black font-bold text-xs flex items-center gap-1.5 hover:opacity-90 active:scale-[0.98] transition-all"
+                  className="px-4 py-2 rounded-xl bg-accent-cyan text-black font-bold text-xs flex items-center gap-1.5 hover:opacity-90 active:scale-[0.98] transition-all shadow-2xs"
                 >
                   <Video className="w-3.5 h-3.5" />
                   <span>Launch Call</span>
@@ -1462,7 +1514,7 @@ export default function CalendarPage() {
           }}
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-150 cursor-pointer overflow-y-auto"
         >
-          <div className="bg-surface-main border border-border-main rounded-2xl max-w-lg w-full p-6 sm:p-8 space-y-5 shadow-2xl relative text-text-main cursor-default my-auto">
+          <div className="bg-surface-main border border-border-main rounded-2xl max-w-lg w-full p-5 sm:p-8 space-y-4 sm:space-y-5 shadow-2xl relative text-text-main cursor-default my-auto max-h-[90dvh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-border-main pb-4">
               <div>
                 <h3 className="text-base font-bold text-text-main">
@@ -1814,11 +1866,11 @@ export default function CalendarPage() {
           onClick={(e) => {
             if (e.target === e.currentTarget) setSelectedEvent(null);
           }}
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-150 cursor-pointer"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-150 cursor-pointer overflow-y-auto"
         >
-          <div className="bg-surface-main border border-border-main rounded-2xl max-w-lg w-full p-6 sm:p-8 space-y-5 shadow-2xl relative text-text-main cursor-default">
-            <div className="flex items-start justify-between border-b border-border-main pb-4">
-              <div className="space-y-1.5">
+          <div className="bg-surface-main border border-border-main rounded-2xl max-w-lg w-full p-5 sm:p-7 space-y-4 shadow-2xl relative text-text-main cursor-default my-auto max-h-[90dvh] overflow-y-auto">
+            <div className="flex items-start justify-between border-b border-border-main pb-3.5">
+              <div className="space-y-1">
                 <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold px-2 py-0.5 rounded border border-border-main bg-surface-hover text-text-main">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 dark:bg-emerald-500" />
                   {selectedEvent.source}
@@ -1829,14 +1881,14 @@ export default function CalendarPage() {
               </div>
               <button
                 onClick={() => setSelectedEvent(null)}
-                className="w-7 h-7 rounded-full bg-surface-hover hover:bg-border-main text-muted-main hover:text-text-main flex items-center justify-center transition-colors text-xs font-bold cursor-pointer"
+                className="w-7 h-7 rounded-full bg-surface-hover hover:bg-border-main text-muted-main hover:text-text-main flex items-center justify-center transition-colors text-xs font-bold cursor-pointer shrink-0"
               >
                 ✕
               </button>
             </div>
 
-            <div className="space-y-4 text-xs font-mono">
-              <div className="grid grid-cols-2 gap-3 bg-surface-hover/60 p-4 rounded-xl border border-border-main">
+            <div className="space-y-3.5 text-xs font-mono">
+              <div className="grid grid-cols-2 gap-3 bg-surface-hover/60 p-3.5 sm:p-4 rounded-xl border border-border-main">
                 <div>
                   <span className="text-[10px] font-semibold text-muted-main uppercase tracking-wider block mb-0.5 font-sans">
                     Date
@@ -1867,17 +1919,68 @@ export default function CalendarPage() {
                 )}
               </div>
 
+              {/* Event Link & Copy Action */}
+              <div className="space-y-1.5 font-sans">
+                <span className="text-[10px] font-semibold text-muted-main uppercase tracking-wider block">
+                  Event Reference Link
+                </span>
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                  <div className="flex-1 flex items-center gap-2 px-3 py-2 bg-surface-hover/70 border border-border-main rounded-xl overflow-hidden text-xs">
+                    <Link2 className="w-3.5 h-3.5 text-accent-cyan shrink-0" />
+                    <input
+                      type="text"
+                      readOnly
+                      value={selectedEvent.location?.includes('http') ? selectedEvent.location : `https://calendar.google.com/calendar/u/0/r/eventedit/${selectedEvent.id}`}
+                      placeholder="https://calendar.google.com/..."
+                      className="bg-transparent border-0 outline-none w-full text-xs font-mono text-text-main truncate select-all cursor-pointer"
+                      onClick={(e) => (e.target as HTMLInputElement).select()}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const linkToCopy = selectedEvent.location?.includes('http') ? selectedEvent.location : `https://calendar.google.com/calendar/u/0/r/eventedit/${selectedEvent.id}`;
+                      if (typeof navigator !== 'undefined' && navigator.clipboard) {
+                        navigator.clipboard.writeText(linkToCopy);
+                        setCopiedMeetingLinkId(selectedEvent.id);
+                        showToast('✓ Event link copied to clipboard!');
+                        setTimeout(() => setCopiedMeetingLinkId(null), 2500);
+                      }
+                    }}
+                    className={cn(
+                      'px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer shrink-0 border shadow-2xs active:scale-95',
+                      copiedMeetingLinkId === selectedEvent.id
+                        ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-600 dark:text-emerald-400 font-bold'
+                        : 'bg-surface-main border-border-main hover:border-text-main text-text-main hover:bg-surface-hover'
+                    )}
+                    title="Copy Event Link"
+                  >
+                    {copiedMeetingLinkId === selectedEvent.id ? (
+                      <>
+                        <Check className="w-3.5 h-3.5 text-emerald-500" />
+                        <span>Copied!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Link2 className="w-3.5 h-3.5" />
+                        <span>Copy Link</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+
               <div className="space-y-1 font-sans">
                 <span className="text-[10px] font-semibold text-muted-main uppercase tracking-wider block">
                   Description & Notes
                 </span>
-                <div className="p-3.5 rounded-xl bg-surface-hover/60 border border-border-main text-text-main text-xs leading-relaxed whitespace-pre-wrap min-h-[70px]">
+                <div className="p-3 rounded-xl bg-surface-hover/60 border border-border-main text-text-main text-xs leading-relaxed whitespace-pre-wrap min-h-[60px]">
                   {selectedEvent.description || 'No detailed description provided for this calendar event.'}
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center justify-between border-t border-border-main pt-4 font-sans">
+            <div className="flex items-center justify-between border-t border-border-main pt-3.5 font-sans">
               <a
                 href="https://calendar.google.com"
                 target="_blank"
@@ -1897,8 +2000,8 @@ export default function CalendarPage() {
         </div>
       )}
 
-      {/* Floating Action Buttons Widget Stack */}
-      <div className="fixed bottom-20 md:bottom-6 right-6 z-40 flex flex-col space-y-2.5">
+      {/* Floating Action Buttons Widget Stack - desktop only to avoid mobile viewport overlay */}
+      <div className="hidden md:flex fixed bottom-6 right-6 z-40 flex-col space-y-2.5">
         <button
           onClick={() => setIsScheduleModalOpen(true)}
           className="w-11 h-11 bg-surface-main border border-border-main rounded-xl shadow-lg flex items-center justify-center text-text-main hover:bg-surface-hover active:scale-[0.95] transition-all cursor-pointer"

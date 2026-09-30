@@ -542,12 +542,9 @@ export function TopBar({ user, onInitializeTask }: TopBarProps) {
           </button>
 
           <Link href="/dashboard" className="flex md:hidden items-center gap-2 shrink-0 group">
-            <Logo size={26} />
-            <span className="font-bold text-xs tracking-wider uppercase text-text-main group-hover:text-accent-cyan transition-colors hidden xs:inline sm:inline">
+            <Logo size={24} />
+            <span className="font-bold text-xs tracking-wider uppercase text-text-main group-hover:text-accent-cyan transition-colors hidden sm:inline">
               Estudio Arkipelago
-            </span>
-            <span className="font-bold text-xs tracking-wider uppercase text-text-main group-hover:text-accent-cyan transition-colors xs:hidden">
-              Arkipelago
             </span>
           </Link>
 
@@ -623,7 +620,7 @@ export function TopBar({ user, onInitializeTask }: TopBarProps) {
             {/* Notifications Dropdown Popover */}
             {isNotifOpen && (
               <div
-                className={`absolute right-0 top-full mt-3 w-80 sm:w-96 rounded-2xl border z-[100] overflow-hidden font-mono transition-all animate-in fade-in zoom-in-95 duration-150 ${
+                className={`absolute right-[-45px] sm:right-0 top-full mt-3 w-[calc(100vw-1.5rem)] max-w-sm rounded-2xl border z-[100] overflow-hidden font-mono transition-all animate-in fade-in zoom-in-95 duration-150 ${
                   themeMode === 'light'
                     ? 'bg-white border-border-strong text-[#18181B] shadow-2xl ring-1 ring-black/5'
                     : 'bg-[#18181B] border-border-strong text-white shadow-2xl ring-1 ring-white/10'
@@ -750,7 +747,7 @@ export function TopBar({ user, onInitializeTask }: TopBarProps) {
 
             {/* Profile & Role Switcher Menu */}
             {isProfileOpen && (
-              <div className="absolute right-0 top-full mt-3 w-72 rounded-2xl border border-border-strong bg-surface-main shadow-2xl p-3 z-[110] space-y-3 font-mono animate-in fade-in duration-100">
+              <div className="absolute right-0 top-full mt-3 w-[calc(100vw-2rem)] max-w-xs sm:w-72 rounded-2xl border border-border-strong bg-surface-main shadow-2xl p-3 z-[110] space-y-3 font-mono animate-in fade-in duration-100">
                 {/* User Info Header */}
                 <div className="p-2.5 rounded-xl bg-surface-hover/50 border border-border-main flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-black text-white dark:bg-white dark:text-black flex items-center justify-center font-bold text-sm shrink-0">
