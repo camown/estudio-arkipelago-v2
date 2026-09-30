@@ -520,8 +520,7 @@ function getInitialAttachedSketch(): string | null {
 
 export default function ChatPage() {
   const router = useRouter();
-  const [initialRouteState] = useState(getInitialThreadAndTab);
-  const [activeTab, setActiveTab] = useState<'wall' | 'chat'>(initialRouteState.activeTab);
+  const [activeTab, setActiveTab] = useState<'wall' | 'chat'>('wall');
   const [postContent, setPostContent] = useState('');
   const [wallAttachments, setWallAttachments] = useState<string[]>([]);
   const { user } = useAuth();
@@ -543,12 +542,12 @@ export default function ChatPage() {
   const [editingPostId, setEditingPostId] = useState<string | null>(null);
   const [editingPostContent, setEditingPostContent] = useState<string>('');
 
-  // Threads & Topics State with Instant SWR LocalStorage Initializer
-  const [threads, setThreads] = useState<ThreadChannel[]>(getInitialCachedThreads);
-  const [selectedThreadId, setSelectedThreadId] = useState<string>(initialRouteState.threadId);
-  const [mobileActiveView, setMobileActiveView] = useState<'list' | 'chat'>(initialRouteState.mobileView);
+  // Threads & Topics State (Deterministic initial render to prevent React 418 mismatch)
+  const [threads, setThreads] = useState<ThreadChannel[]>(INITIAL_THREADS);
+  const [selectedThreadId, setSelectedThreadId] = useState<string>(INITIAL_THREADS[0].id);
+  const [mobileActiveView, setMobileActiveView] = useState<'list' | 'chat'>('list');
   const [isGalleryDrawerOpen, setIsGalleryDrawerOpen] = useState(false);
-  const [attachedImage, setAttachedImage] = useState<string | null>(getInitialAttachedSketch);
+  const [attachedImage, setAttachedImage] = useState<string | null>(null);
   const [lightboxImage, setLightboxImage] = useState<{ src: string; title?: string } | null>(null);
 
   // In-Thread Member Management State
@@ -576,16 +575,31 @@ export default function ChatPage() {
   const [isWallEmojiOpen, setIsWallEmojiOpen] = useState(false);
   const [isChatEmojiOpen, setIsChatEmojiOpen] = useState(false);
 
-  // Chat Messages State with Instant SWR LocalStorage Initializer
-  const [messages, setMessages] = useState<Record<string, ChatMessage[]>>(getInitialCachedMessages);
-  const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>(() => {
-    if (typeof window === 'undefined') return {};
+  // Chat Messages State (Deterministic initial render)
+  const [messages, setMessages] = useState<Record<string, ChatMessage[]>>(INITIAL_MESSAGES);
+  const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
+
+  // Client-side hydration sync for URL params, local storage cache, and unread counts
+  useEffect(() => {
     try {
-      return JSON.parse(localStorage.getItem('arkipelago_chat_unread_counts') || '{}');
-    } catch {
-      return {};
-    }
-  });
+      const initialRoute = getInitialThreadAndTab();
+      setActiveTab(initialRoute.activeTab);
+      setSelectedThreadId(initialRoute.threadId);
+      setMobileActiveView(initialRoute.mobileView);
+
+      const sketch = getInitialAttachedSketch();
+      if (sketch) setAttachedImage(sketch);
+
+      const cachedThreads = getInitialCachedThreads();
+      if (cachedThreads && cachedThreads.length > 0) setThreads(cachedThreads);
+
+      const cachedMsgs = getInitialCachedMessages();
+      if (cachedMsgs && Object.keys(cachedMsgs).length > 0) setMessages(cachedMsgs);
+
+      const storedUnread = localStorage.getItem('arkipelago_chat_unread_counts');
+      if (storedUnread) setUnreadCounts(JSON.parse(storedUnread));
+    } catch {}
+  }, []);
   const [typingUsers, setTypingUsers] = useState<Record<string, string[]>>({});
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const broadcastSyncRef = useRef<BroadcastChannel | null>(null);
@@ -2368,7 +2382,7 @@ export default function ChatPage() {
                             </span>
                           </div>
                           <div className="flex items-center gap-1.5 text-[10px] text-muted-main">
-                            <span>{formatDate(post.createdAt)}</span>
+                            <span suppressHydrationWarning>{formatDate(post.createdAt)}</span>
                             {post.updatedAt && <span className="italic text-accent-cyan">(edited)</span>}
                           </div>
                         </div>
@@ -2613,7 +2627,7 @@ export default function ChatPage() {
                                         <span className="text-[9px] px-1 py-0.2 rounded bg-surface-hover text-muted-main border border-border-main/50 font-mono capitalize">
                                           {comment.authorRole.replace('_', ' ')}
                                         </span>
-                                        <span className="text-[9px] text-muted-main">{formatDate(comment.createdAt)}</span>
+                                        <span className="text-[9px] text-muted-main" suppressHydrationWarning>{formatDate(comment.createdAt)}</span>
                                       </div>
                                       <p className="text-xs text-text-main whitespace-pre-wrap font-sans leading-relaxed">
                                         {comment.content}
@@ -3266,7 +3280,7 @@ export default function ChatPage() {
                               <div key={msg.id} className="w-full flex items-center justify-center my-3">
                                 <div className="px-3.5 py-1.5 rounded-full bg-surface-hover/80 border border-border-main text-[11px] text-muted-main font-medium flex items-center gap-1.5 shadow-2xs">
                                   <span>{msg.text}</span>
-                                  <span className="text-[10px] font-mono opacity-60">· {msg.timestamp}</span>
+                                  <span className="text-[10px] font-mono opacity-60" suppressHydrationWarning>· {msg.timestamp}</span>
                                 </div>
                               </div>
                             );
@@ -3313,7 +3327,7 @@ export default function ChatPage() {
                                   {memberContact.roleBadge}
                                 </span>
                               )}
-                              <span className="font-mono text-[10px] text-muted-main">{msg.timestamp}</span>
+                              <span className="font-mono text-[10px] text-muted-main" suppressHydrationWarning>{msg.timestamp}</span>
                             </div>
 
                             {/* Message Card Bubble */}
@@ -3606,7 +3620,7 @@ export default function ChatPage() {
                             </div>
                             <div className="flex items-center justify-between text-[10px] text-muted-main">
                               <span>By: {m.sender}</span>
-                              <span className="font-mono">{m.timestamp}</span>
+                              <span className="font-mono" suppressHydrationWarning>{m.timestamp}</span>
                             </div>
                             <button
                               onClick={() => handleRedlineInSketch(m.attachment!, m.attachmentTitle)}

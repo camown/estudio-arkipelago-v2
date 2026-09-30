@@ -73,13 +73,14 @@ function getStoredTasks(): TaskItem[] {
 }
 
 export function useTasks() {
-  const [tasks, setTasks] = useState<TaskItem[]>(getStoredTasks);
+  const [tasks, setTasks] = useState<TaskItem[]>(INITIAL_TASKS);
 
   const syncTasks = useCallback(() => {
     setTasks(getStoredTasks());
   }, []);
 
   useEffect(() => {
+    syncTasks();
     const handleStorage = (e: StorageEvent) => {
       if (e.key === STORAGE_KEY) syncTasks();
     };

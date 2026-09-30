@@ -177,10 +177,13 @@ export function Sidebar({ user }: SidebarProps) {
               </div>
 
               <div className="flex flex-col space-y-1">
-                <label className="text-[10px] text-muted-main font-medium">
+                <label htmlFor="sidebar-project-attribution" className="text-[10px] text-muted-main font-medium">
                   Project Attribution
                 </label>
                 <select
+                  id="sidebar-project-attribution"
+                  name="sidebar-project-attribution"
+                  aria-label="Project Attribution"
                   value={selectedProjectId || defaultProjectId}
                   onChange={(e) => setSelectedProjectId(e.target.value)}
                   disabled={isClockedIn}

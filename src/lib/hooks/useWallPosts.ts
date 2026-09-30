@@ -40,7 +40,18 @@ function persistPosts(posts: WallPost[]) {
 }
 
 export function useWallPosts() {
-  const [posts, setPosts] = useState<WallPost[]>(getInitialPosts);
+  const [posts, setPosts] = useState<WallPost[]>(SEED_WALL_POSTS);
+
+  // Client hydration from localStorage
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) setPosts(parsed);
+      }
+    } catch {}
+  }, []);
 
   // Fetch and sync with Supabase if configured
   useEffect(() => {

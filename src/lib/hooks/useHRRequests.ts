@@ -67,13 +67,14 @@ function getStoredRequests(): HRRequest[] {
 }
 
 export function useHRRequests() {
-  const [requests, setRequests] = useState<HRRequest[]>(getStoredRequests);
+  const [requests, setRequests] = useState<HRRequest[]>(SEED_HR_REQUESTS);
 
   const syncRequests = useCallback(() => {
     setRequests(getStoredRequests());
   }, []);
 
   useEffect(() => {
+    syncRequests();
     const handleStorage = (e: StorageEvent) => {
       if (e.key === STORAGE_KEY) syncRequests();
     };

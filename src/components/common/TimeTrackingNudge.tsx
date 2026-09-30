@@ -7,6 +7,8 @@ import { MOCK_PROJECTS } from '@/lib/constants';
 import { usePathname } from 'next/navigation';
 
 const NUDGE_DISMISSED_KEY = 'arkipelago_nudge_dismissed_until';
+const NUDGE_SESSION_KEY = 'arkipelago_nudge_shown_this_session';
+const SNOOZE_DURATION_MS = 2 * 60 * 60 * 1000; // 2 hours
 
 export function TimeTrackingNudge() {
   const { isClockedIn, clockIn } = useClockIn();
@@ -17,44 +19,47 @@ export function TimeTrackingNudge() {
 
   // Smart Context Detection Engine
   const detectContextualProject = useCallback(() => {
-    // Check if dismissed recently (within last 30 minutes)
+    // 1. Never show while clocked in
+    if (isClockedIn) return;
+
+    // 2. Check if snoozed (persistent across navigations)
     if (typeof window !== 'undefined') {
       const dismissedUntil = localStorage.getItem(NUDGE_DISMISSED_KEY);
-      if (dismissedUntil && Date.now() < parseInt(dismissedUntil, 10)) {
-        return;
-      }
+      if (dismissedUntil && Date.now() < parseInt(dismissedUntil, 10)) return;
+      // 3. Only show once per page load (session flag), to avoid re-appearing on each route change
+      const shownThisSession = sessionStorage.getItem(NUDGE_SESSION_KEY);
+      if (shownThisSession) return;
     }
 
-    // 1. Detect by active page route (e.g., viewing project details or specific chat)
+    // 4. Detect by active page route
+    let project = MOCK_PROJECTS[0]; // Default: Casa Verde Residence
     if (pathname.includes('/projects') || pathname.includes('/sketch')) {
-      const project = MOCK_PROJECTS.find(p => p.id === 'proj-001') || MOCK_PROJECTS[0];
-      const timer = setTimeout(() => {
-        setSuggestedProject(project);
-        setIsVisible(true);
-      }, 100);
-      return () => clearTimeout(timer);
+      project = MOCK_PROJECTS.find(p => p.id === 'proj-001') || MOCK_PROJECTS[0];
     }
 
-    // 2. Default activity recognition (Casa Verde Residence as primary studio focus)
-    const defaultProject = MOCK_PROJECTS[0]; // Casa Verde Residence
-
-    // Show after 3.5 seconds of idle page presence if unclocked
+    // 5. Show after 5 seconds of idle page presence
     const timer = setTimeout(() => {
-      setSuggestedProject(defaultProject);
+      if (isClockedIn) return;
+      setSuggestedProject(project);
       setIsVisible(true);
-    }, 3500);
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem(NUDGE_SESSION_KEY, '1');
+      }
+    }, 5000);
 
     return () => clearTimeout(timer);
-  }, [pathname]);
+  }, [pathname, isClockedIn]);
 
   useEffect(() => {
-    // Never show floating nudge on dashboard where the Studio Time Engine is prominent
-    if (isClockedIn || pathname === '/dashboard' || pathname === '/') return;
+    // Never show on dashboard (prominent clock-in widget) or root or login
+    if (isClockedIn || pathname === '/dashboard' || pathname === '/' || pathname === '/login') return;
+    setIsVisible(false); // Hide on navigation change
     const cleanup = detectContextualProject();
     return () => {
       if (cleanup) cleanup();
     };
   }, [isClockedIn, pathname, detectContextualProject]);
+
 
   const handleAccept = () => {
     if (suggestedProject) {
@@ -65,14 +70,16 @@ export function TimeTrackingNudge() {
 
   const handleDismiss = () => {
     setIsAnimating(true);
-    // Dismiss for 30 minutes
-    const snoozeTime = Date.now() + 30 * 60 * 1000;
+    // Snooze for 2 hours
+    const snoozeTime = Date.now() + SNOOZE_DURATION_MS;
     localStorage.setItem(NUDGE_DISMISSED_KEY, snoozeTime.toString());
+    sessionStorage.setItem(NUDGE_SESSION_KEY, '1');
     setTimeout(() => {
       setIsVisible(false);
       setIsAnimating(false);
     }, 300);
   };
+
 
   if (!isVisible || !suggestedProject || isClockedIn) return null;
 

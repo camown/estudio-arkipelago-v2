@@ -248,6 +248,9 @@ export function CommandPalette() {
           <input
             ref={inputRef}
             type="text"
+            id="command-palette-search"
+            name="command-palette-search"
+            aria-label="Search studio command palette"
             placeholder="Type a command, project code, drawing sheet, or search studio..."
             value={query}
             onChange={(e) => {

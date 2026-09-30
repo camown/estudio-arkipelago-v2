@@ -678,7 +678,7 @@ export default function DashboardPage() {
                           </div>
 
                           <div className="flex items-center gap-1.5 shrink-0">
-                            <span className="text-[10px] text-muted-main font-mono">
+                            <span className="text-[10px] text-muted-main font-mono" suppressHydrationWarning>
                               {new Date(post.createdAt).toLocaleDateString(undefined, {
                                 month: 'short',
                                 day: 'numeric',
@@ -882,7 +882,7 @@ export default function DashboardPage() {
                                             <span className="font-semibold text-text-main">
                                               {comment.authorName}
                                             </span>
-                                            <span className="text-[9px] text-muted-main font-mono">
+                                            <span className="text-[9px] text-muted-main font-mono" suppressHydrationWarning>
                                               {new Date(comment.createdAt).toLocaleDateString(undefined, {
                                                 month: 'short',
                                                 day: 'numeric',
@@ -1337,7 +1337,7 @@ export default function DashboardPage() {
                           <p className="font-semibold text-text-main truncate text-[11px]">
                             {entry.projectName || 'Studio Task'}
                           </p>
-                          <span className="text-[10px] text-muted-main font-mono">
+                          <span className="text-[10px] text-muted-main font-mono" suppressHydrationWarning>
                             {new Date(entry.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {entry.endTime ? new Date(entry.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Now'}
                           </span>
                         </div>
