@@ -3631,14 +3631,14 @@ export default function ChatPage() {
 
       {/* Non-Spammy In-App Message Notifications (Facebook / Slack Style) */}
       {inAppNotifs.length > 0 && (
-        <div className="fixed bottom-20 sm:bottom-6 right-4 sm:right-6 z-50 flex flex-col gap-2 max-w-sm pointer-events-auto">
+        <div className="fixed bottom-20 sm:bottom-6 right-4 sm:right-6 z-50 flex flex-col gap-2 w-[calc(100vw-2rem)] max-w-sm pointer-events-auto">
           {inAppNotifs.map((notif) => {
             const targetThread = threads.find((t) => t.id === notif.threadId);
             const threadLabel = targetThread ? targetThread.name : 'Thread';
             return (
               <div
                 key={notif.id}
-                className="bg-surface-main dark:bg-[#18181B] border border-border-strong rounded-2xl p-3.5 shadow-2xl flex items-start gap-3 animate-in slide-in-from-right-4 fade-in duration-200 ring-1 ring-black/5 dark:ring-white/10"
+                className="bg-surface-main border border-border-strong rounded-2xl p-3.5 shadow-2xl flex items-start gap-3 animate-in slide-in-from-right-4 fade-in duration-200 ring-1 ring-border-main"
               >
                 <div className="w-8 h-8 rounded-full bg-accent-cyan text-black font-bold flex items-center justify-center text-xs shrink-0 mt-0.5 shadow-2xs">
                   {notif.sender.replace('Arch. ', '').replace('Engr. ', '').charAt(0)}
@@ -3682,7 +3682,7 @@ export default function ChatPage() {
                         });
                         setInAppNotifs((prev) => prev.filter((n) => n.id !== notif.id));
                       }}
-                      className="px-2.5 py-1 bg-black text-white dark:bg-white dark:text-black rounded-lg text-[10px] font-bold hover:opacity-90 transition-opacity cursor-pointer shadow-2xs active:scale-95"
+                      className="px-2.5 py-1 bg-text-main text-surface-main rounded-lg text-[10px] font-bold hover:opacity-90 transition-opacity cursor-pointer shadow-2xs active:scale-95"
                     >
                       View
                     </button>

@@ -47,31 +47,31 @@ export const STAGE_COLUMNS: StageColumnConfig[] = [
     id: 'INQUIRIES',
     label: 'New Inquiries',
     badgeLabel: 'New',
-    badgeColor: 'bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30',
+    badgeColor: 'bg-sky-500/15 text-sky-950 dark:text-sky-200 border border-sky-500/40 font-bold',
   },
   {
     id: 'DESIGN',
     label: 'Active Design',
     badgeLabel: 'In Design',
-    badgeColor: 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30',
+    badgeColor: 'bg-amber-500/15 text-amber-950 dark:text-amber-200 border border-amber-500/40 font-bold',
   },
   {
     id: 'DOCUMENTATION',
     label: 'Documentation',
     badgeLabel: 'In Documentation',
-    badgeColor: 'bg-indigo-500/15 text-indigo-700 dark:text-indigo-400 border border-indigo-500/30',
+    badgeColor: 'bg-indigo-500/15 text-indigo-950 dark:text-indigo-200 border border-indigo-500/40 font-bold',
   },
   {
     id: 'CONSTRUCTION',
     label: 'Construction',
     badgeLabel: 'In Construction',
-    badgeColor: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30',
+    badgeColor: 'bg-emerald-500/15 text-emerald-950 dark:text-emerald-200 border border-emerald-500/40 font-bold',
   },
   {
     id: 'ON_HOLD',
     label: 'On Hold',
     badgeLabel: 'On Hold',
-    badgeColor: 'bg-slate-500/15 text-slate-700 dark:text-slate-300 border border-slate-500/30',
+    badgeColor: 'bg-zinc-200 text-zinc-950 dark:bg-zinc-800 dark:text-zinc-50 border border-zinc-400 dark:border-zinc-500 font-black shadow-2xs',
   },
 ];
 
@@ -1683,24 +1683,29 @@ export default function ProjectsPage() {
           onClick={(e) => {
             if (e.target === e.currentTarget) setSelectedProjectForDetail(null);
           }}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 font-mono overflow-y-auto cursor-pointer animate-in fade-in duration-150"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-3 sm:p-4 font-mono overflow-y-auto cursor-pointer animate-in fade-in duration-150"
         >
-          <div className="bg-surface-main border border-border-main w-full max-w-4xl rounded-2xl shadow-2xl p-6 sm:p-8 space-y-6 text-text-main relative my-auto cursor-default">
+          <div className="bg-surface-main border border-border-main w-full max-w-4xl rounded-2xl shadow-2xl p-5 sm:p-8 space-y-6 text-text-main relative my-auto cursor-default max-h-[90dvh] overflow-y-auto">
             {/* Modal Header */}
             <div className="flex items-start justify-between border-b border-border-main pb-4">
               <div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <span className="px-2.5 py-0.5 bg-black text-white dark:bg-white dark:text-black text-xs font-bold rounded">
                     {selectedProjectForDetail.code}
                   </span>
-                  <Badge
-                    variant="outline"
-                    className="capitalize text-xs font-semibold"
-                  >
-                    {selectedProjectForDetail.stage
-                      ? STAGE_COLUMNS.find((c) => c.id === selectedProjectForDetail.stage)?.label
-                      : selectedProjectForDetail.status}
-                  </Badge>
+                  {(() => {
+                    const stageCol = STAGE_COLUMNS.find((c) => c.id === selectedProjectForDetail.stage);
+                    return (
+                      <span
+                        className={cn(
+                          'inline-flex items-center px-2.5 py-0.5 rounded text-xs font-mono uppercase font-bold tracking-wider',
+                          stageCol?.badgeColor || 'bg-surface-hover text-text-main border border-border-strong'
+                        )}
+                      >
+                        {stageCol?.badgeLabel || selectedProjectForDetail.status}
+                      </span>
+                    );
+                  })()}
                   <span className="text-xs font-mono font-bold text-accent-cyan">
                     Budget: {selectedProjectForDetail.budget || '₱1.2M'}
                   </span>

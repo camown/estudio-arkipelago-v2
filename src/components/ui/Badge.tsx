@@ -17,13 +17,13 @@ export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
 }
 
 const variantStyles: Record<BadgeVariant, string> = {
-  default: 'bg-surface-hover text-text-main border border-border-main',
-  neutral: 'bg-surface-hover/80 text-text-main/80 border border-border-main',
-  success: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30',
-  warning: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30',
-  danger: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/30',
-  info: 'bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/30',
-  outline: 'bg-transparent text-text-main border border-border-main',
+  default: 'bg-surface-hover text-text-main border border-border-strong font-bold',
+  neutral: 'bg-surface-hover text-text-main font-bold border border-border-strong',
+  success: 'bg-emerald-500/20 text-emerald-950 dark:text-emerald-200 border border-emerald-500/50 font-bold',
+  warning: 'bg-amber-500/20 text-amber-950 dark:text-amber-200 border border-amber-500/50 font-bold',
+  danger: 'bg-rose-500/20 text-rose-950 dark:text-rose-200 border border-rose-500/50 font-bold',
+  info: 'bg-sky-500/20 text-sky-950 dark:text-sky-200 border border-sky-500/50 font-bold',
+  outline: 'bg-surface-hover/80 text-text-main font-bold border border-border-strong shadow-2xs',
 };
 
 export function Badge({
