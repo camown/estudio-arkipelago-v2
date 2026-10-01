@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>ESTUDIO ARKIPELAGO</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap');
+
+    @page {
+      size: A4 portrait;
+      margin: 15mm 15mm 15mm 15mm;
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      color: #18181B;
+      background: #FFFFFF;
+      margin: 0;
+      padding: 0;
+      font-size: 11pt;
+      line-height: 1.5;
+    }
+
+    .page-break {
+      page-break-after: always;
+      break-after: page;
+    }
+
+    .header-banner {
+      border-bottom: 2px solid #000;
+      padding-bottom: 12px;
+      margin-bottom: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+
+    .title-group h1 {
+      margin: 0;
+      font-size: 22pt;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      text-transform: uppercase;
+      color: #000;
+    }
+
+    .title-group p {
+      margin: 4px 0 0 0;
+      font-size: 10pt;
+      font-family: 'JetBrains Mono', monospace;
+      color: #52525B;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .doc-meta {
+      text-align: right;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 8.5pt;
+      color: #71717A;
+    }
+
+    h2 {
+      font-size: 13pt;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 1px solid #E4E4E7;
+      padding-bottom: 6px;
+      margin-top: 24px;
+      margin-bottom: 12px;
+      color: #09090B;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    h3 {
+      font-size: 11pt;
+      font-weight: 700;
+      margin-top: 16px;
+      margin-bottom: 6px;
+      color: #18181B;
+    }
+
+    p {
+      margin: 0 0 10px 0;
+      font-size: 9.5pt;
+      color: #3F3F46;
+      line-height: 1.55;
+    }
+
+    .diagram-container {
+      background: #F8FAFC;
+      border: 1px solid #E2E8F0;
+      border-radius: 8px;
+      padding: 16px;
+      margin: 14px 0;
+      text-align: center;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0;
+      font-size: 8.5pt;
+    }
+
+    th,
+    td {
+      border: 1px solid #E2E8F0;
+      padding: 7px 10px;
+      text-align: left;
+    }
+
+    th {
+      background: #0F172A;
+      color: #FFFFFF;
+      font-weight: 700;
+      text-transform: uppercase;
+      font-size: 8pt;
+      letter-spacing: 0.5px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    tr:nth-child(even) {
+      background: #F8FAFC;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 6px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 7.5pt;
+      font-weight: 700;
+      border-radius: 4px;
+      text-transform: uppercase;
+    }
+
+    .badge-active {
+      background: #DCFCE7;
+      color: #15803D;
+      border: 1px solid #86EFAC;
+    }
+
+    .badge-ready {
+      background: #E0F2FE;
+      color: #0369A1;
+      border: 1px solid #7DD3FC;
+    }
+
+    .code-pill {
+      font-family: 'JetBrains Mono', monospace;
+      background: #F1F5F9;
+      padding: 1px 5px;
+      border-radius: 3px;
+      font-size: 8pt;
+      border: 1px solid #CBD5E1;
+      color: #0F172A;
+    }
+
+    .footer {
+      border-top: 1px solid #E2E8F0;
+      padding-top: 8px;
+      margin-top: 24px;
+      display: flex;
+      justify-content: space-between;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 7.5pt;
+      color: #94A3B8;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- PAGE 1 -->
+  <div class="header-banner">
+    <div class="title-group">
+      <h1>Estudio Arkipelago</h1>
+      <p>Full-Stack System Architecture & Technical Specification</p>
+    </div>
+    <div class="doc-meta">
+      <div><strong>CONFIDENTIAL & PROPRIETARY</strong></div>
+      <div>Project: Studio Operations OS</div>
+      <div>Date: October 2026 • Rev 1.0</div>
+    </div>
+  </div>
+
+  <h2>1. Executive Summary & Vision</h2>
+  <p>
+    <strong>Estudio Arkipelago</strong> is a unified, high-performance digital workspace and operations platform
+    engineered specifically for architectural practices, structural engineers, construction contractors, and external
+    clients.
+    The platform eliminates fragmented communication channels by combining <strong>interactive drawing
+      annotation</strong>, <strong>construction administration (RFIs, Submittals, BP 344 compliance)</strong>,
+    <strong>time tracking & HR ledgers</strong>, and <strong>tokenized client review portals</strong> into a single
+    reactive system.
+  </p>
+
+  <h2>2. End-to-End System Architecture Flowchart</h2>
+  <div class="diagram-container">
+    <pre class="mermaid">
+flowchart TD
+    subgraph Clients["1. Clients & Platforms"]
+        U1["Architects (Web Desktop)"]
+        U2["Contractors (Mobile/PWA)"]
+        U3["Clients (WhatsApp Token Links)"]
+    end
+
+    subgraph Security["2. Edge & Security Layer"]
+        GW["Cloudflare + Next.js Proxy\n• TLS 1.3 SSL Encryption\n• Rate Limiting (60 req/min)\n• CORS & Security Headers"]
+    end
+
+    subgraph App["3. Next.js 16 + React 19 Core"]
+        AUTH["Role Access (RBAC)\n(Partner/Senior/Junior/Contractor/Client)"]
+        MODS["Studio Operations Hub\n(Dashboard, Projects, Sketch, Chat, HR, Calendar)"]
+        CACHE["Offline & Speed Engine\n(LocalStorage + BroadcastChannel)"]
+    end
+
+    subgraph Backend["4. Supabase Backend (Postgres)"]
+        POOL["PgBouncer Pooler & Load Balancer"]
+        DB[("PostgreSQL Database\n• Migrations 001-006\n• Row Level Security (RLS)\n• B-Tree Performance Indexes")]
+        STORE["Cloud Storage (CAD, BIM, 4K Renders)"]
+        WS["WebSockets (Realtime WSS)"]
+    end
+
+    Clients --> GW
+    GW --> AUTH
+    AUTH --> MODS
+    MODS <--> CACHE
+    MODS <-->|HTTPS REST| POOL
+    POOL --> DB
+    MODS <-->|Large Files| STORE
+    MODS <-->|Bidirectional WSS| WS
+    </pre>
+  </div>
+
+  <div class="footer">
+    <span>Estudio Arkipelago © 2026</span>
+    <span>Page 1 of 3</span>
+  </div>
+
+  <div class="page-break"></div>
+
+  <!-- PAGE 2 -->
+  <div class="header-banner">
+    <div class="title-group">
+      <h1>Technical Specifications</h1>
+      <p>Infrastructure, Security, Database & State Management</p>
+    </div>
+    <div class="doc-meta">
+      <div>Estudio Arkipelago Architecture</div>
+      <div>Section: Technical Inventory</div>
+    </div>
+  </div>
+
+  <h2>3. Technical Infrastructure Matrix</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Layer</th>
+        <th>Technologies Used</th>
+        <th>System Responsibilities & Guarantees</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Edge & Security</strong></td>
+        <td>Cloudflare, Next.js Middleware, HSTS</td>
+        <td>TLS 1.3 HTTPS encryption, 60 req/min per IP rate limiting on <span class="code-pill">/api/*</span>, CORS
+          protection, X-Frame-Options SAMEORIGIN.</td>
+        <td><span class="badge badge-active">Active</span></td>
+      </tr>
+      <tr>
+        <td><strong>Application Core</strong></td>
+        <td>Next.js 16.3 (Turbopack), React 19</td>
+        <td>17 active routes, responsive studio shell, interactive drawing canvas (<span
+            class="code-pill">/sketch</span>), Construction Admin & BP 344 calculators.</td>
+        <td><span class="badge badge-active">Active</span></td>
+      </tr>
+      <tr>
+        <td><strong>Offline & Caching</strong></td>
+        <td>LocalStorage, BroadcastChannel</td>
+        <td>0ms instant UI first-paint, multi-tab state sync without network roundtrips, offline job site drafting
+          resilience.</td>
+        <td><span class="badge badge-active">Active</span></td>
+      </tr>
+      <tr>
+        <td><strong>Database & Storage</strong></td>
+        <td>Supabase PostgreSQL, PgBouncer, Storage</td>
+        <td>6 version-controlled migrations (001-006), Row Level Security (RLS) data isolation, composite B-tree
+          performance indexes.</td>
+        <td><span class="badge badge-active">Active</span></td>
+      </tr>
+      <tr>
+        <td><strong>Real-Time Layer</strong></td>
+        <td>WebSockets (WSS), Supabase Realtime</td>
+        <td>Sub-50ms live task board updates, typing indicators, studio feed reactions, cross-tab clock-in sync.</td>
+        <td><span class="badge badge-active">Active</span></td>
+      </tr>
+      <tr>
+        <td><strong>CI/CD & DevOps</strong></td>
+        <td>GitHub Actions, Playwright, Vercel</td>
+        <td>Automated 4-stage quality gate (TypeScript check &rarr; ESLint &rarr; Production Build &rarr; Playwright E2E
+          browser tests).</td>
+        <td><span class="badge badge-active">Active</span></td>
+      </tr>
+      <tr>
+        <td><strong>Client Review Portal</strong></td>
+        <td>Tokenized Guest Authentication</td>
+        <td>Passwordless client approval links with drawing annotation pins and digital milestone sign-offs.</td>
+        <td><span class="badge badge-ready">Phase 1 Ready</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>4. Real-Time Data Flow Sequence</h2>
+  <div class="diagram-container">
+    <pre class="mermaid">
+sequenceDiagram
+    autonumber
+    actor Arch as Architect / Staff
+    participant App as Studio App (React 19)
+    participant Cache as Local Storage & Tab Channel
+    participant Supa as Supabase PostgreSQL
+    participant Realtime as WebSockets WSS
+    actor Client as External Client / Team
+
+    Arch->>App: Submits Task / Annotates Drawing / Logs RFI
+    App->>Cache: 1. Instant optimistic update (0ms UI render)
+    App->>Supa: 2. Async database write (RLS & B-tree indexes)
+    Supa->>Realtime: 3. Triggers database broadcast event
+    Realtime-->>Client: 4. Real-time update rendered on client device
+    </pre>
+  </div>
+
+  <div class="footer">
+    <span>Estudio Arkipelago © 2026</span>
+    <span>Page 2 of 3</span>
+  </div>
+
+  <div class="page-break"></div>
+
+  <!-- PAGE 3 -->
+  <div class="header-banner">
+    <div class="title-group">
+      <h1>Quality Assurance & Delivery Roadmap</h1>
+      <p>CI/CD Pipelines, Role-Based Access & Phased Expansion</p>
+    </div>
+    <div class="doc-meta">
+      <div>Estudio Arkipelago Architecture</div>
+      <div>Section: QA & Roadmap</div>
+    </div>
+  </div>
+
+  <h2>5. Automated CI/CD & Testing Pipeline</h2>
+  <div class="diagram-container">
+    <pre class="mermaid">
+flowchart LR
+    G1["1. Code Push\n(git push)"] --> G2["2. Type Check\n(tsc --noEmit)"]
+    G2 --> G3["3. Linting\n(eslint)"]
+    G3 --> G4["4. Build Test\n(next build)"]
+    G4 --> G5["5. E2E Tests\n(Playwright)"]
+    G5 --> G6["6. Live Production\n(Vercel Deploy)"]
+    </pre>
+  </div>
+
+  <h2>6. Role-Based Access Control (RBAC) Hierarchy</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Role</th>
+        <th>Access Permissions & Capabilities</th>
+        <th>Restricted Boundaries</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Partner / Principal</strong></td>
+        <td>Full studio oversight, fee proposals, contract billing in PHP (₱), HR approvals, global financial analytics.
+        </td>
+        <td>None (Super-Admin).</td>
+      </tr>
+      <tr>
+        <td><strong>Senior Architect</strong></td>
+        <td>Project management, RFI reviews, submittal approvals, blueprint version control, task assignment.</td>
+        <td>Confidential studio HR complaint logs & master financials.</td>
+      </tr>
+      <tr>
+        <td><strong>Junior Architect</strong></td>
+        <td>Sketch drawing canvas, task deliverables, time tracking logbook, studio wall communication.</td>
+        <td>Contract pricing, HR admin, and project deletion.</td>
+      </tr>
+      <tr>
+        <td><strong>Contractor / Site Engr.</strong></td>
+        <td>Submission of RFIs, material submittal uploads, site progress photos for assigned project code.</td>
+        <td>Isolated strictly to assigned project; zero access to studio directory, HR, or other projects.</td>
+      </tr>
+      <tr>
+        <td><strong>External Client Guest</strong></td>
+        <td>Viewing project drawings, 3D renders, pin comment feedback, 1-click milestone approval.</td>
+        <td>Scoped strictly to tokenized review URL. Zero access to internal studio operations.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>7. Strategic Delivery Roadmap</h2>
+  <p>
+    <strong>Phase 1 (Immediate Next Step):</strong> Client Review & Approval Portal (<span
+      class="code-pill">/review/[token]</span>) allowing clients to approve drawing revisions via WhatsApp/Email links
+    with a legal audit trail.<br>
+    <strong>Phase 2:</strong> Multi-user collaborative drawing cursors inside <span class="code-pill">/sketch</span>
+    using Supabase Realtime Broadcast.<br>
+    <strong>Phase 3:</strong> AI-powered building code compliance scanner (BP 344 / Zoning Setbacks) and automated
+    meeting minutes task extraction.
+  </p>
+
+  <div class="footer">
+    <span>Estudio Arkipelago © 2026</span>
+    <span>Page 3 of 3</span>
+  </div>
+
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'neutral',
+      flowchart: { curve: 'basis' }
+    });
+  </script>
+</body>
+
+</html>

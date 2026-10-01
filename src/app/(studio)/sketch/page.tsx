@@ -9,10 +9,13 @@ import {
   MessageSquare, Layers, Eye, EyeOff, Plus,
   ImagePlus, Ruler, Cloud, Stamp, MessageSquarePlus,
   ZoomIn, ZoomOut, Move, Compass, FolderOpen,
-  X, Sparkles, ChevronDown
+  X, Sparkles, ChevronDown, SlidersHorizontal, Palette,
+  Send, Loader2, Check, MousePointer2, RotateCcw
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/lib/hooks/useAuth';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase/client';
+import { uploadSketchMarkupToStorage, saveSketchSessionToDatabase } from '@/lib/sketchStorage';
 import type {
   SketchToolMode,
   SketchGridType,
@@ -121,7 +124,7 @@ export default function SketchingStudioPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Tool & Canvas State
-  const [activeTool, setActiveTool] = useState<SketchToolMode>('pen');
+  const [activeTool, setActiveTool] = useState<SketchToolMode>('select');
   const [gridType, setGridType] = useState<SketchGridType>('square');
   const [color, setColor] = useState('#DC2626'); // Redline Red default
   const [size, setSize] = useState(3);
@@ -151,6 +154,14 @@ export default function SketchingStudioPage() {
   const [bgImageUrl, setBgImageUrl] = useState<string | null>(null);
   const [bgOpacity, setBgOpacity] = useState(70);
   const [contrastMode, setContrastMode] = useState<'standard' | 'blueprint' | 'grayscale' | 'invert'>('standard');
+  const [bgPosition, setBgPosition] = useState<SketchPoint | null>(null);
+  const [isDraggingBg, setIsDraggingBg] = useState(false);
+  const [bgDragOffset, setBgDragOffset] = useState<SketchPoint>({ x: 0, y: 0 });
+
+  // Selection & Interactive Drag State
+  const [selectedShapeId, setSelectedShapeId] = useState<string | null>(null);
+  const [draggedShapeId, setDraggedShapeId] = useState<string | null>(null);
+  const [shapeDragOffset, setShapeDragOffset] = useState<SketchPoint>({ x: 0, y: 0 });
 
   // Drawing History & Stacks
   const [shapes, setShapes] = useState<SketchShapeItem[]>([]);
@@ -164,6 +175,7 @@ export default function SketchingStudioPage() {
   const [textInput, setTextInput] = useState('');
   const [textCoord, setTextCoord] = useState<SketchPoint | null>(null);
   const [textFontSize, setTextFontSize] = useState(16);
+  const [editingTextShapeId, setEditingTextShapeId] = useState<string | null>(null);
 
   const [isCalloutModalOpen, setIsCalloutModalOpen] = useState(false);
   const [calloutText, setCalloutText] = useState('');
@@ -172,6 +184,9 @@ export default function SketchingStudioPage() {
   const [isClearModalOpen, setIsClearModalOpen] = useState(false);
   const [isPresetModalOpen, setIsPresetModalOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [isMobilePanelOpen, setIsMobilePanelOpen] = useState(false);
+  const [isVaultModalOpen, setIsVaultModalOpen] = useState(false);
+  const [previewingVaultSketch, setPreviewingVaultSketch] = useState<SavedSketch | null>(null);
 
   // Drawing Metadata
   const [sheetNo, setSheetNo] = useState('A-101');
@@ -179,6 +194,11 @@ export default function SketchingStudioPage() {
   const [projectName, setProjectName] = useState('Makati Tower Phase 2');
   const [revisionCode, setRevisionCode] = useState('Rev 02.1');
   const [feedbackNotice, setFeedbackNotice] = useState<string | null>(null);
+
+  // Origin Thread / Chat Round-trip State
+  const [originThreadId, setOriginThreadId] = useState<string | null>(null);
+  const [originMessageId, setOriginMessageId] = useState<string | null>(null);
+  const [isExportingToChat, setIsExportingToChat] = useState(false);
 
   // Saved Sketches Archive
   const [savedSketches, setSavedSketches] = useState<SavedSketch[]>(() => {
@@ -190,6 +210,49 @@ export default function SketchingStudioPage() {
       return [];
     }
   });
+
+  // Fetch saved sketches from Supabase sketch_sessions and synchronize with local vault
+  useEffect(() => {
+    if (!isSupabaseConfigured || !supabase) return;
+
+    const fetchSupabaseSketches = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('sketch_sessions')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (!error && data && data.length > 0) {
+          const cloudSketches: SavedSketch[] = data.map((item) => ({
+            id: item.id,
+            title: item.title || 'Untitled Drawing',
+            sheetNo: item.sheet_no || 'A-101',
+            projectName: item.project_name || 'Studio Project',
+            scale: item.scale_label || '1:100',
+            timestamp: new Date(item.created_at).getTime(),
+            dataUrl: item.preview_url || item.source_file_url || '',
+          }));
+
+          setSavedSketches((prev) => {
+            const combinedMap = new Map<string, SavedSketch>();
+            cloudSketches.forEach((s) => combinedMap.set(s.id, s));
+            prev.forEach((s) => {
+              if (!combinedMap.has(s.id)) combinedMap.set(s.id, s);
+            });
+            const merged = Array.from(combinedMap.values()).sort((a, b) => b.timestamp - a.timestamp);
+            try {
+              localStorage.setItem('arkipelago_sketches', JSON.stringify(merged));
+            } catch {}
+            return merged;
+          });
+        }
+      } catch (err) {
+        console.error('Error fetching sketch sessions from Supabase:', err);
+      }
+    };
+
+    fetchSupabaseSketches();
+  }, []);
 
   const showNotice = (msg: string) => {
     setFeedbackNotice(msg);
@@ -222,6 +285,14 @@ export default function SketchingStudioPage() {
           handleRedo();
         } else {
           handleUndo();
+        }
+      }
+      if ((e.key === 'Delete' || e.key === 'Backspace') && (e.target as HTMLElement).tagName !== 'INPUT' && (e.target as HTMLElement).tagName !== 'TEXTAREA') {
+        if (selectedShapeId) {
+          e.preventDefault();
+          setShapes((prev) => prev.filter((s) => s.id !== selectedShapeId));
+          setSelectedShapeId(null);
+          showNotice('Deleted selected element');
         }
       }
     };
@@ -521,14 +592,28 @@ export default function SketchingStudioPage() {
       const hRatio = 2400 / bgImage.width;
       const vRatio = 1600 / bgImage.height;
       const ratio = Math.min(hRatio, vRatio, 1.5);
-      const centerShiftX = (2400 - bgImage.width * ratio) / 2;
-      const centerShiftY = (1600 - bgImage.height * ratio) / 2;
+      const defaultShiftX = (2400 - bgImage.width * ratio) / 2;
+      const defaultShiftY = (1600 - bgImage.height * ratio) / 2;
+      const posX = bgPosition ? bgPosition.x : defaultShiftX;
+      const posY = bgPosition ? bgPosition.y : defaultShiftY;
+      const drawWidth = bgImage.width * ratio;
+      const drawHeight = bgImage.height * ratio;
 
       ctx.drawImage(
         bgImage,
         0, 0, bgImage.width, bgImage.height,
-        centerShiftX, centerShiftY, bgImage.width * ratio, bgImage.height * ratio
+        posX, posY, drawWidth, drawHeight
       );
+
+      // In select mode or when dragging bg, draw a subtle bounding boundary around blueprint
+      if (activeTool === 'select') {
+        ctx.strokeStyle = isDraggingBg ? 'rgba(6, 182, 212, 0.9)' : 'rgba(148, 163, 184, 0.4)';
+        ctx.lineWidth = 1.5 / zoom;
+        ctx.setLineDash([6, 6]);
+        ctx.strokeRect(posX, posY, drawWidth, drawHeight);
+        ctx.setLineDash([]);
+      }
+
       ctx.restore();
     }
 
@@ -633,16 +718,59 @@ export default function SketchingStudioPage() {
         drawStamp(ctx, s.points[0], s.stampType || 'FOR_REVISION');
       } else if (s.type === 'text' && s.text && s.points.length > 0) {
         const p = s.points[0];
+        const fSize = s.fontSize || 16;
+        ctx.font = `bold ${fSize}px 'Courier New', monospace`;
+        const lines = s.text.split('\n');
+        const padX = 8;
+        const padY = 6;
+        const lineHeight = fSize * 1.35;
+        let maxW = 0;
+        for (const l of lines) {
+          const w = ctx.measureText(l).width;
+          if (w > maxW) maxW = w;
+        }
+        const boxW = maxW + padX * 2;
+        const boxH = lines.length * lineHeight + padY * 2;
+
+        const isSelected = selectedShapeId === s.id;
+
+        // Draw clean text box background & container
+        ctx.save();
+        ctx.fillStyle = isSelected ? 'rgba(255, 255, 255, 0.96)' : 'rgba(255, 255, 255, 0.88)';
+        ctx.fillRect(p.x, p.y, boxW, boxH);
+
+        ctx.strokeStyle = isSelected ? '#0284C7' : (activeTool === 'select' ? 'rgba(148, 163, 184, 0.6)' : 'rgba(203, 213, 225, 0.8)');
+        ctx.lineWidth = isSelected ? 2 / zoom : 1 / zoom;
+        if (isSelected) {
+          ctx.setLineDash([4, 4]);
+        }
+        ctx.strokeRect(p.x, p.y, boxW, boxH);
+        ctx.setLineDash([]);
+
+        // If selected, draw corner handles and move icon indicator
+        if (isSelected) {
+          const handleSize = 6 / zoom;
+          ctx.fillStyle = '#0284C7';
+          ctx.fillRect(p.x - handleSize / 2, p.y - handleSize / 2, handleSize, handleSize);
+          ctx.fillRect(p.x + boxW - handleSize / 2, p.y - handleSize / 2, handleSize, handleSize);
+          ctx.fillRect(p.x - handleSize / 2, p.y + boxH - handleSize / 2, handleSize, handleSize);
+          ctx.fillRect(p.x + boxW - handleSize / 2, p.y + boxH - handleSize / 2, handleSize, handleSize);
+        }
+
+        // Draw Text Content inside box
         ctx.fillStyle = hexToRgba(s.color, s.opacity);
-        ctx.font = `bold ${s.fontSize || 16}px 'Courier New', monospace`;
-        ctx.fillText(s.text, p.x, p.y);
+        ctx.textBaseline = 'top';
+        lines.forEach((line, idx) => {
+          ctx.fillText(line, p.x + padX, p.y + padY + idx * lineHeight);
+        });
+        ctx.restore();
       }
 
       ctx.restore();
     });
 
     ctx.restore();
-  }, [bgImage, bgOpacity, contrastMode, gridType, layers, panOffset, zoom, activeScale.pxPerMeter]);
+  }, [bgImage, bgOpacity, contrastMode, gridType, layers, panOffset, zoom, activeScale.pxPerMeter, bgPosition, isDraggingBg, selectedShapeId, activeTool]);
 
   const resizeCanvas = useCallback(() => {
     const canvas = canvasRef.current;
@@ -666,6 +794,14 @@ export default function SketchingStudioPage() {
     try {
       const pendingBg = localStorage.getItem('arkipelago_pending_sketch_bg');
       const pendingTitle = localStorage.getItem('arkipelago_pending_sketch_title');
+      const pendingThreadId = localStorage.getItem('arkipelago_pending_sketch_thread_id');
+      const pendingProject = localStorage.getItem('arkipelago_pending_sketch_project');
+      const pendingMessageId = localStorage.getItem('arkipelago_pending_sketch_message_id');
+
+      if (pendingThreadId) setOriginThreadId(pendingThreadId);
+      if (pendingMessageId) setOriginMessageId(pendingMessageId);
+      if (pendingProject) setProjectName(pendingProject);
+
       if (pendingBg) {
         const img = new Image();
         img.crossOrigin = 'anonymous';
@@ -681,6 +817,9 @@ export default function SketchingStudioPage() {
         img.src = pendingBg;
         localStorage.removeItem('arkipelago_pending_sketch_bg');
         localStorage.removeItem('arkipelago_pending_sketch_title');
+        localStorage.removeItem('arkipelago_pending_sketch_thread_id');
+        localStorage.removeItem('arkipelago_pending_sketch_project');
+        localStorage.removeItem('arkipelago_pending_sketch_message_id');
       }
     } catch {
       // ignore
@@ -725,6 +864,58 @@ export default function SketchingStudioPage() {
     return { x: worldX, y: worldY };
   };
 
+  // Helper to calculate text box bounding box
+  const getTextBoxBounds = useCallback((shape: SketchShapeItem) => {
+    if (shape.type !== 'text' || shape.points.length === 0 || !shape.text) return null;
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext('2d');
+    const fSize = shape.fontSize || 16;
+    let maxW = 80;
+    if (ctx) {
+      ctx.save();
+      ctx.font = `bold ${fSize}px 'Courier New', monospace`;
+      const lines = shape.text.split('\n');
+      for (const l of lines) {
+        const w = ctx.measureText(l).width;
+        if (w > maxW) maxW = w;
+      }
+      ctx.restore();
+    }
+    const lines = shape.text.split('\n');
+    const padX = 8;
+    const padY = 6;
+    const lineHeight = fSize * 1.35;
+    const boxW = maxW + padX * 2;
+    const boxH = lines.length * lineHeight + padY * 2;
+    const p = shape.points[0];
+    return {
+      x: p.x,
+      y: p.y,
+      width: boxW,
+      height: boxH,
+    };
+  }, []);
+
+  // Helper to get blueprint image bounds
+  const getBgBounds = useCallback(() => {
+    if (!bgImage) return null;
+    const hRatio = 2400 / bgImage.width;
+    const vRatio = 1600 / bgImage.height;
+    const ratio = Math.min(hRatio, vRatio, 1.5);
+    const defaultShiftX = (2400 - bgImage.width * ratio) / 2;
+    const defaultShiftY = (1600 - bgImage.height * ratio) / 2;
+    const posX = bgPosition ? bgPosition.x : defaultShiftX;
+    const posY = bgPosition ? bgPosition.y : defaultShiftY;
+    const drawWidth = bgImage.width * ratio;
+    const drawHeight = bgImage.height * ratio;
+    return {
+      x: posX,
+      y: posY,
+      width: drawWidth,
+      height: drawHeight,
+    };
+  }, [bgImage, bgPosition]);
+
   // Pointer Handlers
   const handleMouseDown = (e: React.MouseEvent | React.TouchEvent) => {
     if (isSpacePressed || activeTool === 'pan') {
@@ -737,6 +928,65 @@ export default function SketchingStudioPage() {
 
     const coords = getCanvasCoords(e);
     if (!coords) return;
+
+    // SELECT / DRAG TOOL MODE
+    if (activeTool === 'select') {
+      // 1. Check if user clicked on any text box (topmost first)
+      for (let i = shapes.length - 1; i >= 0; i--) {
+        const s = shapes[i];
+        if (s.type === 'text') {
+          const b = getTextBoxBounds(s);
+          if (b && coords.x >= b.x && coords.x <= b.x + b.width && coords.y >= b.y && coords.y <= b.y + b.height) {
+            setSelectedShapeId(s.id);
+            setDraggedShapeId(s.id);
+            setShapeDragOffset({
+              x: coords.x - s.points[0].x,
+              y: coords.y - s.points[0].y,
+            });
+            showNotice('Selected Text Box — Drag to move');
+            return;
+          }
+        }
+      }
+
+      // 2. Check if user clicked on any generic shape (bounding point test)
+      for (let i = shapes.length - 1; i >= 0; i--) {
+        const s = shapes[i];
+        if (s.points.length > 0) {
+          const minX = Math.min(...s.points.map((p) => p.x)) - 15;
+          const maxX = Math.max(...s.points.map((p) => p.x)) + 15;
+          const minY = Math.min(...s.points.map((p) => p.y)) - 15;
+          const maxY = Math.max(...s.points.map((p) => p.y)) + 15;
+          if (coords.x >= minX && coords.x <= maxX && coords.y >= minY && coords.y <= maxY) {
+            setSelectedShapeId(s.id);
+            setDraggedShapeId(s.id);
+            setShapeDragOffset({
+              x: coords.x - s.points[0].x,
+              y: coords.y - s.points[0].y,
+            });
+            showNotice(`Selected element (${s.type})`);
+            return;
+          }
+        }
+      }
+
+      // 3. Check if user clicked inside the background blueprint image to move it
+      const bgB = getBgBounds();
+      if (bgB && coords.x >= bgB.x && coords.x <= bgB.x + bgB.width && coords.y >= bgB.y && coords.y <= bgB.y + bgB.height) {
+        setIsDraggingBg(true);
+        setSelectedShapeId(null);
+        setBgDragOffset({
+          x: coords.x - bgB.x,
+          y: coords.y - bgB.y,
+        });
+        showNotice('Moving Blueprint Image');
+        return;
+      }
+
+      // Clicked on empty canvas in select mode: clear selection
+      setSelectedShapeId(null);
+      return;
+    }
 
     if (activeTool === 'stamp') {
       const stampShape: SketchShapeItem = {
@@ -757,6 +1007,8 @@ export default function SketchingStudioPage() {
 
     if (activeTool === 'text') {
       setTextCoord(coords);
+      setTextInput('');
+      setEditingTextShapeId(null);
       setIsTextModalOpen(true);
       return;
     }
@@ -777,10 +1029,37 @@ export default function SketchingStudioPage() {
       return;
     }
 
-    if (!isDrawing || !startPoint) return;
-
     const coords = getCanvasCoords(e);
     if (!coords) return;
+
+    // Handle interactive text/shape dragging
+    if (draggedShapeId) {
+      setShapes((prev) =>
+        prev.map((s) => {
+          if (s.id !== draggedShapeId) return s;
+          const deltaX = coords.x - shapeDragOffset.x - s.points[0].x;
+          const deltaY = coords.y - shapeDragOffset.y - s.points[0].y;
+          return {
+            ...s,
+            points: s.points.map((p) => ({
+              x: p.x + deltaX,
+              y: p.y + deltaY,
+            })),
+          };
+        })
+      );
+      return;
+    }
+
+    // Handle interactive background blueprint image dragging
+    if (isDraggingBg) {
+      const newX = coords.x - bgDragOffset.x;
+      const newY = coords.y - bgDragOffset.y;
+      setBgPosition({ x: newX, y: newY });
+      return;
+    }
+
+    if (!isDrawing || !startPoint) return;
 
     if (activeTool === 'pen' || activeTool === 'eraser') {
       const nextPoints = [...currentPoints, coords];
@@ -815,6 +1094,14 @@ export default function SketchingStudioPage() {
     if (isPanning) {
       setIsPanning(false);
       return;
+    }
+
+    if (draggedShapeId) {
+      setDraggedShapeId(null);
+    }
+
+    if (isDraggingBg) {
+      setIsDraggingBg(false);
     }
 
     if (!isDrawing || !startPoint) return;
@@ -876,18 +1163,27 @@ export default function SketchingStudioPage() {
 
   const handleAddText = () => {
     if (!textInput.trim() || !textCoord) return;
-    const textShape: SketchShapeItem = {
-      id: `text-${Date.now()}`,
-      type: 'text',
-      points: [textCoord],
-      color,
-      size,
-      opacity,
-      text: textInput.trim(),
-      fontSize: textFontSize,
-      layerId: activeLayerId,
-    };
-    setShapes((prev) => [...prev, textShape]);
+    if (editingTextShapeId) {
+      setShapes((prev) =>
+        prev.map((s) => (s.id === editingTextShapeId ? { ...s, text: textInput.trim(), fontSize: textFontSize } : s))
+      );
+      setEditingTextShapeId(null);
+    } else {
+      const textShape: SketchShapeItem = {
+        id: `text-${Date.now()}`,
+        type: 'text',
+        points: [textCoord],
+        color,
+        size,
+        opacity,
+        text: textInput.trim(),
+        fontSize: textFontSize,
+        layerId: activeLayerId,
+      };
+      setShapes((prev) => [...prev, textShape]);
+      setSelectedShapeId(textShape.id);
+      setActiveTool('select');
+    }
     setTextInput('');
     setIsTextModalOpen(false);
   };
@@ -1024,34 +1320,144 @@ export default function SketchingStudioPage() {
     setIsExportModalOpen(false);
   };
 
-  const handleSaveToArchive = () => {
+  const handleSaveToArchive = async () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
     const dataUrl = canvas.toDataURL('image/png');
+    const sketchId = `sketch-${Date.now()}`;
+    const authorName = user?.name || 'Arch. Leandro Locsin';
+
+    showNotice('Saving to Studio Vault & Cloud...');
+
+    // 1. Upload rendered drawing to Supabase Storage
+    const uploadRes = await uploadSketchMarkupToStorage({
+      dataUrl,
+      fileName: `${sheetNo}_${sketchTitle}`,
+      folder: 'vault',
+    });
+
+    // 2. Persist Vector Session to Postgres
+    await saveSketchSessionToDatabase({
+      id: sketchId,
+      title: sketchTitle,
+      sheetNo,
+      projectName,
+      scaleLabel: activeScale.label,
+      createdBy: authorName,
+      sourceFileUrl: bgImageUrl || undefined,
+      sourceThreadId: originThreadId || undefined,
+      sourceMessageId: originMessageId || undefined,
+      vectorData: shapes,
+      layers: layers,
+      previewUrl: uploadRes.publicUrl,
+    });
+
+    // 3. Update local archive cache
     const newSaved: SavedSketch = {
-      id: `sketch-${Date.now()}`,
+      id: sketchId,
       title: sketchTitle,
       sheetNo,
       projectName,
       scale: activeScale.label,
       timestamp: Date.now(),
-      dataUrl,
+      dataUrl: uploadRes.publicUrl,
     };
 
     const updated = [newSaved, ...savedSketches];
     setSavedSketches(updated);
-    localStorage.setItem('arkipelago_sketches', JSON.stringify(updated));
-    showNotice('Saved to Studio Vault');
+    try {
+      localStorage.setItem('arkipelago_sketches', JSON.stringify(updated));
+    } catch {}
+
+    showNotice('✓ Saved to Studio Vault & Supabase');
   };
 
-  const handleShareToChat = () => {
+  const handleShareToChat = async () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const dataUrl = canvas.toDataURL('image/png');
-    localStorage.setItem('arkipelago_chat_pending_attachment', dataUrl);
-    localStorage.setItem('arkipelago_chat_pending_caption', `[REDLINE MARKUP] ${sheetNo} - ${sketchTitle}`);
-    router.push('/chat');
+
+    try {
+      setIsExportingToChat(true);
+      showNotice('Exporting markup to chat...');
+
+      const dataUrl = canvas.toDataURL('image/png');
+      const authorName = user?.name || 'Arch. Leandro Locsin';
+      const markupFileName = `${sheetNo}_REDLINE_${sketchTitle}`;
+
+      // 1. Upload high-res markup to Supabase Storage 'sketch-exports'
+      const { publicUrl } = await uploadSketchMarkupToStorage({
+        dataUrl,
+        fileName: markupFileName,
+        folder: 'chat-redlines',
+      });
+
+      // 2. Save vector session in Supabase DB for future editability
+      const sessionId = `sketch-${Date.now()}`;
+      await saveSketchSessionToDatabase({
+        id: sessionId,
+        title: sketchTitle,
+        sheetNo,
+        projectName,
+        scaleLabel: activeScale.label,
+        createdBy: authorName,
+        sourceFileUrl: bgImageUrl || undefined,
+        sourceThreadId: originThreadId || undefined,
+        sourceMessageId: originMessageId || undefined,
+        vectorData: shapes,
+        layers: layers,
+        previewUrl: publicUrl,
+      });
+
+      // 3. If origin thread exists, post the redline message directly into Supabase chat_messages table & broadcast
+      if (originThreadId && isSupabaseConfigured && supabase) {
+        const messageId = `msg-markup-${Date.now()}`;
+        const messageText = `Shared redline markup on sheet [${sheetNo} - ${sketchTitle}].`;
+        const attachmentTitle = `[REDLINE MARKUP] ${sheetNo} - ${sketchTitle}`;
+
+        await supabase.from('chat_messages').insert({
+          id: messageId,
+          thread_id: originThreadId,
+          sender: authorName,
+          text: messageText,
+          attachment: publicUrl,
+          attachment_title: attachmentTitle,
+        });
+
+        // Broadcast to realtime WebSocket channel
+        const globalChannel = supabase.channel('studio_chat_global_room_v1');
+        globalChannel.send({
+          type: 'broadcast',
+          event: 'new_message',
+          payload: {
+            threadId: originThreadId,
+            message: {
+              id: messageId,
+              sender: authorName,
+              text: messageText,
+              attachment: publicUrl,
+              attachmentTitle: attachmentTitle,
+              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            },
+          },
+        });
+      }
+
+      // 4. Stash fallback payload for local preview and redirect
+      localStorage.setItem('arkipelago_pending_chat_attachment', publicUrl);
+      localStorage.setItem('arkipelago_chat_pending_caption', `[REDLINE MARKUP] ${sheetNo} - ${sketchTitle}`);
+      
+      const targetQuery = originThreadId 
+        ? `?tab=chat&thread=${originThreadId}&attached=sketch` 
+        : `?tab=chat&attached=sketch`;
+
+      router.push(`/chat${targetQuery}`);
+    } catch (err) {
+      console.error('Error sharing sketch to chat:', err);
+      showNotice('Failed to upload markup to chat');
+    } finally {
+      setIsExportingToChat(false);
+    }
   };
 
   return (
@@ -1082,14 +1488,14 @@ export default function SketchingStudioPage() {
         </div>
 
         {/* Center Canvas View Controls */}
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1 sm:gap-1.5">
           {/* Scale Selector */}
-          <div className="flex items-center gap-1 bg-bg-main border border-border-main px-2 py-0.5 text-xs">
+          <div className="hidden xs:flex items-center gap-1 bg-bg-main border border-border-main px-1.5 sm:px-2 py-0.5 text-xs">
             <Ruler className="w-3 h-3 text-accent-cyan" />
             <select
               value={selectedScaleIndex}
               onChange={(e) => setSelectedScaleIndex(Number(e.target.value))}
-              className="bg-transparent text-[11px] font-bold text-text-main focus:outline-none cursor-pointer"
+              className="bg-transparent text-[10px] sm:text-[11px] font-bold text-text-main focus:outline-none cursor-pointer max-w-[90px] sm:max-w-none truncate"
             >
               {SCALE_PRESETS.map((scale, idx) => (
                 <option key={scale.ratio} value={idx} className="bg-surface-main text-text-main">
@@ -1108,7 +1514,7 @@ export default function SketchingStudioPage() {
             >
               <ZoomOut className="w-3 h-3" />
             </button>
-            <span className="text-[10px] w-8 text-center text-text-main font-bold">
+            <span className="text-[10px] w-7 sm:w-8 text-center text-text-main font-bold">
               {Math.round(zoom * 100)}%
             </span>
             <button
@@ -1121,7 +1527,7 @@ export default function SketchingStudioPage() {
           </div>
 
           {/* Undo / Redo */}
-          <div className="flex items-center gap-0.5 border-l border-border-main pl-1.5">
+          <div className="flex items-center gap-0.5 border-l border-border-main pl-1 sm:pl-1.5">
             <button
               onClick={handleUndo}
               disabled={shapes.length === 0}
@@ -1142,38 +1548,85 @@ export default function SketchingStudioPage() {
         </div>
 
         {/* Right Action Suite */}
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1 sm:gap-1.5">
           <button
             onClick={() => setIsPresetModalOpen(true)}
-            className="flex items-center gap-1 px-2 py-1 bg-surface-hover hover:bg-bg-main border border-border-main text-[11px] font-bold text-text-main transition-colors cursor-pointer"
+            className="hidden sm:flex items-center gap-1 px-2 py-1 bg-surface-hover hover:bg-bg-main border border-border-main text-[11px] font-bold text-text-main transition-colors cursor-pointer"
             title="Load Preset Sheet"
           >
             <FolderOpen className="w-3.5 h-3.5 text-accent-yellow" />
-            <span className="hidden sm:inline">PRESETS</span>
+            <span>PRESETS</span>
           </button>
 
           <button
             onClick={() => setIsExportModalOpen(true)}
-            className="flex items-center gap-1 px-2.5 py-1 bg-text-main text-bg-main text-[11px] font-bold transition-opacity hover:opacity-90 cursor-pointer"
+            className="flex items-center gap-1 px-2 sm:px-2.5 py-1 bg-text-main text-bg-main text-[10px] sm:text-[11px] font-bold transition-opacity hover:opacity-90 cursor-pointer rounded-xs"
           >
             <FileDown className="w-3.5 h-3.5" />
-            <span>EXPORT</span>
+            <span className="hidden xs:inline">EXPORT</span>
+          </button>
+
+          <button
+            onClick={() => setIsVaultModalOpen(true)}
+            className="flex items-center gap-1 px-2 py-1 bg-surface-hover hover:bg-bg-main border border-border-main text-[11px] font-bold text-text-main transition-colors cursor-pointer shadow-2xs"
+            title="Open Studio Vault Sketches & Markups"
+          >
+            <FolderOpen className="w-3.5 h-3.5 text-accent-cyan" />
+            <span>VAULT ({savedSketches.length})</span>
           </button>
 
           <button
             onClick={handleSaveToArchive}
-            className="p-1.5 bg-surface-hover hover:bg-bg-main border border-border-main text-text-main cursor-pointer"
+            className="flex items-center gap-1 px-2 py-1 bg-surface-hover hover:bg-bg-main border border-border-main text-[11px] font-bold text-text-main cursor-pointer"
             title="Save to Studio Vault"
           >
             <Save className="w-3.5 h-3.5 text-accent-yellow" />
+            <span className="hidden sm:inline">SAVE</span>
           </button>
 
+          {/* Round-trip Send Back to Chat Button */}
+          {originThreadId ? (
+            <button
+              onClick={handleShareToChat}
+              disabled={isExportingToChat}
+              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white text-[10px] sm:text-[11px] font-bold transition-all cursor-pointer rounded-xs shadow-xs"
+              title="Post markup back to originating chat topic thread"
+            >
+              {isExportingToChat ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Send className="w-3.5 h-3.5" />
+              )}
+              <span className="hidden xs:inline">SEND TO CHAT</span>
+            </button>
+          ) : (
+            <button
+              onClick={handleShareToChat}
+              disabled={isExportingToChat}
+              className="p-1.5 bg-surface-hover hover:bg-bg-main border border-border-main text-text-main cursor-pointer"
+              title="Share Markup to Studio Chat"
+            >
+              {isExportingToChat ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-accent-cyan" />
+              ) : (
+                <MessageSquare className="w-3.5 h-3.5 text-accent-cyan" />
+              )}
+            </button>
+          )}
+
+          {/* Mobile Panel Toggle Button */}
           <button
-            onClick={handleShareToChat}
-            className="p-1.5 bg-surface-hover hover:bg-bg-main border border-border-main text-text-main cursor-pointer"
-            title="Share to Chat"
+            onClick={() => setIsMobilePanelOpen((prev) => !prev)}
+            className={cn(
+              "md:hidden p-1.5 border text-text-main cursor-pointer transition-all flex items-center gap-1",
+              isMobilePanelOpen
+                ? "bg-accent-yellow text-slate-950 border-accent-yellow font-bold shadow-xs"
+                : "bg-surface-hover hover:bg-bg-main border-border-main"
+            )}
+            title="Toggle Layers & Ink Panel"
           >
-            <MessageSquare className="w-3.5 h-3.5 text-accent-cyan" />
+            <Layers className="w-3.5 h-3.5 text-accent-cyan" />
+            <span className="text-[10px] font-bold hidden xs:inline">LAYERS</span>
           </button>
         </div>
       </header>
@@ -1182,19 +1635,35 @@ export default function SketchingStudioPage() {
       <div className="flex flex-1 relative overflow-hidden bg-bg-main">
         {/* Left Compact Tool Rail */}
         <aside className="w-12 bg-surface-main border-r border-border-main flex flex-col items-center py-2.5 gap-1.5 shrink-0 z-10">
-          {/* Pan */}
+          {/* Select & Drag Elements / Canvas Tool */}
+          <button
+            onClick={() => setActiveTool('select')}
+            className={cn(
+              'w-8 h-8 flex items-center justify-center transition-all cursor-pointer border',
+              activeTool === 'select' && !isSpacePressed
+                ? 'bg-accent-yellow text-slate-950 border-accent-yellow font-bold shadow-xs ring-1 ring-accent-yellow'
+                : 'text-muted-main hover:bg-surface-hover hover:text-text-main border-transparent'
+            )}
+            title="Select & Drag Elements / Image (V)"
+          >
+            <MousePointer2 className="w-4 h-4" />
+          </button>
+
+          {/* Pan Viewport */}
           <button
             onClick={() => setActiveTool('pan')}
             className={cn(
               'w-8 h-8 flex items-center justify-center transition-all cursor-pointer border',
               activeTool === 'pan' || isSpacePressed
-                ? 'bg-accent-yellow text-slate-950 border-accent-yellow font-bold shadow-xs'
+                ? 'bg-text-main text-bg-main border-text-main font-bold shadow-xs'
                 : 'text-muted-main hover:bg-surface-hover hover:text-text-main border-transparent'
             )}
-            title="Pan (Spacebar)"
+            title="Pan Viewport (Spacebar)"
           >
             <Move className="w-3.5 h-3.5" />
           </button>
+
+          <div className="w-6 border-t border-border-main my-0.5" />
 
           {/* Pen */}
           <button
@@ -1205,7 +1674,7 @@ export default function SketchingStudioPage() {
                 ? 'bg-accent-red text-white border-accent-red font-bold shadow-xs'
                 : 'text-muted-main hover:bg-surface-hover hover:text-text-main border-transparent'
             )}
-            title="Pen"
+            title="Pen (P)"
           >
             <PenTool className="w-3.5 h-3.5" />
           </button>
@@ -1383,11 +1852,30 @@ export default function SketchingStudioPage() {
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
+          onDoubleClick={(e) => {
+            const coords = getCanvasCoords(e);
+            if (!coords) return;
+            for (let i = shapes.length - 1; i >= 0; i--) {
+              const s = shapes[i];
+              if (s.type === 'text') {
+                const b = getTextBoxBounds(s);
+                if (b && coords.x >= b.x && coords.x <= b.x + b.width && coords.y >= b.y && coords.y <= b.y + b.height) {
+                  setEditingTextShapeId(s.id);
+                  setTextInput(s.text || '');
+                  setTextFontSize(s.fontSize || 16);
+                  setTextCoord(s.points[0]);
+                  setIsTextModalOpen(true);
+                  return;
+                }
+              }
+            }
+          }}
           onTouchStart={handleMouseDown}
           onTouchMove={handleMouseMove}
           onTouchEnd={handleMouseUp}
           className={cn(
-            'flex-1 relative overflow-hidden bg-bg-main cursor-crosshair',
+            'flex-1 relative overflow-hidden bg-bg-main',
+            activeTool === 'select' ? (draggedShapeId || isDraggingBg ? 'cursor-move' : 'cursor-default') : 'cursor-crosshair',
             (isSpacePressed || activeTool === 'pan') && (isPanning ? 'cursor-grabbing' : 'cursor-grab')
           )}
         >
@@ -1409,8 +1897,39 @@ export default function SketchingStudioPage() {
           </div>
         </div>
 
-        {/* Right Unified Studio Panel (LAYERS ARE DIRECTLY ACCESSIBLE & NOT HIDDEN) */}
-        <aside className="w-64 bg-surface-main border-l border-border-main flex flex-col shrink-0 z-10 overflow-y-auto">
+        {/* Mobile Backdrop for Right Panel */}
+        {isMobilePanelOpen && (
+          <div
+            className="md:hidden fixed inset-0 bg-black/50 backdrop-blur-xs z-30 animate-in fade-in"
+            onClick={() => setIsMobilePanelOpen(false)}
+          />
+        )}
+
+        {/* Right Unified Studio Panel (Desktop: Fixed Rail, Mobile: Slide-Over Drawer) */}
+        <aside
+          className={cn(
+            "bg-surface-main border-l border-border-main flex flex-col shrink-0 overflow-y-auto transition-transform duration-200 ease-in-out",
+            // Desktop behavior
+            "md:w-64 md:relative md:translate-x-0 md:z-10",
+            // Mobile behavior
+            "w-72 max-w-[85vw] fixed right-0 top-0 bottom-0 z-40 shadow-2xl md:shadow-none",
+            isMobilePanelOpen ? "translate-x-0" : "translate-x-full md:translate-x-0"
+          )}
+        >
+          {/* Mobile Drawer Header */}
+          <div className="md:hidden flex items-center justify-between p-3 border-b border-border-main bg-surface-hover/60">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-text-main">
+              <SlidersHorizontal className="w-3.5 h-3.5 text-accent-cyan" />
+              <span>STUDIO PROPERTIES</span>
+            </div>
+            <button
+              onClick={() => setIsMobilePanelOpen(false)}
+              className="p-1 rounded-lg hover:bg-surface-hover text-muted-main hover:text-text-main cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
           {/* 1. LAYERS SECTION (Always Front & Center) */}
           <div className="p-3 border-b border-border-main space-y-2">
             <div className="flex justify-between items-center">
@@ -1600,6 +2119,24 @@ export default function SketchingStudioPage() {
                       className="w-24 accent-accent-yellow cursor-pointer"
                     />
                   </div>
+
+                  <div className="flex items-center justify-between pt-1 border-t border-border-main text-[9px]">
+                    <span className="text-muted-main flex items-center gap-1">
+                      <MousePointer2 className="w-3 h-3 text-accent-cyan" />
+                      <span>Draggable in Select mode</span>
+                    </span>
+                    <button
+                      onClick={() => {
+                        setBgPosition(null);
+                        showNotice('Reset blueprint position to center');
+                      }}
+                      className="flex items-center gap-1 px-1.5 py-0.5 bg-surface-main hover:bg-bg-main border border-border-main text-text-main hover:text-accent-yellow cursor-pointer"
+                      title="Reset position to canvas center"
+                    >
+                      <RotateCcw className="w-2.5 h-2.5" />
+                      <span>Reset Pos</span>
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <button
@@ -1662,27 +2199,51 @@ export default function SketchingStudioPage() {
           <div className="bg-surface-main border-2 border-border-strong max-w-sm w-full p-4 space-y-3 shadow-xl">
             <h3 className="font-bold text-text-main text-xs uppercase flex items-center gap-1.5">
               <Type className="w-3.5 h-3.5 text-accent-cyan" />
-              <span>INSERT TEXT NOTE</span>
+              <span>{editingTextShapeId ? 'EDIT TEXT BOX' : 'INSERT TEXT BOX'}</span>
             </h3>
             <textarea
               value={textInput}
               onChange={(e) => setTextInput(e.target.value)}
               placeholder="Enter note text..."
-              className="w-full h-20 bg-bg-main border border-border-main p-2 text-xs text-text-main focus:outline-none"
+              className="w-full h-24 bg-bg-main border border-border-main p-2 text-xs text-text-main focus:outline-none"
+              autoFocus
             />
-            <div className="flex justify-end gap-1.5">
-              <button
-                onClick={() => setIsTextModalOpen(false)}
-                className="px-2.5 py-1 bg-surface-hover border border-border-main text-[11px] text-muted-main cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleAddText}
-                className="px-2.5 py-1 bg-text-main text-bg-main text-[11px] font-bold cursor-pointer"
-              >
-                Insert
-              </button>
+            <div className="flex items-center justify-between pt-1">
+              <div className="flex items-center gap-1.5 text-[10px] text-muted-main font-bold">
+                <span>SIZE:</span>
+                {[12, 16, 20, 24].map((fs) => (
+                  <button
+                    key={fs}
+                    type="button"
+                    onClick={() => setTextFontSize(fs)}
+                    className={cn(
+                      "px-1.5 py-0.5 border text-[9px] cursor-pointer",
+                      textFontSize === fs
+                        ? "bg-accent-yellow text-slate-950 border-accent-yellow font-bold"
+                        : "bg-surface-hover border-border-main text-text-main"
+                    )}
+                  >
+                    {fs}px
+                  </button>
+                ))}
+              </div>
+              <div className="flex gap-1.5">
+                <button
+                  onClick={() => {
+                    setIsTextModalOpen(false);
+                    setEditingTextShapeId(null);
+                  }}
+                  className="px-2.5 py-1 bg-surface-hover border border-border-main text-[11px] text-muted-main cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleAddText}
+                  className="px-2.5 py-1 bg-text-main text-bg-main text-[11px] font-bold cursor-pointer"
+                >
+                  {editingTextShapeId ? 'Save' : 'Insert Box'}
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -1816,6 +2377,178 @@ export default function SketchingStudioPage() {
               >
                 Clear
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: STUDIO VAULT SKETCHES ARCHIVE */}
+      {isVaultModalOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="bg-surface-main border-2 border-border-strong max-w-4xl w-full p-5 space-y-4 shadow-2xl max-h-[85vh] flex flex-col">
+            <div className="flex justify-between items-center border-b border-border-main pb-3">
+              <div className="flex items-center gap-2">
+                <FolderOpen className="w-5 h-5 text-accent-cyan" />
+                <div>
+                  <h3 className="font-bold text-sm text-text-main uppercase tracking-wider">
+                    STUDIO VAULT • SAVED SKETCHES &amp; MARKUPS
+                  </h3>
+                  <p className="text-[10px] text-muted-main">
+                    Cloud synchronized drawings &amp; vector redline archives ({savedSketches.length} drawings)
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsVaultModalOpen(false)}
+                className="p-1 rounded text-muted-main hover:text-text-main cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Saved Sketches Grid */}
+            <div className="flex-1 overflow-y-auto pr-1">
+              {savedSketches.length === 0 ? (
+                <div className="py-16 text-center space-y-2">
+                  <Compass className="w-8 h-8 text-muted-main/40 mx-auto" />
+                  <p className="text-xs text-muted-main">No saved sketches in your studio vault yet.</p>
+                  <p className="text-[10px] text-muted-main/80">Click &quot;SAVE&quot; in the top bar to archive your markups.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                  {savedSketches.map((sketch) => (
+                    <div
+                      key={sketch.id}
+                      className="bg-surface-hover/70 hover:bg-surface-hover border border-border-main hover:border-text-main p-3 rounded-lg flex flex-col justify-between space-y-2 transition-all group"
+                    >
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-bold text-accent-yellow font-mono">{sketch.sheetNo || 'A-101'}</span>
+                          <span className="text-[9px] text-muted-main font-mono">
+                            {new Date(sketch.timestamp).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                          </span>
+                        </div>
+                        <h4 className="text-xs font-bold text-text-main truncate" title={sketch.title}>
+                          {sketch.title}
+                        </h4>
+                        <p className="text-[10px] text-muted-main truncate">
+                          {sketch.projectName || 'Studio Project'} • {sketch.scale || '1:100'}
+                        </p>
+                      </div>
+
+                      {/* Thumbnail Preview with Lightbox Click */}
+                      <div
+                        onClick={() => setPreviewingVaultSketch(sketch)}
+                        className="aspect-video bg-white rounded border border-border-main overflow-hidden cursor-pointer relative group/thumb"
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={sketch.dataUrl}
+                          alt={sketch.title}
+                          className="w-full h-full object-contain bg-white group-hover/thumb:scale-105 transition-transform"
+                        />
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/thumb:opacity-100 transition-opacity flex items-center justify-center text-white text-[10px] font-bold gap-1">
+                          <ZoomIn className="w-3.5 h-3.5" />
+                          <span>View Full</span>
+                        </div>
+                      </div>
+
+                      {/* Action Bar */}
+                      <div className="flex items-center gap-1.5 pt-1 border-t border-border-main/50">
+                        <button
+                          onClick={() => {
+                            const img = new Image();
+                            img.crossOrigin = 'anonymous';
+                            img.onload = () => {
+                              setBgImage(img);
+                              setBgImageUrl(sketch.dataUrl);
+                              setSheetNo(sketch.sheetNo || 'A-101');
+                              setSketchTitle(sketch.title || 'Loaded Markup');
+                              if (sketch.projectName) setProjectName(sketch.projectName);
+                              setIsVaultModalOpen(false);
+                              redrawCanvas(shapes);
+                              showNotice(`Loaded: ${sketch.title}`);
+                            };
+                            img.src = sketch.dataUrl;
+                          }}
+                          className="flex-1 py-1 bg-text-main text-bg-main text-[10px] font-bold rounded flex items-center justify-center gap-1 hover:opacity-90 cursor-pointer"
+                        >
+                          <span>Open on Canvas</span>
+                        </button>
+                        <a
+                          href={sketch.dataUrl}
+                          download={`${sketch.sheetNo || 'A-101'}_${sketch.title.replace(/\s+/g, '_')}.png`}
+                          className="p-1 rounded border border-border-main hover:bg-surface-main text-muted-main hover:text-text-main cursor-pointer"
+                          title="Download PNG"
+                        >
+                          <FileDown className="w-3.5 h-3.5" />
+                        </a>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: VAULT SKETCH ENLARGED PREVIEW */}
+      {previewingVaultSketch && (
+        <div
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setPreviewingVaultSketch(null);
+          }}
+          className="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-4 cursor-pointer animate-in fade-in duration-150"
+        >
+          <div className="bg-surface-main border border-border-main rounded-2xl max-w-4xl w-full p-5 space-y-4 shadow-2xl cursor-default">
+            <div className="flex items-center justify-between border-b border-border-main pb-3">
+              <div>
+                <h3 className="font-bold text-sm text-text-main">
+                  {previewingVaultSketch.title} ({previewingVaultSketch.sheetNo})
+                </h3>
+                <p className="text-[10px] text-muted-main">
+                  {previewingVaultSketch.projectName} • {previewingVaultSketch.scale}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    const img = new Image();
+                    img.crossOrigin = 'anonymous';
+                    img.onload = () => {
+                      setBgImage(img);
+                      setBgImageUrl(previewingVaultSketch.dataUrl);
+                      setSheetNo(previewingVaultSketch.sheetNo || 'A-101');
+                      setSketchTitle(previewingVaultSketch.title || 'Loaded Markup');
+                      if (previewingVaultSketch.projectName) setProjectName(previewingVaultSketch.projectName);
+                      setPreviewingVaultSketch(null);
+                      setIsVaultModalOpen(false);
+                      redrawCanvas(shapes);
+                      showNotice(`Loaded: ${previewingVaultSketch.title}`);
+                    };
+                    img.src = previewingVaultSketch.dataUrl;
+                  }}
+                  className="px-3 py-1.5 bg-accent-cyan hover:opacity-90 text-slate-950 font-bold rounded-lg text-xs flex items-center gap-1 cursor-pointer"
+                >
+                  <span>Edit in Canvas</span>
+                </button>
+                <button
+                  onClick={() => setPreviewingVaultSketch(null)}
+                  className="p-1.5 rounded-lg hover:bg-surface-hover text-muted-main hover:text-text-main cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            <div className="max-h-[70vh] overflow-hidden rounded-xl bg-black/5 flex items-center justify-center p-2">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={previewingVaultSketch.dataUrl}
+                alt={previewingVaultSketch.title}
+                className="max-h-[65vh] w-auto max-w-full object-contain rounded-lg shadow-md bg-white"
+              />
             </div>
           </div>
         </div>

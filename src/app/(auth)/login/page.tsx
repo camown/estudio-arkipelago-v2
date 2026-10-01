@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import LoginForm from '@/components/auth/LoginForm';
 
 export const metadata: Metadata = {
-  title: 'AUTHENTICATE | ESTUDIO ARKIPELAGO',
+  title: 'ESTUDIO ARKIPELAGO | LOGIN',
   description: 'Operations System Access Authentication',
 };
 

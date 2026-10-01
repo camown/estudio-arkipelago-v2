@@ -13,7 +13,9 @@ import {
   LayoutGrid, List, Columns, SlidersHorizontal,
   FolderOpen, FolderKanban, Folder, ChevronRight,
   HelpCircle, AlertTriangle, DollarSign,
-  Clock, Check, Stamp, Download
+  Clock, Check, Stamp, Download,
+  LayoutDashboard, Users, Calendar, MapPin,
+  TrendingUp, Sparkles, ArrowUpRight, ArrowLeft
 } from 'lucide-react';
 import { 
   Project, 
@@ -569,7 +571,7 @@ export default function ProjectsPage() {
 
   // Active working project context & Project Detail Modal
   const [selectedProjectForDetail, setSelectedProjectForDetail] = useState<EnrichedProject | null>(null);
-  const [activeDetailTab, setActiveDetailTab] = useState<'DRAWINGS' | 'CA_ADMIN' | 'PRE_DESIGN' | 'CONTRACTS' | 'MINUTES'>('DRAWINGS');
+  const [activeDetailTab, setActiveDetailTab] = useState<'OVERVIEW' | 'DRAWINGS' | 'CA_ADMIN' | 'PRE_DESIGN' | 'CONTRACTS' | 'MINUTES'>('OVERVIEW');
 
   const [customFolders, setCustomFolders] = useState<string[]>([
     'IMPORTANT',
@@ -1076,6 +1078,516 @@ export default function ProjectsPage() {
     return projectRfis.filter((r) => r.status === 'OPEN' || r.status === 'UNDER_REVIEW').length;
   }, [projectRfis]);
 
+  // =========================================================================
+  // IF A PROJECT IS SELECTED: RENDER DEDICATED FULL-PAGE PROJECT WORKSPACE
+  // =========================================================================
+  if (selectedProjectForDetail) {
+    const stageCol = STAGE_COLUMNS.find((c) => c.id === selectedProjectForDetail.stage);
+    const activeProjectRfis = rfis.filter(
+      (r) => r.projectId === selectedProjectForDetail.id || r.projectCode === selectedProjectForDetail.code
+    );
+
+    return (
+      <div className="space-y-6 pb-20 font-sans animate-in fade-in duration-200">
+        {/* Toast Notification */}
+        {toastMessage && (
+          <div className="fixed bottom-6 right-6 z-50 bg-black text-white dark:bg-white dark:text-black px-4 py-2.5 rounded-xl shadow-2xl flex items-center gap-2 text-xs font-semibold animate-in fade-in slide-in-from-bottom-2 duration-200">
+            <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+            <span>{toastMessage}</span>
+          </div>
+        )}
+
+        {/* TOP BREADCRUMB & ACTION BAR */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border-main pb-4">
+          <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              onClick={() => setSelectedProjectForDetail(null)}
+              className="rounded-xl border-border-main hover:bg-surface-hover text-text-main font-semibold text-xs py-2 px-3 shadow-2xs cursor-pointer active:scale-[0.98] transition-all flex items-center gap-1.5 shrink-0"
+            >
+              <ArrowLeft className="w-4 h-4 text-accent-cyan" />
+              <span>All Projects</span>
+            </Button>
+
+            <div className="h-5 w-px bg-border-main hidden sm:block" />
+
+            <div className="flex items-center gap-2 flex-wrap min-w-0">
+              <span className="px-2.5 py-0.5 bg-black text-white dark:bg-white dark:text-black text-xs font-bold font-mono rounded">
+                {selectedProjectForDetail.code}
+              </span>
+              <h1 className="text-base sm:text-xl font-bold text-text-main truncate max-w-[280px] sm:max-w-md">
+                {selectedProjectForDetail.name}
+              </h1>
+              <span
+                className={cn(
+                  'inline-flex items-center px-2 py-0.5 rounded text-[11px] font-mono uppercase font-bold tracking-wider',
+                  stageCol?.badgeColor || 'bg-surface-hover text-text-main border border-border-strong'
+                )}
+              >
+                {stageCol?.badgeLabel || selectedProjectForDetail.status}
+              </span>
+            </div>
+          </div>
+
+          {/* Quick Action Shortcuts */}
+          <div className="flex items-center gap-2 flex-wrap self-end sm:self-auto">
+            <Button
+              variant="outline"
+              onClick={exportRFIsToCSV}
+              className="rounded-xl border-border-main hover:bg-surface-hover text-text-main font-semibold text-xs py-2 px-3 shadow-2xs cursor-pointer flex items-center gap-1.5"
+              title="Export RFIs to CSV"
+            >
+              <Download className="w-3.5 h-3.5 text-muted-main" />
+              <span className="hidden sm:inline">Export RFIs</span>
+            </Button>
+
+            <Button
+              variant="outline"
+              onClick={() => router.push(`/chat?thread=${selectedProjectForDetail.code}`)}
+              className="rounded-xl border-border-main hover:bg-surface-hover text-text-main font-semibold text-xs py-2 px-3 shadow-2xs cursor-pointer flex items-center gap-1.5"
+            >
+              <MessageSquare className="w-3.5 h-3.5 text-accent-cyan" />
+              <span>Project Chat</span>
+            </Button>
+
+            <Button
+              onClick={() => {
+                router.push(`/sketch?project=${selectedProjectForDetail.code}`);
+              }}
+              className="rounded-xl bg-black text-white dark:bg-white dark:text-black font-semibold text-xs py-2 px-3.5 shadow-xs cursor-pointer active:scale-[0.98] transition-all flex items-center gap-1.5"
+            >
+              <PenTool className="w-3.5 h-3.5 text-accent-yellow" />
+              <span>Sketch Studio</span>
+            </Button>
+          </div>
+        </div>
+
+        {/* FULL-WIDTH ARCHITECTURAL MODULE NAVIGATION TABS */}
+        <div className="bg-surface-main border border-border-main rounded-2xl p-1.5 shadow-2xs">
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1.5 scrollbar-thin scrollbar-thumb-border-main scrollbar-track-transparent">
+            <button
+              onClick={() => setActiveDetailTab('OVERVIEW')}
+              className={cn(
+                'px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold tracking-wide transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap shrink-0',
+                activeDetailTab === 'OVERVIEW'
+                  ? 'bg-black text-white dark:bg-white dark:text-black shadow-xs font-bold'
+                  : 'text-muted-main hover:text-text-main hover:bg-surface-hover'
+              )}
+            >
+              <LayoutDashboard className="w-4 h-4 text-accent-cyan" />
+              <span>Project Overview</span>
+            </button>
+
+            <button
+              onClick={() => setActiveDetailTab('DRAWINGS')}
+              className={cn(
+                'px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold tracking-wide transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap shrink-0',
+                activeDetailTab === 'DRAWINGS'
+                  ? 'bg-black text-white dark:bg-white dark:text-black shadow-xs font-bold'
+                  : 'text-muted-main hover:text-text-main hover:bg-surface-hover'
+              )}
+            >
+              <FileText className="w-4 h-4 text-accent-yellow" />
+              <span>Drawing Sets Vault</span>
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-surface-hover/70 font-mono font-bold">
+                {selectedProjectForDetail.sheetCount || 16}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setActiveDetailTab('CA_ADMIN')}
+              className={cn(
+                'px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold tracking-wide transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap shrink-0',
+                activeDetailTab === 'CA_ADMIN'
+                  ? 'bg-black text-white dark:bg-white dark:text-black shadow-xs font-bold'
+                  : 'text-muted-main hover:text-text-main hover:bg-surface-hover'
+              )}
+            >
+              <HardHat className="w-4 h-4 text-amber-500" />
+              <span>Construction Admin (RFI/RFA)</span>
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-surface-hover/70 font-mono font-bold">
+                {activeProjectRfis.length}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setActiveDetailTab('PRE_DESIGN')}
+              className={cn(
+                'px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold tracking-wide transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap shrink-0',
+                activeDetailTab === 'PRE_DESIGN'
+                  ? 'bg-black text-white dark:bg-white dark:text-black shadow-xs font-bold'
+                  : 'text-muted-main hover:text-text-main hover:bg-surface-hover'
+              )}
+            >
+              <FolderOpen className="w-4 h-4 text-cyan-500" />
+              <span>Pre-Design & Program</span>
+            </button>
+
+            <button
+              onClick={() => setActiveDetailTab('CONTRACTS')}
+              className={cn(
+                'px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold tracking-wide transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap shrink-0',
+                activeDetailTab === 'CONTRACTS'
+                  ? 'bg-black text-white dark:bg-white dark:text-black shadow-xs font-bold'
+                  : 'text-muted-main hover:text-text-main hover:bg-surface-hover'
+              )}
+            >
+              <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+              <span>Contracts & Billing</span>
+            </button>
+
+            <button
+              onClick={() => setActiveDetailTab('MINUTES')}
+              className={cn(
+                'px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold tracking-wide transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap shrink-0',
+                activeDetailTab === 'MINUTES'
+                  ? 'bg-black text-white dark:bg-white dark:text-black shadow-xs font-bold'
+                  : 'text-muted-main hover:text-text-main hover:bg-surface-hover'
+              )}
+            >
+              <MessageSquare className="w-4 h-4 text-purple-500" />
+              <span>Client Minutes</span>
+            </button>
+          </div>
+        </div>
+
+        {/* ========================================================================= */}
+        {/* TAB CONTENT: 0. ONE-PAGE PROJECT OVERVIEW DASHBOARD */}
+        {/* ========================================================================= */}
+        {activeDetailTab === 'OVERVIEW' && (
+          <div className="space-y-6 sm:space-y-8 animate-in fade-in duration-200">
+            {/* Top Grid: Hero Summary & Key Metrics Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              {/* Hero Image & Metadata Banner - Spacious & Prominent */}
+              <div className="lg:col-span-8 relative rounded-3xl overflow-hidden border border-border-main bg-surface-hover/50 min-h-[320px] sm:min-h-[380px] flex flex-col justify-end p-6 sm:p-10 shadow-md">
+                {selectedProjectForDetail.heroImage && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={selectedProjectForDetail.heroImage}
+                    alt={selectedProjectForDetail.name}
+                    className="absolute inset-0 w-full h-full object-cover brightness-[0.40] scale-[1.02] hover:scale-105 transition-transform duration-700"
+                  />
+                )}
+                <div className="relative z-10 space-y-4 text-white">
+                  <div className="flex items-center gap-2.5 flex-wrap">
+                    <span className="px-3 py-1.5 rounded-xl bg-accent-cyan text-slate-950 font-bold font-mono text-xs sm:text-sm shadow-sm">
+                      {selectedProjectForDetail.code}
+                    </span>
+                    <span className="text-xs sm:text-sm bg-black/65 backdrop-blur-md px-3.5 py-1.5 rounded-xl border border-white/20 font-medium font-mono">
+                      {selectedProjectForDetail.phase || 'Active Architectural Phase'}
+                    </span>
+                    <span className="text-xs sm:text-sm bg-emerald-500/90 text-white font-mono px-3 py-1.5 rounded-xl font-bold backdrop-blur-md shadow-xs">
+                      {selectedProjectForDetail.stage?.replace(/_/g, ' ') || 'DESIGN'}
+                    </span>
+                  </div>
+
+                  <h2 className="text-2xl sm:text-4xl lg:text-5xl font-extrabold font-sans tracking-tight text-white drop-shadow-sm leading-tight">
+                    {selectedProjectForDetail.name}
+                  </h2>
+
+                  <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-xs sm:text-sm text-white/95 pt-2">
+                    <span className="flex items-center gap-2 bg-black/50 backdrop-blur-md px-3.5 py-2 rounded-xl border border-white/15">
+                      <MapPin className="w-4 h-4 text-accent-cyan shrink-0" />
+                      <span>{selectedProjectForDetail.location || 'Metro Manila'}</span>
+                    </span>
+                    <span className="flex items-center gap-2 bg-black/50 backdrop-blur-md px-3.5 py-2 rounded-xl border border-white/15">
+                      <Users className="w-4 h-4 text-accent-yellow shrink-0" />
+                      <span>Lead: <strong>{selectedProjectForDetail.leadArchitect || 'Arch. Leandro Locsin'}</strong></span>
+                    </span>
+                    <span className="flex items-center gap-2 bg-black/50 backdrop-blur-md px-3.5 py-2 rounded-xl border border-white/15">
+                      <DollarSign className="w-4 h-4 text-emerald-400 shrink-0" />
+                      <span>Budget: <strong className="text-emerald-300 font-mono">{selectedProjectForDetail.budget || '₱1.2M'}</strong></span>
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Progress & Quick Health Card - Larger with clear metrics */}
+              <div className="lg:col-span-4 bg-surface-main border border-border-main rounded-3xl p-6 sm:p-7 flex flex-col justify-between space-y-6 shadow-sm">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs sm:text-sm font-bold text-muted-main uppercase tracking-wider">
+                      Milestone Velocity
+                    </span>
+                    <span className="text-xl sm:text-2xl font-extrabold text-accent-cyan font-mono">
+                      {selectedProjectForDetail.progress || 60}%
+                    </span>
+                  </div>
+
+                  <div className="w-full bg-border-main rounded-full h-3.5 overflow-hidden p-0.5">
+                    <div
+                      className="bg-accent-cyan h-full rounded-full transition-all duration-700 shadow-sm"
+                      style={{ width: `${selectedProjectForDetail.progress || 60}%` }}
+                    />
+                  </div>
+
+                  <div className="p-3.5 bg-surface-hover/50 border border-border-main rounded-2xl">
+                    <span className="text-[10px] font-bold text-muted-main uppercase tracking-wider block mb-1">Current Action</span>
+                    <p className="text-xs sm:text-sm text-text-main font-medium leading-relaxed">
+                      {selectedProjectForDetail.phaseStep || 'Awaiting contractor engineering submittals and site mockups.'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="pt-5 border-t border-border-main grid grid-cols-2 gap-3.5 text-center font-mono">
+                  <div className="p-4 rounded-2xl bg-surface-hover/70 border border-border-main hover:border-text-main transition-colors">
+                    <div className="text-[11px] font-bold text-muted-main tracking-wider uppercase">BLUEPRINT SHEETS</div>
+                    <div className="text-2xl sm:text-3xl font-extrabold text-text-main mt-1">
+                      {selectedProjectForDetail.sheetCount || 16}
+                    </div>
+                  </div>
+                  <div className="p-4 rounded-2xl bg-surface-hover/70 border border-border-main hover:border-text-main transition-colors">
+                    <div className="text-[11px] font-bold text-muted-main tracking-wider uppercase">ACTIVE RFIs</div>
+                    <div className="text-2xl sm:text-3xl font-extrabold text-amber-500 mt-1">
+                      {activeProjectRfis.length || 2}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 1-PAGE SUMMARY HUBS (Large, readable, actionable sections) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Quick Hub 1: Drawings & Redlines */}
+              <div className="bg-surface-main border border-border-main rounded-3xl p-6 sm:p-7 space-y-5 shadow-sm">
+                <div className="flex items-center justify-between pb-1 border-b border-border-main/50">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-accent-cyan/15 text-accent-cyan flex items-center justify-center">
+                      <FileText className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-sm sm:text-base text-text-main font-sans">
+                        Latest Drawing Sheets
+                      </h3>
+                      <p className="text-[11px] text-muted-main">Vault blueprints ready for CAD review &amp; markup</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setActiveDetailTab('DRAWINGS')}
+                    className="px-3 py-1.5 rounded-xl bg-surface-hover hover:bg-border-main text-xs font-bold text-accent-cyan flex items-center gap-1.5 cursor-pointer transition-all shrink-0"
+                  >
+                    <span>Full Vault</span>
+                    <ArrowUpRight className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <div className="space-y-3">
+                  {drawings.slice(0, 4).map((d) => (
+                    <div
+                      key={d.id}
+                      className="flex items-center justify-between p-3.5 rounded-2xl bg-surface-hover/60 border border-border-main text-xs sm:text-sm hover:border-text-main transition-all group"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span className="font-mono font-extrabold text-accent-yellow px-2.5 py-1 rounded-lg bg-surface-main border border-border-main text-xs shrink-0">
+                          {d.sheetNumber}
+                        </span>
+                        <div className="min-w-0">
+                          <span className="font-semibold text-text-main block truncate group-hover:text-accent-cyan transition-colors">
+                            {d.title}
+                          </span>
+                          <span className="text-[10px] text-muted-main font-mono">{d.category} • {d.revision}</span>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => {
+                          router.push(`/sketch?project=${selectedProjectForDetail.code}&sheet=${encodeURIComponent(d.sheetNumber)}`);
+                        }}
+                        className="p-2 px-3 text-xs font-bold bg-rose-600 hover:bg-rose-700 active:scale-95 text-white rounded-xl flex items-center gap-1.5 cursor-pointer shrink-0 shadow-xs transition-all ml-2"
+                      >
+                        <PenTool className="w-3.5 h-3.5" />
+                        <span>Redline</span>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Quick Hub 2: Construction Admin RFIs & RFAs */}
+              <div className="bg-surface-main border border-border-main rounded-3xl p-6 sm:p-7 space-y-5 shadow-sm">
+                <div className="flex items-center justify-between pb-1 border-b border-border-main/50">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-amber-500/15 text-amber-500 flex items-center justify-center">
+                      <HardHat className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-sm sm:text-base text-text-main font-sans">
+                        Active Construction RFIs
+                      </h3>
+                      <p className="text-[11px] text-muted-main">Contractor site requests &amp; engineer clearances</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setActiveDetailTab('CA_ADMIN')}
+                    className="px-3 py-1.5 rounded-xl bg-surface-hover hover:bg-border-main text-xs font-bold text-accent-cyan flex items-center gap-1.5 cursor-pointer transition-all shrink-0"
+                  >
+                    <span>Manage RFIs</span>
+                    <ArrowUpRight className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <div className="space-y-3">
+                  {rfis.slice(0, 4).map((r) => (
+                    <div
+                      key={r.id}
+                      className="flex items-center justify-between p-3.5 rounded-2xl bg-surface-hover/60 border border-border-main text-xs sm:text-sm hover:border-text-main transition-all"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-surface-main border border-border-main text-muted-main shrink-0">
+                          {r.rfiNumber}
+                        </span>
+                        <div className="min-w-0">
+                          <span className="font-semibold text-text-main block truncate">
+                            {r.subject || r.title || 'Technical Inquiry'}
+                          </span>
+                          <span className="text-[10px] text-muted-main font-sans">By {r.submittedBy}</span>
+                        </div>
+                      </div>
+                      <span className={cn(
+                        'text-[10px] font-mono px-2.5 py-1 rounded-lg font-bold shrink-0 shadow-2xs ml-2',
+                        r.status === 'ANSWERED' || r.status === 'RESPONDED'
+                          ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
+                          : 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30'
+                      )}>
+                        {r.status}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Hub 3: Contract Milestone & Pre-Design Summary Stream */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Contracts & Billing Milestone Summary */}
+              <div className="bg-surface-main border border-border-main rounded-3xl p-6 sm:p-7 space-y-4 shadow-sm">
+                <div className="flex items-center justify-between pb-1 border-b border-border-main/50">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-emerald-500/15 text-emerald-500 flex items-center justify-center">
+                      <CheckCircle2 className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-sm sm:text-base text-text-main font-sans">
+                        Contract &amp; Billing Status
+                      </h3>
+                      <p className="text-[11px] text-muted-main">Fee collection and architectural milestones</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setActiveDetailTab('CONTRACTS')}
+                    className="px-3 py-1.5 rounded-xl bg-surface-hover hover:bg-border-main text-xs font-bold text-accent-cyan flex items-center gap-1.5 cursor-pointer transition-all shrink-0"
+                  >
+                    <span>View Stepper</span>
+                    <ArrowUpRight className="w-4 h-4" />
+                  </button>
+                </div>
+                <div className="p-4 sm:p-5 bg-surface-hover/40 border border-border-main rounded-2xl space-y-2">
+                  <div className="flex items-center justify-between text-xs sm:text-sm font-bold">
+                    <span>Design Phase Progress</span>
+                    <span className="text-emerald-500 font-mono">Phase 2 Unlocked • Active</span>
+                  </div>
+                  <p className="text-xs sm:text-sm text-muted-main leading-relaxed">
+                    Phase 2 design fees collected. Construction documents contract issued to client.
+                  </p>
+                </div>
+              </div>
+
+              {/* Pre-Design & Site Feasibility Summary */}
+              <div className="bg-surface-main border border-border-main rounded-3xl p-6 sm:p-7 space-y-4 shadow-sm">
+                <div className="flex items-center justify-between pb-1 border-b border-border-main/50">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-cyan-500/15 text-cyan-500 flex items-center justify-center">
+                      <FolderOpen className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-sm sm:text-base text-text-main font-sans">
+                        Pre-Design Feasibility
+                      </h3>
+                      <p className="text-[11px] text-muted-main">Zoning, soil test, &amp; site clearances</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setActiveDetailTab('PRE_DESIGN')}
+                    className="px-3 py-1.5 rounded-xl bg-surface-hover hover:bg-border-main text-xs font-bold text-accent-cyan flex items-center gap-1.5 cursor-pointer transition-all shrink-0"
+                  >
+                    <span>Checklist</span>
+                    <ArrowUpRight className="w-4 h-4" />
+                  </button>
+                </div>
+                <div className="p-4 sm:p-5 bg-surface-hover/40 border border-border-main rounded-2xl space-y-2">
+                  <div className="flex items-center justify-between text-xs sm:text-sm font-bold">
+                    <span>Zoning &amp; Legal Compliance</span>
+                    <span className="text-cyan-500 font-mono">Verified • Passed</span>
+                  </div>
+                  <p className="text-xs sm:text-sm text-muted-main leading-relaxed">
+                    Soil bearing capacity validated. Environmental clearance certificate attached.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB CONTENT: 1. DRAWING SETS VAULT */}
+        {activeDetailTab === 'DRAWINGS' && (
+          <div className="bg-surface-main border border-border-main rounded-3xl p-6 shadow-2xs">
+            <DrawingSetsSection
+              projectId={selectedProjectForDetail.id}
+              projectCode={selectedProjectForDetail.code}
+              onRedline={(sheet) => {
+                router.push(`/sketch?project=${selectedProjectForDetail.code}&sheet=${encodeURIComponent(sheet.code)}`);
+              }}
+            />
+          </div>
+        )}
+
+        {/* TAB CONTENT: 2. CONSTRUCTION ADMIN */}
+        {activeDetailTab === 'CA_ADMIN' && (
+          <div className="bg-surface-main border border-border-main rounded-3xl p-6 shadow-2xs">
+            <ConstructionAdminSection
+              projectId={selectedProjectForDetail.id}
+              projectCode={selectedProjectForDetail.code}
+              projectName={selectedProjectForDetail.name}
+              isContractor={isContractor}
+            />
+          </div>
+        )}
+
+        {/* TAB CONTENT: 3. PRE-DESIGN */}
+        {activeDetailTab === 'PRE_DESIGN' && (
+          <div className="bg-surface-main border border-border-main rounded-3xl p-6 shadow-2xs">
+            <PreDesignSection
+              projectId={selectedProjectForDetail.id}
+              projectCode={selectedProjectForDetail.code}
+              location={selectedProjectForDetail.location}
+            />
+          </div>
+        )}
+
+        {/* TAB CONTENT: 4. CONTRACTS & BILLING */}
+        {activeDetailTab === 'CONTRACTS' && (
+          <div className="bg-surface-main border border-border-main rounded-3xl p-6 shadow-2xs">
+            <ContractBillingStepper
+              projectId={selectedProjectForDetail.id}
+              projectCode={selectedProjectForDetail.code}
+              projectName={selectedProjectForDetail.name}
+            />
+          </div>
+        )}
+
+        {/* TAB CONTENT: 5. CLIENT MINUTES */}
+        {activeDetailTab === 'MINUTES' && (
+          <div className="bg-surface-main border border-border-main rounded-3xl p-6 shadow-2xs">
+            <MeetingMinutesSection
+              projectId={selectedProjectForDetail.id}
+              projectCode={selectedProjectForDetail.code}
+              projectName={selectedProjectForDetail.name}
+            />
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-5 pb-16 font-sans">
       {/* Toast Notification */}
@@ -1462,7 +1974,8 @@ export default function ProjectsPage() {
       {/* MODE 1: STAGE PIPELINE COLUMNS VIEW */}
       {/* ============================================================== */}
       {viewMode === 'BOARD' && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 items-start pt-1">
+        <div className="overflow-x-auto pb-4 pt-1 scrollbar-thin scrollbar-thumb-border-main scrollbar-track-transparent">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 items-start min-w-[300px] lg:min-w-0">
           {STAGE_COLUMNS.map((col) => {
             const colProjects = filteredProjects.filter((p) => (p.stage || 'DESIGN') === col.id);
 
@@ -1553,6 +2066,7 @@ export default function ProjectsPage() {
               </div>
             );
           })}
+          </div>
         </div>
       )}
 
@@ -1672,198 +2186,6 @@ export default function ProjectsPage() {
               </div>
             );
           })}
-        </div>
-      )}
-
-      {/* ============================================================== */}
-      {/* 4. BLUEPRINT VAULT & RFI / SUBMITTAL TRACKING HUB MODAL */}
-      {/* ============================================================== */}
-      {selectedProjectForDetail && (
-        <div
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setSelectedProjectForDetail(null);
-          }}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-3 sm:p-4 font-mono overflow-y-auto cursor-pointer animate-in fade-in duration-150"
-        >
-          <div className="bg-surface-main border border-border-main w-full max-w-4xl rounded-2xl shadow-2xl p-5 sm:p-8 space-y-6 text-text-main relative my-auto cursor-default max-h-[90dvh] overflow-y-auto">
-            {/* Modal Header */}
-            <div className="flex items-start justify-between border-b border-border-main pb-4">
-              <div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="px-2.5 py-0.5 bg-black text-white dark:bg-white dark:text-black text-xs font-bold rounded">
-                    {selectedProjectForDetail.code}
-                  </span>
-                  {(() => {
-                    const stageCol = STAGE_COLUMNS.find((c) => c.id === selectedProjectForDetail.stage);
-                    return (
-                      <span
-                        className={cn(
-                          'inline-flex items-center px-2.5 py-0.5 rounded text-xs font-mono uppercase font-bold tracking-wider',
-                          stageCol?.badgeColor || 'bg-surface-hover text-text-main border border-border-strong'
-                        )}
-                      >
-                        {stageCol?.badgeLabel || selectedProjectForDetail.status}
-                      </span>
-                    );
-                  })()}
-                  <span className="text-xs font-mono font-bold text-accent-cyan">
-                    Budget: {selectedProjectForDetail.budget || '₱1.2M'}
-                  </span>
-                </div>
-                <h2 className="text-xl font-bold text-text-main mt-2 font-sans">
-                  {selectedProjectForDetail.name}
-                </h2>
-                <p className="text-xs text-muted-main mt-0.5 font-sans">
-                  Client: {selectedProjectForDetail.clientName} · Location: {selectedProjectForDetail.location || 'Metro Manila'}
-                </p>
-              </div>
-              <button
-                onClick={() => setSelectedProjectForDetail(null)}
-                className="w-8 h-8 rounded-full border border-border-main hover:bg-surface-hover flex items-center justify-center cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Architectural Modules Navigation Tabs */}
-            <div className="flex items-center justify-between gap-1.5 overflow-x-auto pb-1 border-b border-border-main">
-              <div className="flex items-center gap-1.5 shrink-0">
-              <button
-                onClick={() => setActiveDetailTab('DRAWINGS')}
-                className={cn(
-                  'px-3 py-1.5 rounded-lg text-xs font-semibold tracking-wide transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap',
-                  activeDetailTab === 'DRAWINGS'
-                    ? 'bg-black text-white dark:bg-white dark:text-black shadow-xs'
-                    : 'text-muted-main hover:text-text-main hover:bg-surface-hover'
-                )}
-              >
-                <FileText className="w-3.5 h-3.5" />
-                <span>Drawing Sets Vault</span>
-              </button>
-
-              <button
-                onClick={() => setActiveDetailTab('CA_ADMIN')}
-                className={cn(
-                  'px-3 py-1.5 rounded-lg text-xs font-semibold tracking-wide transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap',
-                  activeDetailTab === 'CA_ADMIN'
-                    ? 'bg-black text-white dark:bg-white dark:text-black shadow-xs'
-                    : 'text-muted-main hover:text-text-main hover:bg-surface-hover'
-                )}
-              >
-                <HardHat className="w-3.5 h-3.5 text-amber-500" />
-                <span>Construction Admin (RFI/RFA)</span>
-              </button>
-
-              <button
-                onClick={() => setActiveDetailTab('PRE_DESIGN')}
-                className={cn(
-                  'px-3 py-1.5 rounded-lg text-xs font-semibold tracking-wide transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap',
-                  activeDetailTab === 'PRE_DESIGN'
-                    ? 'bg-black text-white dark:bg-white dark:text-black shadow-xs'
-                    : 'text-muted-main hover:text-text-main hover:bg-surface-hover'
-                )}
-              >
-                <FolderOpen className="w-3.5 h-3.5 text-cyan-500" />
-                <span>Pre-Design & Program</span>
-              </button>
-
-              <button
-                onClick={() => setActiveDetailTab('CONTRACTS')}
-                className={cn(
-                  'px-3 py-1.5 rounded-lg text-xs font-semibold tracking-wide transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap',
-                  activeDetailTab === 'CONTRACTS'
-                    ? 'bg-black text-white dark:bg-white dark:text-black shadow-xs'
-                    : 'text-muted-main hover:text-text-main hover:bg-surface-hover'
-                )}
-              >
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                <span>Contracts & Billing</span>
-              </button>
-
-              <button
-                onClick={() => setActiveDetailTab('MINUTES')}
-                className={cn(
-                  'px-3 py-1.5 rounded-lg text-xs font-semibold tracking-wide transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap',
-                  activeDetailTab === 'MINUTES'
-                    ? 'bg-black text-white dark:bg-white dark:text-black shadow-xs'
-                    : 'text-muted-main hover:text-text-main hover:bg-surface-hover'
-                )}
-              >
-                <MessageSquare className="w-3.5 h-3.5 text-purple-500" />
-                <span>Client Minutes</span>
-              </button>
-            </div>
-
-            {/* Chat room shortcut */}
-            <button
-              onClick={() => router.push(`/chat?thread=${selectedProjectForDetail.code}`)}
-              className="px-3 py-1.5 rounded-lg bg-surface-hover border border-border-main text-xs font-semibold flex items-center gap-1.5 hover:text-accent-cyan cursor-pointer shrink-0"
-            >
-              <MessageSquare className="w-3.5 h-3.5 text-accent-cyan" />
-              <span className="hidden sm:inline">Chat Thread</span>
-            </button>
-          </div>
-
-            {/* TAB CONTENT: 1. DRAWING SETS VAULT */}
-            {activeDetailTab === 'DRAWINGS' && (
-              <DrawingSetsSection
-                projectId={selectedProjectForDetail.id}
-                projectCode={selectedProjectForDetail.code}
-                onRedline={(sheet) => {
-                  setSelectedProjectForDetail(null);
-                  router.push(`/sketch?project=${selectedProjectForDetail.code}&sheet=${encodeURIComponent(sheet.code)}`);
-                }}
-              />
-            )}
-
-            {/* TAB CONTENT: 2. CONSTRUCTION ADMIN */}
-            {activeDetailTab === 'CA_ADMIN' && (
-              <ConstructionAdminSection
-                projectId={selectedProjectForDetail.id}
-                projectCode={selectedProjectForDetail.code}
-                projectName={selectedProjectForDetail.name}
-                isContractor={isContractor}
-              />
-            )}
-
-            {/* TAB CONTENT: 3. PRE-DESIGN */}
-            {activeDetailTab === 'PRE_DESIGN' && (
-              <PreDesignSection
-                projectId={selectedProjectForDetail.id}
-                projectCode={selectedProjectForDetail.code}
-                location={selectedProjectForDetail.location}
-              />
-            )}
-
-            {/* TAB CONTENT: 4. CONTRACTS & BILLING */}
-            {activeDetailTab === 'CONTRACTS' && (
-              <ContractBillingStepper
-                projectId={selectedProjectForDetail.id}
-                projectCode={selectedProjectForDetail.code}
-                projectName={selectedProjectForDetail.name}
-              />
-            )}
-
-            {/* TAB CONTENT: 5. CLIENT MINUTES */}
-            {activeDetailTab === 'MINUTES' && (
-              <MeetingMinutesSection
-                projectId={selectedProjectForDetail.id}
-                projectCode={selectedProjectForDetail.code}
-                projectName={selectedProjectForDetail.name}
-              />
-            )}
-
-            {/* Modal Footer */}
-            <div className="flex items-center justify-end border-t border-border-main pt-4">
-              <Button
-                variant="outline"
-                onClick={() => setSelectedProjectForDetail(null)}
-                className="text-xs font-semibold rounded-xl cursor-pointer"
-              >
-                Close Project Hub
-              </Button>
-            </div>
-          </div>
         </div>
       )}
 

@@ -9,7 +9,10 @@ import {
   FileText, 
   Plus, 
   PenTool, 
-  X
+  X,
+  Search,
+  SlidersHorizontal,
+  Layers
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -39,6 +42,7 @@ export function DrawingSetsSection({
 }: DrawingSetsSectionProps) {
   const [selectedDiscipline, setSelectedDiscipline] = useState<DrawingDiscipline | 'ALL'>('ALL');
   const [planTypeFilter, setPlanTypeFilter] = useState<'ALL' | 'BID' | 'PERMIT' | 'CONSTRUCTION'>('ALL');
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Realistic architectural sheet sets ported from beta-estudio
   const [sheets, setSheets] = useState<ArchitecturalSheet[]>([
@@ -86,6 +90,14 @@ export function DrawingSetsSection({
   const filteredSheets = sheets.filter((sh) => {
     if (selectedDiscipline !== 'ALL' && sh.discipline !== selectedDiscipline) return false;
     if (planTypeFilter !== 'ALL' && sh.planType !== planTypeFilter && sh.planType !== 'BOTH') return false;
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      const matchCode = sh.code.toLowerCase().includes(q);
+      const matchTitle = sh.title.toLowerCase().includes(q);
+      const matchAssignee = (sh.assignedTo || '').toLowerCase().includes(q);
+      const matchDisc = sh.discipline.toLowerCase().includes(q);
+      if (!matchCode && !matchTitle && !matchAssignee && !matchDisc) return false;
+    }
     return true;
   });
 
@@ -119,7 +131,7 @@ export function DrawingSetsSection({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border-main pb-4">
         <div>
@@ -129,7 +141,7 @@ export function DrawingSetsSection({
             </span>
             <span className="text-xs font-mono text-muted-main">{projectCode}</span>
           </div>
-          <h3 className="text-sm font-bold text-text-main mt-1">Architectural & Engineering Sheet Register</h3>
+          <h3 className="text-sm font-bold text-text-main mt-1">Architectural &amp; Engineering Sheet Register</h3>
         </div>
 
         <button
@@ -141,59 +153,94 @@ export function DrawingSetsSection({
         </button>
       </div>
 
-      {/* Discipline Filter Tabs */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
-        <button
-          onClick={() => setSelectedDiscipline('ALL')}
-          className={cn(
-            'px-2.5 py-1 rounded-lg text-xs font-semibold tracking-wide transition-all cursor-pointer whitespace-nowrap',
-            selectedDiscipline === 'ALL'
-              ? 'bg-black text-white dark:bg-white dark:text-black shadow-xs'
-              : 'text-muted-main hover:text-text-main hover:bg-surface-hover'
-          )}
-        >
-          All Disciplines ({sheets.length})
-        </button>
-        {DISCIPLINES.map((d) => {
-          const count = sheets.filter(s => s.discipline === d).length;
-          return (
-            <button
-              key={d}
-              onClick={() => setSelectedDiscipline(d)}
-              className={cn(
-                'px-2.5 py-1 rounded-lg text-xs font-semibold tracking-wide transition-all cursor-pointer whitespace-nowrap',
-                selectedDiscipline === d
-                  ? 'bg-black text-white dark:bg-white dark:text-black shadow-xs'
-                  : 'text-muted-main hover:text-text-main hover:bg-surface-hover'
-              )}
+      {/* Modern Compact Filter Bar (Dropdowns + Search) */}
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-surface-hover/40 border border-border-main p-3 rounded-2xl">
+        <div className="flex flex-wrap items-center gap-2.5">
+          {/* Discipline Dropdown Filter */}
+          <div className="flex items-center gap-1.5 bg-surface-main border border-border-main rounded-xl px-2.5 py-1.5 shadow-2xs">
+            <Layers className="w-3.5 h-3.5 text-accent-cyan shrink-0" />
+            <span className="text-[11px] font-semibold text-muted-main hidden xs:inline">Discipline:</span>
+            <select
+              value={selectedDiscipline}
+              onChange={(e) => setSelectedDiscipline(e.target.value as DrawingDiscipline | 'ALL')}
+              className="bg-transparent text-xs font-mono font-bold text-text-main focus:outline-none cursor-pointer max-w-[190px] sm:max-w-[240px] truncate"
             >
-              {d.split(' ')[0]} ({count})
-            </button>
-          );
-        })}
-      </div>
+              <option value="ALL" className="bg-surface-main text-text-main font-sans font-normal">
+                All Disciplines ({sheets.length})
+              </option>
+              {DISCIPLINES.map((d) => {
+                const count = sheets.filter(s => s.discipline === d).length;
+                return (
+                  <option key={d} value={d} className="bg-surface-main text-text-main font-sans font-normal">
+                    {d} ({count})
+                  </option>
+                );
+              })}
+            </select>
+          </div>
 
-      {/* Filter by plan type */}
-      <div className="flex items-center justify-between text-xs text-muted-main">
-        <span>Showing {filteredSheets.length} blueprint sheets</span>
-        <div className="flex items-center gap-2">
-          <span className="text-[11px] font-semibold">Plan Type:</span>
-          <select
-            value={planTypeFilter}
-            onChange={(e) => setPlanTypeFilter(e.target.value as 'ALL' | 'BID' | 'PERMIT' | 'CONSTRUCTION')}
-            className="bg-surface-hover border border-border-main rounded-md px-2 py-0.5 text-xs font-mono text-text-main focus:outline-none cursor-pointer"
-          >
-            <option value="ALL">All Sets</option>
-            <option value="BID">Bidding Only</option>
-            <option value="PERMIT">Permitting Only</option>
-            <option value="CONSTRUCTION">Construction Set</option>
-          </select>
+          {/* Plan Type Dropdown Filter */}
+          <div className="flex items-center gap-1.5 bg-surface-main border border-border-main rounded-xl px-2.5 py-1.5 shadow-2xs">
+            <SlidersHorizontal className="w-3.5 h-3.5 text-accent-yellow shrink-0" />
+            <span className="text-[11px] font-semibold text-muted-main hidden xs:inline">Plan Type:</span>
+            <select
+              value={planTypeFilter}
+              onChange={(e) => setPlanTypeFilter(e.target.value as 'ALL' | 'BID' | 'PERMIT' | 'CONSTRUCTION')}
+              className="bg-transparent text-xs font-mono font-bold text-text-main focus:outline-none cursor-pointer"
+            >
+              <option value="ALL" className="bg-surface-main text-text-main font-sans font-normal">All Sets</option>
+              <option value="BID" className="bg-surface-main text-text-main font-sans font-normal">Bidding Only</option>
+              <option value="PERMIT" className="bg-surface-main text-text-main font-sans font-normal">Permitting Only</option>
+              <option value="CONSTRUCTION" className="bg-surface-main text-text-main font-sans font-normal">Construction Set</option>
+            </select>
+          </div>
+
+          {(selectedDiscipline !== 'ALL' || planTypeFilter !== 'ALL' || searchQuery) && (
+            <button
+              onClick={() => {
+                setSelectedDiscipline('ALL');
+                setPlanTypeFilter('ALL');
+                setSearchQuery('');
+              }}
+              className="text-[11px] text-muted-main hover:text-accent-red font-semibold underline px-1 cursor-pointer transition-colors"
+            >
+              Reset
+            </button>
+          )}
+        </div>
+
+        {/* Quick Search Sheet Filter */}
+        <div className="flex items-center gap-1.5 bg-surface-main border border-border-main rounded-xl px-2.5 py-1.5 w-full sm:w-60 shadow-2xs">
+          <Search className="w-3.5 h-3.5 text-muted-main shrink-0" />
+          <input
+            type="text"
+            placeholder="Search sheets, code, lead..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-transparent text-xs text-text-main placeholder:text-muted-main focus:outline-none"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="text-muted-main hover:text-text-main cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
       </div>
 
+      {/* Showing count */}
+      <div className="flex items-center justify-between text-xs text-muted-main px-0.5">
+        <span>
+          Showing <strong className="text-text-main">{filteredSheets.length}</strong> of {sheets.length} blueprint sheets
+          {selectedDiscipline !== 'ALL' && ` in ${selectedDiscipline.split(' ')[0]}`}
+        </span>
+      </div>
+
       {/* Sheets Table */}
-      <div className="overflow-x-auto border border-border-main rounded-xl">
-        <table className="w-full text-left text-xs">
+      <div className="overflow-x-auto border border-border-main rounded-2xl shadow-2xs scrollbar-thin scrollbar-thumb-border-main scrollbar-track-transparent">
+        <table className="w-full text-left text-xs min-w-[700px]">
           <thead className="bg-surface-hover/60 border-b border-border-main text-[10px] font-mono uppercase tracking-wider text-muted-main">
             <tr>
               <th className="py-2.5 px-3">Status</th>

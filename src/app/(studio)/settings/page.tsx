@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useTheme } from '@/lib/themeContext';
-import { User, Phone, Mail, Camera, RefreshCw, Save, Check, Calendar, ExternalLink, Settings as SettingsIcon, Loader2 } from 'lucide-react';
+import { usePushNotifications } from '@/lib/hooks/usePushNotifications';
+import { User, Phone, Mail, Camera, RefreshCw, Save, Check, Calendar, ExternalLink, Settings as SettingsIcon, Loader2, Bell, Send, ShieldCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function ProfileSettingsPage() {
@@ -17,6 +18,13 @@ export default function ProfileSettingsPage() {
     setCustomColors,
     resetToDefaults,
   } = useTheme();
+
+  const {
+    isSubscribed,
+    isLoading: isPushLoading,
+    subscribeToPush,
+    sendTestPush,
+  } = usePushNotifications();
 
   const [displayName, setDisplayName] = useState(() => user?.name || '');
   const [phoneNumber, setPhoneNumber] = useState(() => user?.phoneNumber || '');
@@ -334,6 +342,73 @@ export default function ProfileSettingsPage() {
                   Disconnect
                 </button>
               )}
+            </div>
+          </div>
+        </div>
+
+        {/* Web Push Notification Settings */}
+        <div className="bg-surface-main p-6 rounded-2xl border border-border-main space-y-4 shadow-xs">
+          <div className="flex items-center justify-between pb-2 border-b border-border-main/50">
+            <div>
+              <h3 className="text-xs font-bold text-text-main flex items-center gap-2">
+                <Bell className="w-4 h-4 text-accent-cyan" />
+                Messenger-Grade Web Push Notifications
+              </h3>
+              <p className="text-[11px] text-muted-main mt-0.5">
+                Receive lock-screen and background desktop/mobile alerts when RFIs, tasks, or studio chat messages arrive—even when your browser is closed.
+              </p>
+            </div>
+            <span className={cn(
+              'text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border',
+              isSubscribed
+                ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
+                : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30'
+            )}>
+              {isSubscribed ? '🔔 Push Enabled' : '🔕 Inactive'}
+            </span>
+          </div>
+
+          <div className="p-4 rounded-xl bg-surface-hover/50 border border-border-main space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-bold text-text-main">
+                  {isSubscribed ? 'Device Registered for Background Alerts' : 'Enable Device Push Alerts'}
+                </p>
+                <p className="text-[11px] text-muted-main mt-0.5">
+                  {isSubscribed
+                    ? 'This device is linked with our Studio WebPush service worker. You will receive native system alerts.'
+                    : 'Click to grant browser permission and register this device with the Studio Service Worker.'}
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                {!isSubscribed ? (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const success = await subscribeToPush();
+                      if (success) setSyncNotice('✓ Push notifications enabled on this device!');
+                    }}
+                    disabled={isPushLoading}
+                    className="px-4 py-2 bg-accent-cyan text-black font-bold text-xs rounded-xl hover:brightness-110 active:scale-95 transition-all flex items-center gap-1.5 shadow-sm cursor-pointer disabled:opacity-50"
+                  >
+                    {isPushLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShieldCheck className="w-3.5 h-3.5" />}
+                    <span>Enable Push</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await sendTestPush();
+                      setSyncNotice('🔔 Test push notification sent to your operating system!');
+                    }}
+                    className="px-3.5 py-2 bg-surface-main hover:bg-surface-hover border border-border-main text-text-main font-semibold text-xs rounded-xl transition-all flex items-center gap-1.5 shadow-2xs active:scale-95 cursor-pointer"
+                  >
+                    <Send className="w-3.5 h-3.5 text-accent-cyan" />
+                    <span>Send Test Notification</span>
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>

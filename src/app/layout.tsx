@@ -24,8 +24,16 @@ const jakartaDisplay = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: 'ESTUDIO ARKIPELAGO',
+  title: 'Estudio Arkipelago',
   description: 'Studio Operations System',
+  icons: {
+    icon: [
+      { url: '/logo.png', sizes: 'any' },
+      { url: '/icon.png', type: 'image/png' },
+    ],
+    shortcut: '/logo.png',
+    apple: '/logo.png',
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',

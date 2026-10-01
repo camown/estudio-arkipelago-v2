@@ -58,9 +58,10 @@ export async function GET(req: Request) {
       success: true,
       profile: cached || null,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errMessage = error instanceof Error ? error.message : 'Failed to retrieve profile';
     return NextResponse.json(
-      { success: false, error: error?.message || 'Failed to retrieve profile' },
+      { success: false, error: errMessage },
       { status: 500 }
     );
   }
@@ -119,9 +120,10 @@ export async function POST(req: Request) {
       message: 'Profile updated successfully',
       profile: updatedProfile,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errMessage = error instanceof Error ? error.message : 'Failed to update profile';
     return NextResponse.json(
-      { success: false, error: error?.message || 'Failed to update profile' },
+      { success: false, error: errMessage },
       { status: 500 }
     );
   }

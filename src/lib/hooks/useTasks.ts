@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { TaskItem } from '@/types';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase/client';
 
 const STORAGE_KEY = 'arkipelago_unified_tasks';
 const EVENT_NAME = 'arkipelago_tasks_updated';
@@ -72,6 +73,15 @@ function getStoredTasks(): TaskItem[] {
   }
 }
 
+function persistTasks(tasks: TaskItem[]) {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+  } catch (e) {
+    console.error('Error persisting tasks', e);
+  }
+}
+
 export function useTasks() {
   const [tasks, setTasks] = useState<TaskItem[]>(INITIAL_TASKS);
 
@@ -106,7 +116,54 @@ export function useTasks() {
     };
   }, [syncTasks]);
 
-  const addTask = useCallback((newTaskData: Partial<TaskItem>) => {
+  // Supabase Cloud Sync & Realtime
+  useEffect(() => {
+    if (!isSupabaseConfigured || !supabase) return;
+
+    const fetchSupabaseTasks = async () => {
+      const { data, error } = await supabase
+        .from('tasks')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (!error && data && data.length > 0) {
+        const mapped: TaskItem[] = data.map((t) => ({
+          id: t.id,
+          name: t.name,
+          projectId: t.project_id || '',
+          description: t.description || '',
+          projectPhase: t.project_phase || 'SCHEMATIC',
+          deliverables: Array.isArray(t.deliverables) ? t.deliverables : [],
+          taskType: t.task_type || 'DELIVERABLE',
+          priority: (t.priority as TaskItem['priority']) || 'MEDIUM',
+          assignedMember: t.assigned_member || 'UNASSIGNED',
+          startDate: t.start_date || undefined,
+          endDate: t.end_date || undefined,
+          timeNeeded: t.time_needed || undefined,
+          status: (t.status as TaskItem['status']) || 'PENDING',
+          createdAt: t.created_at,
+        }));
+        setTasks(mapped);
+        persistTasks(mapped);
+      }
+    };
+
+    fetchSupabaseTasks();
+
+    const channelName = `realtime_tasks_${Date.now()}`;
+    const channel = supabase
+      .channel(channelName)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => {
+        fetchSupabaseTasks();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  const addTask = useCallback(async (newTaskData: Partial<TaskItem>) => {
     const created: TaskItem = {
       id: 'task-' + Date.now(),
       name: newTaskData.name || 'UNTITLED TASK',
@@ -126,36 +183,65 @@ export function useTasks() {
 
     const current = getStoredTasks();
     const updated = [created, ...current];
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    persistTasks(updated);
+    setTasks(updated);
+    
+    if (typeof window !== 'undefined') {
       window.dispatchEvent(new Event(EVENT_NAME));
       if (typeof BroadcastChannel !== 'undefined') {
         const bc = new BroadcastChannel('arkipelago_tasks_channel');
         bc.postMessage('tasks_updated');
         bc.close();
       }
-    } catch (e) {
-      console.error('Error saving task', e);
     }
-    setTasks(updated);
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase.from('tasks').insert([
+          {
+            name: created.name,
+            description: created.description,
+            project_phase: created.projectPhase,
+            deliverables: created.deliverables,
+            task_type: created.taskType,
+            priority: created.priority,
+            assigned_member: created.assignedMember,
+            start_date: created.startDate || null,
+            end_date: created.endDate || null,
+            time_needed: created.timeNeeded || null,
+            status: created.status,
+          },
+        ]);
+      } catch (err) {
+        console.warn('Supabase task write skipped/queued locally:', err);
+      }
+    }
+
     return created;
   }, []);
 
-  const updateTaskStatus = useCallback((taskId: string, status: TaskItem['status']) => {
+  const updateTaskStatus = useCallback(async (taskId: string, status: TaskItem['status']) => {
     const current = getStoredTasks();
     const updated = current.map((t) => (t.id === taskId ? { ...t, status } : t));
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    persistTasks(updated);
+    setTasks(updated);
+    
+    if (typeof window !== 'undefined') {
       window.dispatchEvent(new Event(EVENT_NAME));
       if (typeof BroadcastChannel !== 'undefined') {
         const bc = new BroadcastChannel('arkipelago_tasks_channel');
         bc.postMessage('tasks_updated');
         bc.close();
       }
-    } catch (e) {
-      console.error('Error updating task', e);
     }
-    setTasks(updated);
+
+    if (isSupabaseConfigured && supabase && !taskId.startsWith('task-')) {
+      try {
+        await supabase.from('tasks').update({ status }).eq('id', taskId);
+      } catch (err) {
+        console.warn('Supabase task status update skipped/queued locally:', err);
+      }
+    }
   }, []);
 
   return {
@@ -165,3 +251,4 @@ export function useTasks() {
     refreshTasks: syncTasks,
   };
 }
+

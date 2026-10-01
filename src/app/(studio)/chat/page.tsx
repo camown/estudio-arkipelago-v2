@@ -466,7 +466,7 @@ export function getThreadDisplayContact(thread: ThreadChannel, currentUserName: 
 
 function getInitialThreadAndTab() {
   if (typeof window === 'undefined') {
-    return { threadId: INITIAL_THREADS[0].id, activeTab: 'wall' as const, mobileView: 'list' as const };
+    return { threadId: INITIAL_THREADS[0].id, activeTab: 'chat' as const, mobileView: 'list' as const };
   }
   const params = new URLSearchParams(window.location.search);
   const targetTab = params.get('tab');
@@ -498,7 +498,8 @@ function getInitialThreadAndTab() {
     return { threadId: cachedThreads[0]?.id || INITIAL_THREADS[0].id, activeTab: 'chat' as const, mobileView: 'list' as const };
   }
 
-  return { threadId: cachedThreads[0]?.id || INITIAL_THREADS[0].id, activeTab: 'wall' as const, mobileView: 'list' as const };
+  // Default priority: Chat & Threads
+  return { threadId: cachedThreads[0]?.id || INITIAL_THREADS[0].id, activeTab: 'chat' as const, mobileView: 'list' as const };
 }
 
 function getInitialAttachedSketch(): string | null {
@@ -520,7 +521,7 @@ function getInitialAttachedSketch(): string | null {
 
 export default function ChatPage() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'wall' | 'chat'>('wall');
+  const [activeTab, setActiveTab] = useState<'wall' | 'chat'>('chat');
   const [postContent, setPostContent] = useState('');
   const [wallAttachments, setWallAttachments] = useState<string[]>([]);
   const { user } = useAuth();
@@ -1302,10 +1303,19 @@ export default function ChatPage() {
     if (e.key === 'Enter') handleSendMessage();
   };
 
-  const handleRedlineInSketch = (imgUrl: string, title?: string) => {
+  const handleRedlineInSketch = (imgUrl: string, title?: string, messageId?: string) => {
     try {
       localStorage.setItem('arkipelago_pending_sketch_bg', imgUrl);
       localStorage.setItem('arkipelago_pending_sketch_title', title || 'Chat Markup');
+      if (currentThread?.id) {
+        localStorage.setItem('arkipelago_pending_sketch_thread_id', currentThread.id);
+      }
+      if (currentThread?.projectCode) {
+        localStorage.setItem('arkipelago_pending_sketch_project', currentThread.projectCode);
+      }
+      if (messageId) {
+        localStorage.setItem('arkipelago_pending_sketch_message_id', messageId);
+      }
     } catch {
       // ignore
     }
@@ -2192,25 +2202,11 @@ export default function ChatPage() {
               Studio Communications
             </h1>
             <span className="text-[11px] font-mono px-2.5 py-0.5 rounded-full bg-surface-hover text-muted-main border border-border-main hidden sm:inline-block">
-              {activeTab === 'wall' ? 'Wall Feed' : `${threads.length} Threads`}
+              {activeTab === 'chat' ? `${threads.length} Active Threads` : 'Wall Feed'}
             </span>
           </div>
 
           <div className="flex items-center space-x-1 sm:space-x-2 border-l border-border-main/50 pl-3 sm:pl-5">
-            <button
-              className={cn(
-                'px-3 py-1.5 rounded-lg text-xs font-semibold tracking-wide transition-all cursor-pointer',
-                activeTab === 'wall'
-                  ? 'bg-black text-white dark:bg-white dark:text-black font-bold shadow-2xs'
-                  : 'text-muted-main hover:text-text-main hover:bg-surface-hover/70'
-              )}
-              onClick={() => {
-                setActiveTab('wall');
-                window.history.replaceState(null, '', '/chat?tab=wall');
-              }}
-            >
-              Estudio Wall
-            </button>
             <button
               className={cn(
                 'px-3 py-1.5 rounded-lg text-xs font-semibold tracking-wide transition-all flex items-center gap-1.5 cursor-pointer',
@@ -2232,6 +2228,20 @@ export default function ChatPage() {
               )}>
                 {threads.length}
               </span>
+            </button>
+            <button
+              className={cn(
+                'px-3 py-1.5 rounded-lg text-xs font-semibold tracking-wide transition-all cursor-pointer',
+                activeTab === 'wall'
+                  ? 'bg-black text-white dark:bg-white dark:text-black font-bold shadow-2xs'
+                  : 'text-muted-main hover:text-text-main hover:bg-surface-hover/70'
+              )}
+              onClick={() => {
+                setActiveTab('wall');
+                window.history.replaceState(null, '', '/chat?tab=wall');
+              }}
+            >
+              Estudio Wall
             </button>
           </div>
         </div>
@@ -3371,7 +3381,7 @@ export default function ChatPage() {
                                         <Maximize2 className="w-3 h-3" />
                                       </button>
                                       <button
-                                        onClick={() => handleRedlineInSketch(msg.attachment!, msg.attachmentTitle)}
+                                        onClick={() => handleRedlineInSketch(msg.attachment!, msg.attachmentTitle, msg.id)}
                                         className="px-2 py-0.5 bg-rose-600 hover:bg-rose-700 text-white rounded text-[9px] font-semibold flex items-center gap-1 transition-colors cursor-pointer"
                                       >
                                         <PenTool className="w-3 h-3" />
@@ -3623,7 +3633,7 @@ export default function ChatPage() {
                               <span className="font-mono" suppressHydrationWarning>{m.timestamp}</span>
                             </div>
                             <button
-                              onClick={() => handleRedlineInSketch(m.attachment!, m.attachmentTitle)}
+                              onClick={() => handleRedlineInSketch(m.attachment!, m.attachmentTitle, m.id)}
                               className="w-full py-1.5 bg-rose-600 hover:bg-rose-700 text-white font-semibold text-[10px] rounded-lg flex items-center justify-center gap-1 transition-colors cursor-pointer"
                             >
                               <PenTool className="w-3 h-3" />
