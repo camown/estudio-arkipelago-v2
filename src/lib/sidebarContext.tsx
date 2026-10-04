@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 
 interface SidebarContextType {
   isCollapsed: boolean;
@@ -17,14 +17,18 @@ const defaultSidebarContext: SidebarContextType = {
 const SidebarContext = createContext<SidebarContextType>(defaultSidebarContext);
 
 export function SidebarProvider({ children }: { children: React.ReactNode }) {
-  const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
-    if (typeof window === 'undefined') return false;
+  const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
+
+  useEffect(() => {
     try {
-      return localStorage.getItem('arkipelago_sidebar_collapsed') === 'true';
+      const stored = localStorage.getItem('arkipelago_sidebar_collapsed');
+      if (stored !== null) {
+        setIsCollapsed(stored === 'true');
+      }
     } catch {
-      return false;
+      // Ignore localStorage error
     }
-  });
+  }, []);
 
   const toggleSidebar = () => {
     setIsCollapsed((prev) => {

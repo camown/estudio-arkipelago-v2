@@ -79,9 +79,9 @@ export const NAV_ITEMS: NavItem[] = [
   },
 ];
 
-export const NAVIGATION_ITEMS = NAV_ITEMS;
 
 export const MOCK_PROJECTS: Project[] = [
+
   {
     id: 'proj-001',
     name: 'Casa Verde Residence',

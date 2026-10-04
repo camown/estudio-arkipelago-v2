@@ -38,6 +38,16 @@ yarn-error.log*
 
 # typescript
 *.tsbuildinfo
+
+# local tools and java build
+/.tools/
+/backend/target/
+.m2/
+/test-results/
+/playwright-report/
+.vscode/
+supabase/.temp/
+
 next-env.d.ts
 
 # test screenshots

@@ -14,12 +14,13 @@ import {
   Sun, Moon, LogOut, Bell, MessageSquare, Clock, Search,
   FolderKanban, BookUser, PenTool, LayoutDashboard, X, ArrowRight, Command, Plus, PanelLeft,
   FileText, BookOpen, Keyboard, User as UserIcon, Shield, Users, Wrench, Settings, ChevronDown, Check,
-  CheckCircle2, Sparkles
+  CheckCircle2,
 } from 'lucide-react';
 import { useSidebar } from '@/lib/sidebarContext';
 import { MOCK_PROJECTS, PRESET_ACCOUNTS } from '@/lib/constants';
 import { cn } from '@/lib/utils';
-import { USER_EVENT_NAME, USER_CHANNEL_NAME, saveProfileForEmail } from '@/lib/hooks/useAuth';
+import { USER_EVENT_NAME, USER_CHANNEL_NAME, saveProfileForEmail, STORAGE_KEY } from '@/lib/hooks/useAuth';
+
 
 
 interface NotificationItem {
@@ -44,14 +45,40 @@ const ROLE_ICONS: Record<Role, React.ComponentType<{ className?: string }>> = {
   contractor: Wrench,
 };
 
+// Isolated memoized clock — only this tiny component re-renders every second
+const LiveClock = React.memo(function LiveClock() {
+  const [date, setDate] = useState<Date | null>(null);
+
+  useEffect(() => {
+    setDate(new Date());
+    const interval = setInterval(() => setDate(new Date()), 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  if (!date) return <span suppressHydrationWarning>--:--:--</span>;
+
+  const timeStr = date.toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: true,
+  });
+  const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
+  const monthName = date.toLocaleDateString('en-US', { month: 'short' });
+  const dayNum = date.getDate();
+  const year = date.getFullYear();
+
+  return <span suppressHydrationWarning>{`${timeStr} — ${dayName}, ${monthName} ${dayNum}, ${year}`}</span>;
+});
+
 export function TopBar({ user, onInitializeTask }: TopBarProps) {
   const router = useRouter();
   const { addTask } = useTasks();
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [isDailyLogOpen, setIsDailyLogOpen] = useState(false);
   const [isShortcutsModalOpen, setIsShortcutsModalOpen] = useState(false);
-  const [currentDate, setCurrentDate] = useState<Date | null>(() => (typeof window !== 'undefined' ? new Date() : null));
   const { themeMode, toggleThemeMode } = useTheme();
+
   
   // Menus
   const [isNotifOpen, setIsNotifOpen] = useState(false);
@@ -181,12 +208,8 @@ export function TopBar({ user, onInitializeTask }: TopBarProps) {
     return () => window.removeEventListener('open-task-modal', handleExternalOpen);
   }, []);
 
-  useEffect(() => {
-    const interval = setInterval(() => setCurrentDate(new Date()), 1000);
-    return () => clearInterval(interval);
-  }, []);
 
-  // Global Keyboard Shortcuts Listener
+
   useEffect(() => {
     let lastKey = '';
     let lastKeyTime = 0;
@@ -295,22 +318,8 @@ export function TopBar({ user, onInitializeTask }: TopBarProps) {
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
   }, [router, toggleThemeMode]);
 
-  const formatFullTimestamp = (date: Date) => {
-    const timeStr = date.toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: true,
-    });
-    const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
-    const monthName = date.toLocaleDateString('en-US', { month: 'short' });
-    const dayNum = date.getDate();
-    const year = date.getFullYear();
-
-    return `${timeStr} — ${dayName}, ${monthName} ${dayNum}, ${year}`;
-  };
-
   const UserRoleIcon = user?.role ? (ROLE_ICONS[user.role] || UserIcon) : UserIcon;
+
 
   return (
     <>
@@ -343,8 +352,9 @@ export function TopBar({ user, onInitializeTask }: TopBarProps) {
 
           <div className="hidden lg:flex items-center gap-2 text-xs font-medium text-muted-main tracking-normal shrink-0">
             <Clock className="w-3.5 h-3.5 text-muted-main/70" />
-            <span>{currentDate ? formatFullTimestamp(currentDate) : '--:--:--'}</span>
+            <LiveClock />
           </div>
+
 
           <button
             onClick={() => window.dispatchEvent(new CustomEvent('open_command_palette'))}
@@ -412,14 +422,9 @@ export function TopBar({ user, onInitializeTask }: TopBarProps) {
 
             {/* Notifications Dropdown Popover */}
             {isNotifOpen && (
-              <div
-                className={`absolute right-[-45px] sm:right-0 top-full mt-3 w-[calc(100vw-1.5rem)] max-w-sm rounded-2xl border z-[100] overflow-hidden font-mono transition-all animate-in fade-in zoom-in-95 duration-150 ${
-                  themeMode === 'light'
-                    ? 'bg-white border-border-strong text-[#18181B] shadow-2xl ring-1 ring-black/5'
-                    : 'bg-[#18181B] border-border-strong text-white shadow-2xl ring-1 ring-white/10'
-                }`}
-              >
+              <div className="absolute right-[-45px] sm:right-0 top-full mt-3 w-[calc(100vw-1.5rem)] max-w-sm rounded-2xl border border-border-strong bg-surface-main text-text-main shadow-2xl z-[100] overflow-hidden font-mono transition-all animate-in fade-in zoom-in-95 duration-150">
                 <div className="p-4 border-b border-border-main flex items-center justify-between bg-surface-hover/50">
+
                   <div className="flex items-center gap-2">
                     <h3 className="font-bold text-xs uppercase tracking-wider text-text-main">
                       Notifications
@@ -524,14 +529,17 @@ export function TopBar({ user, onInitializeTask }: TopBarProps) {
               className="flex items-center gap-2 p-1 sm:pl-2.5 sm:pr-2 rounded-xl border border-border-main bg-surface-main hover:bg-surface-hover transition-all text-text-main cursor-pointer shadow-2xs group"
               title="Account & Role Switcher"
             >
-              <div className="w-6 h-6 rounded-lg bg-surface-hover border border-border-main flex items-center justify-center font-bold text-[10px] text-text-main shrink-0">
+              <div
+                suppressHydrationWarning
+                className="w-6 h-6 rounded-lg bg-surface-hover border border-border-main flex items-center justify-center font-bold text-[10px] text-text-main shrink-0"
+              >
                 {user?.name ? user.name.charAt(0) : 'A'}
               </div>
-              <div className="hidden lg:flex flex-col text-left">
-                <span className="text-xs font-bold text-text-main truncate max-w-[110px] leading-tight">
+              <div className="hidden lg:flex flex-col text-left" suppressHydrationWarning>
+                <span className="text-xs font-bold text-text-main truncate max-w-[110px] leading-tight" suppressHydrationWarning>
                   {user?.name ? user.name.split(' ')[0] : 'Architect'}
                 </span>
-                <span className="text-[9px] text-muted-main font-mono capitalize">
+                <span className="text-[9px] text-muted-main font-mono capitalize" suppressHydrationWarning>
                   {user?.role ? user.role.replace('_', ' ') : 'Role'}
                 </span>
               </div>
@@ -620,7 +628,7 @@ export function TopBar({ user, onInitializeTask }: TopBarProps) {
                   <button
                     type="button"
                     onClick={() => {
-                      localStorage.removeItem('arkipelago_user');
+                      localStorage.removeItem(STORAGE_KEY);
                       window.dispatchEvent(new CustomEvent(USER_EVENT_NAME, { detail: null }));
                       router.push('/login');
                     }}
@@ -629,6 +637,7 @@ export function TopBar({ user, onInitializeTask }: TopBarProps) {
                     <LogOut className="w-4 h-4" />
                     <span>Sign Out</span>
                   </button>
+
                 </div>
               </div>
             )}

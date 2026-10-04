@@ -10,7 +10,9 @@ import { SidebarProvider, useSidebar } from '@/lib/sidebarContext';
 import { TimeTrackingNudge } from '@/components/common/TimeTrackingNudge';
 import { CommandPalette } from '@/components/common/CommandPalette';
 import { StickyNotesOverlay } from '@/components/common/StickyNotesOverlay';
+import { FloatingChatOverlay } from '@/components/common/FloatingChatOverlay';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
+
 import { User } from '@/types';
 import { cn } from '@/lib/utils';
 import {
@@ -126,10 +128,13 @@ function StudioLayoutContent({
           <TimeTrackingNudge />
           <CommandPalette />
           <StickyNotesOverlay />
+          <FloatingChatOverlay />
         </main>
 
-        <BottomNav />
+
+        <BottomNav user={user} />
       </div>
     </ErrorBoundary>
   );
 }
+

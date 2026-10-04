@@ -7,6 +7,8 @@ import { supabase, isSupabaseConfigured } from '@/lib/supabase/client';
 const STORAGE_KEY = 'arkipelago_wall_posts';
 const WALL_EVENT_NAME = 'arkipelago_wall_updated';
 const WALL_CHANNEL_NAME = 'arkipelago_wall_channel';
+const WALL_REALTIME_CHANNEL = 'realtime:wall_posts';
+
 
 function getInitialPosts(): WallPost[] {
   if (typeof window === 'undefined') return SEED_WALL_POSTS;
@@ -86,75 +88,81 @@ export function useWallPosts() {
     fetchPosts();
 
     // 2. Real-time subscription
-    const channelId = `wall_posts_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-    const channel = supabase
-      .channel(channelId)
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'wall_posts' },
-        (payload) => {
-          const newItem = payload.new;
-          const mappedPost: WallPost = {
-            id: newItem.id,
-            authorId: newItem.author_id,
-            authorName: newItem.author_name,
-            authorRole: newItem.author_role,
-            content: newItem.content,
-            createdAt: newItem.created_at,
-            updatedAt: newItem.updated_at || undefined,
-            attachments: newItem.attachments || undefined,
-            likes: typeof newItem.likes === 'number' ? newItem.likes : 0,
-            likedBy: Array.isArray(newItem.liked_by) ? newItem.liked_by : [],
-            comments: Array.isArray(newItem.comments) ? newItem.comments : [],
-          };
-          setPosts((prev) => {
-            const updated = [mappedPost, ...prev.filter((p) => p.id !== mappedPost.id)];
-            persistPosts(updated);
-            return updated;
-          });
-        }
-      )
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'wall_posts' },
-        (payload) => {
-          const updatedItem = payload.new;
-          const mappedPost: WallPost = {
-            id: updatedItem.id,
-            authorId: updatedItem.author_id,
-            authorName: updatedItem.author_name,
-            authorRole: updatedItem.author_role,
-            content: updatedItem.content,
-            createdAt: updatedItem.created_at,
-            updatedAt: updatedItem.updated_at || undefined,
-            attachments: updatedItem.attachments || undefined,
-            likes: typeof updatedItem.likes === 'number' ? updatedItem.likes : 0,
-            likedBy: Array.isArray(updatedItem.liked_by) ? updatedItem.liked_by : [],
-            comments: Array.isArray(updatedItem.comments) ? updatedItem.comments : [],
-          };
-          setPosts((prev) => {
-            const updated = prev.map((p) => (p.id === mappedPost.id ? mappedPost : p));
-            persistPosts(updated);
-            return updated;
-          });
-        }
-      )
-      .on(
-        'postgres_changes',
-        { event: 'DELETE', schema: 'public', table: 'wall_posts' },
-        (payload) => {
-          setPosts((prev) => {
-            const updated = prev.filter((p) => p.id !== payload.old.id);
-            persistPosts(updated);
-            return updated;
-          });
-        }
-      )
-      .subscribe();
+    try {
+      const channel = supabase
+        .channel(WALL_REALTIME_CHANNEL)
 
-    return () => {
-      supabase?.removeChannel(channel);
-    };
+        .on(
+          'postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'wall_posts' },
+          (payload) => {
+            const newItem = payload.new;
+            const mappedPost: WallPost = {
+              id: newItem.id,
+              authorId: newItem.author_id,
+              authorName: newItem.author_name,
+              authorRole: newItem.author_role,
+              content: newItem.content,
+              createdAt: newItem.created_at,
+              updatedAt: newItem.updated_at || undefined,
+              attachments: newItem.attachments || undefined,
+              likes: typeof newItem.likes === 'number' ? newItem.likes : 0,
+              likedBy: Array.isArray(newItem.liked_by) ? newItem.liked_by : [],
+              comments: Array.isArray(newItem.comments) ? newItem.comments : [],
+            };
+            setPosts((prev) => {
+              const updated = [mappedPost, ...prev.filter((p) => p.id !== mappedPost.id)];
+              persistPosts(updated);
+              return updated;
+            });
+          }
+        )
+        .on(
+          'postgres_changes',
+          { event: 'UPDATE', schema: 'public', table: 'wall_posts' },
+          (payload) => {
+            const updatedItem = payload.new;
+            const mappedPost: WallPost = {
+              id: updatedItem.id,
+              authorId: updatedItem.author_id,
+              authorName: updatedItem.author_name,
+              authorRole: updatedItem.author_role,
+              content: updatedItem.content,
+              createdAt: updatedItem.created_at,
+              updatedAt: updatedItem.updated_at || undefined,
+              attachments: updatedItem.attachments || undefined,
+              likes: typeof updatedItem.likes === 'number' ? updatedItem.likes : 0,
+              likedBy: Array.isArray(updatedItem.liked_by) ? updatedItem.liked_by : [],
+              comments: Array.isArray(updatedItem.comments) ? updatedItem.comments : [],
+            };
+            setPosts((prev) => {
+              const updated = prev.map((p) => (p.id === mappedPost.id ? mappedPost : p));
+              persistPosts(updated);
+              return updated;
+            });
+          }
+        )
+        .on(
+          'postgres_changes',
+          { event: 'DELETE', schema: 'public', table: 'wall_posts' },
+          (payload) => {
+            setPosts((prev) => {
+              const updated = prev.filter((p) => p.id !== payload.old.id);
+              persistPosts(updated);
+              return updated;
+            });
+          }
+        )
+        .subscribe();
+
+      return () => {
+        try {
+          supabase?.removeChannel(channel);
+        } catch {}
+      };
+    } catch (err) {
+      console.warn('Realtime wall posts subscription notice:', err);
+    }
   }, []);
 
   const loadPosts = useCallback(() => {

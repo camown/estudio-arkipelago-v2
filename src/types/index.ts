@@ -479,3 +479,26 @@ export interface SubmittalItem {
   previewUrl?: string;
 }
 
+// ============================================================
+// Studio Calendar & Meeting Types
+// ============================================================
+
+export type MeetingType = 'Client Review' | 'Site Inspection' | 'Design Coordination' | 'Permitting';
+
+export interface StudioMeeting {
+  id: string;
+  title: string;
+  client: string;
+  projectCode: string;
+  date: string; // YYYY-MM-DD
+  startTime: string;
+  endTime: string;
+  type: MeetingType;
+  source: 'STUDIO' | 'CALENDLY' | 'GOOGLE';
+  location: string;
+  meetingLink?: string;
+  attendees: string[];
+  description: string;
+  status: 'confirmed' | 'pending' | 'completed';
+}
+

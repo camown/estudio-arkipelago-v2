@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useDeferredValue } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
   Search, FolderKanban, MessageSquare, PenTool, 
@@ -17,6 +17,7 @@ interface CommandItem {
   subtitle?: string;
   category: 'PROJECTS' | 'DRAWING SHEETS' | 'COMMS & THREADS' | 'STUDIO ACTIONS';
   icon: React.ComponentType<{ className?: string }>;
+  searchKey: string;
   action: () => void;
 }
 
@@ -28,20 +29,20 @@ export function CommandPalette() {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Global Ctrl+K / Cmd+K listener
+  const deferredQuery = useDeferredValue(query);
+  const normalizedQuery = deferredQuery.trim().toLowerCase();
+
+  // Listen for open/close events
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
-        e.preventDefault();
-        setIsOpen((prev) => !prev);
-      }
       if (e.key === 'Escape') {
+        e.preventDefault();
         setIsOpen(false);
       }
     };
 
     const handleCustomOpen = () => {
-      setIsOpen(true);
+      setIsOpen((prev) => !prev);
     };
 
     window.addEventListener('keydown', handleKeyDown);
@@ -52,175 +53,192 @@ export function CommandPalette() {
     };
   }, []);
 
+
   useEffect(() => {
     if (isOpen) {
-      const timer = setTimeout(() => {
+      setQuery('');
+      setSelectedIndex(0);
+      const timer = requestAnimationFrame(() => {
         inputRef.current?.focus();
-        setQuery('');
-        setSelectedIndex(0);
-      }, 0);
-      return () => clearTimeout(timer);
+      });
+      return () => cancelAnimationFrame(timer);
     }
   }, [isOpen]);
 
-  const items: CommandItem[] = [
-    // Projects
-    ...MOCK_PROJECTS.map((p) => ({
-      id: `proj-${p.id}`,
-      title: p.name,
-      subtitle: `[${p.code}] - Client: ${p.clientName || 'Studio Project'}`,
-      category: 'PROJECTS' as const,
-      icon: FolderKanban,
-      action: () => {
-        setIsOpen(false);
-        router.push(`/projects?project=${p.code}`);
+  // Pre-index command items with memoization
+  const items: CommandItem[] = useMemo(() => {
+    return [
+      // Projects
+      ...MOCK_PROJECTS.map((p) => {
+        const client = p.clientName || 'Studio Project';
+        return {
+          id: `proj-${p.id}`,
+          title: p.name,
+          subtitle: `[${p.code}] - Client: ${client}`,
+          category: 'PROJECTS' as const,
+          icon: FolderKanban,
+          searchKey: `${p.name} ${p.code} ${client} projects`.toLowerCase(),
+          action: () => {
+            setIsOpen(false);
+            router.push(`/projects?project=${p.code}`);
+          },
+        };
+      }),
+      // Drawing Sheets
+      {
+        id: 'dwg-a101',
+        title: 'A-101 Ground Floor Plan & Massing',
+        subtitle: 'Makati Tower Schematic Drawing Set (Rev 02)',
+        category: 'DRAWING SHEETS' as const,
+        icon: FileText,
+        searchKey: 'a-101 ground floor plan massing makati tower schematic drawing sets rev 02'.toLowerCase(),
+        action: () => {
+          setIsOpen(false);
+          router.push('/projects?project=MT-2024');
+        },
       },
-    })),
-    // Drawing Sheets
-    {
-      id: 'dwg-a101',
-      title: 'A-101 Ground Floor Plan & Massing',
-      subtitle: 'Makati Tower Schematic Drawing Set (Rev 02)',
-      category: 'DRAWING SHEETS' as const,
-      icon: FileText,
-      action: () => {
-        setIsOpen(false);
-        router.push('/projects?project=MT-2024');
+      {
+        id: 'dwg-s101',
+        title: 'S-101 Foundation Beam Framing',
+        subtitle: 'Structural Engineering Package',
+        category: 'DRAWING SHEETS' as const,
+        icon: HardHat,
+        searchKey: 's-101 foundation beam framing structural engineering package'.toLowerCase(),
+        action: () => {
+          setIsOpen(false);
+          router.push('/projects?project=MT-2024');
+        },
       },
-    },
-    {
-      id: 'dwg-s101',
-      title: 'S-101 Foundation Beam Framing',
-      subtitle: 'Structural Engineering Package',
-      category: 'DRAWING SHEETS' as const,
-      icon: HardHat,
-      action: () => {
-        setIsOpen(false);
-        router.push('/projects?project=MT-2024');
+      {
+        id: 'dwg-mat01',
+        title: 'MAT-01 Material Spec Board',
+        subtitle: 'Casa Verde Italian Carrara Marble Specs',
+        category: 'DRAWING SHEETS' as const,
+        icon: FileText,
+        searchKey: 'mat-01 material spec board casa verde italian carrara marble specs'.toLowerCase(),
+        action: () => {
+          setIsOpen(false);
+          router.push('/projects?project=CV-2024');
+        },
       },
-    },
-    {
-      id: 'dwg-mat01',
-      title: 'MAT-01 Material Spec Board',
-      subtitle: 'Casa Verde Italian Carrara Marble Specs',
-      category: 'DRAWING SHEETS' as const,
-      icon: FileText,
-      action: () => {
-        setIsOpen(false);
-        router.push('/projects?project=CV-2024');
+      // Comms Threads
+      {
+        id: 'thread-mt',
+        title: '[MT-2024] Schematic Revision & Massing',
+        subtitle: 'Active Studio Project Discussion Room',
+        category: 'COMMS & THREADS' as const,
+        icon: MessageSquare,
+        searchKey: 'mt-2024 schematic revision massing discussion room comms'.toLowerCase(),
+        action: () => {
+          setIsOpen(false);
+          router.push('/chat?thread=thread-001');
+        },
       },
-    },
-    // Comms Threads
-    {
-      id: 'thread-mt',
-      title: '[MT-2024] Schematic Revision & Massing',
-      subtitle: 'Active Studio Project Discussion Room',
-      category: 'COMMS & THREADS' as const,
-      icon: MessageSquare,
-      action: () => {
-        setIsOpen(false);
-        router.push('/chat?thread=thread-001');
+      {
+        id: 'thread-cv',
+        title: '[CV-2024] Material Board & Marble Specs',
+        subtitle: 'Material Selection & Coordination',
+        category: 'COMMS & THREADS' as const,
+        icon: MessageSquare,
+        searchKey: 'cv-2024 material board marble specs coordination comms'.toLowerCase(),
+        action: () => {
+          setIsOpen(false);
+          router.push('/chat?thread=thread-002');
+        },
       },
-    },
-    {
-      id: 'thread-cv',
-      title: '[CV-2024] Material Board & Marble Specs',
-      subtitle: 'Material Selection & Coordination',
-      category: 'COMMS & THREADS' as const,
-      icon: MessageSquare,
-      action: () => {
-        setIsOpen(false);
-        router.push('/chat?thread=thread-002');
+      {
+        id: 'dm-maria',
+        title: 'Direct Chat: Arch. Maria Cruz',
+        subtitle: 'Senior Architect Coordination Channel',
+        category: 'COMMS & THREADS' as const,
+        icon: MessageSquare,
+        searchKey: 'direct chat maria cruz senior architect coordination channel comms'.toLowerCase(),
+        action: () => {
+          setIsOpen(false);
+          router.push('/chat?dm=Arch.%20Testing2');
+        },
       },
-    },
-    {
-      id: 'dm-maria',
-      title: 'Direct Chat: Arch. Maria Cruz',
-      subtitle: 'Senior Architect Coordination Channel',
-      category: 'COMMS & THREADS' as const,
-      icon: MessageSquare,
-      action: () => {
-        setIsOpen(false);
-        router.push('/chat?dm=Arch.%20Testing2');
+      // Studio Actions
+      {
+        id: 'act-new-task',
+        title: 'Initialize New Studio Task',
+        subtitle: 'Create a deliverable, workshop or site visit assignment',
+        category: 'STUDIO ACTIONS' as const,
+        icon: Plus,
+        searchKey: 'initialize new studio task create deliverable workshop site visit'.toLowerCase(),
+        action: () => {
+          setIsOpen(false);
+          window.dispatchEvent(new CustomEvent('open-task-modal'));
+        },
       },
-    },
-    // Studio Actions
-    {
-      id: 'act-new-task',
-      title: 'Initialize New Studio Task',
-      subtitle: 'Create a deliverable, workshop or site visit assignment',
-      category: 'STUDIO ACTIONS' as const,
-      icon: Plus,
-      action: () => {
-        setIsOpen(false);
-        window.dispatchEvent(new CustomEvent('open-task-modal'));
+      {
+        id: 'act-directory',
+        title: 'Open Studio Staff Directory',
+        subtitle: 'Architect roster, consultants, and contractors',
+        category: 'STUDIO ACTIONS' as const,
+        icon: BookUser,
+        searchKey: 'open studio staff directory architect roster consultants contractors'.toLowerCase(),
+        action: () => {
+          setIsOpen(false);
+          router.push('/directory');
+        },
       },
-    },
-    {
-      id: 'act-directory',
-      title: 'Open Studio Staff Directory',
-      subtitle: 'Architect roster, consultants, and contractors',
-      category: 'STUDIO ACTIONS' as const,
-      icon: BookUser,
-      action: () => {
-        setIsOpen(false);
-        router.push('/directory');
+      {
+        id: 'act-sketch',
+        title: 'Launch Sketch Studio & Redline Board',
+        subtitle: 'High-Fidelity Architectural Ideation Canvas',
+        category: 'STUDIO ACTIONS' as const,
+        icon: PenTool,
+        searchKey: 'launch sketch studio redline board ideation canvas cad drawing'.toLowerCase(),
+        action: () => {
+          setIsOpen(false);
+          router.push('/sketch');
+        },
       },
-    },
-    {
-      id: 'act-sketch',
-      title: 'Launch Sketch Studio & Redline Board',
-      subtitle: 'High-Fidelity Architectural Ideation Canvas',
-      category: 'STUDIO ACTIONS' as const,
-      icon: PenTool,
-      action: () => {
-        setIsOpen(false);
-        router.push('/sketch');
+      {
+        id: 'act-calendar',
+        title: 'Open Studio Calendar & Site Visits',
+        subtitle: 'Google Calendar Sync & Project Deadlines',
+        category: 'STUDIO ACTIONS' as const,
+        icon: Calendar,
+        searchKey: 'open studio calendar site visits google calendar sync deadlines'.toLowerCase(),
+        action: () => {
+          setIsOpen(false);
+          router.push('/calendar');
+        },
       },
-    },
-    {
-      id: 'act-calendar',
-      title: 'Open Studio Calendar & Site Visits',
-      subtitle: 'Google Calendar Sync & Project Deadlines',
-      category: 'STUDIO ACTIONS' as const,
-      icon: Calendar,
-      action: () => {
-        setIsOpen(false);
-        router.push('/calendar');
+      {
+        id: 'act-hr',
+        title: 'File HR Request / Overtime / Reimbursement',
+        subtitle: 'Attendance Ledgers & Partner Clearances',
+        category: 'STUDIO ACTIONS' as const,
+        icon: Clock,
+        searchKey: 'file hr request overtime reimbursement attendance ledgers partner clearances'.toLowerCase(),
+        action: () => {
+          setIsOpen(false);
+          router.push('/hr');
+        },
       },
-    },
-    {
-      id: 'act-hr',
-      title: 'File HR Request / Overtime / Reimbursement',
-      subtitle: 'Attendance Ledgers & Partner Clearances',
-      category: 'STUDIO ACTIONS' as const,
-      icon: Clock,
-      action: () => {
-        setIsOpen(false);
-        router.push('/hr');
+      {
+        id: 'act-theme',
+        title: `Switch Theme to ${themeMode === 'light' ? 'Night Light Mode' : 'Day Light Mode'}`,
+        subtitle: 'Toggle Studio Color Scheme',
+        category: 'STUDIO ACTIONS' as const,
+        icon: themeMode === 'light' ? Moon : Sun,
+        searchKey: 'switch theme night day dark mode color scheme'.toLowerCase(),
+        action: () => {
+          toggleThemeMode();
+          setIsOpen(false);
+        },
       },
-    },
-    {
-      id: 'act-theme',
-      title: `Switch Theme to ${themeMode === 'light' ? 'Night Light Mode' : 'Day Light Mode'}`,
-      subtitle: 'Toggle Studio Color Scheme',
-      category: 'STUDIO ACTIONS' as const,
-      icon: themeMode === 'light' ? Moon : Sun,
-      action: () => {
-        toggleThemeMode();
-        setIsOpen(false);
-      },
-    },
-  ];
+    ];
+  }, [router, themeMode, toggleThemeMode]);
 
-  const filteredItems = items.filter((item) => {
-    const q = query.toLowerCase();
-    return (
-      item.title.toLowerCase().includes(q) ||
-      (item.subtitle && item.subtitle.toLowerCase().includes(q)) ||
-      item.category.toLowerCase().includes(q)
-    );
-  });
+  // Fast deferred filtering with precomputed index
+  const filteredItems = useMemo(() => {
+    if (!normalizedQuery) return items;
+    return items.filter((item) => item.searchKey.includes(normalizedQuery));
+  }, [items, normalizedQuery]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'ArrowDown') {
@@ -240,8 +258,13 @@ export function CommandPalette() {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-100 flex items-start justify-center pt-16 sm:pt-24 p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-150 font-mono">
-      <div className="bg-surface-main border-2 border-border-main w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col text-text-main animate-in zoom-in-95 duration-150">
+    <div 
+      className="fixed inset-0 z-100 flex items-start justify-center pt-16 sm:pt-24 p-4 bg-black/75 backdrop-blur-xs font-mono"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) setIsOpen(false);
+      }}
+    >
+      <div className="bg-surface-main border-2 border-border-main w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col text-text-main transform-gpu will-change-transform">
         {/* Search Bar Input */}
         <div className="p-4 border-b border-border-main flex items-center gap-3 bg-surface-hover/40">
           <Search className="w-5 h-5 text-accent-cyan shrink-0" />
@@ -251,21 +274,23 @@ export function CommandPalette() {
             id="command-palette-search"
             name="command-palette-search"
             aria-label="Search studio command palette"
-            placeholder="Type a command, project code, drawing sheet, or search studio..."
+            placeholder="Search studio: projects, drawings, chats, actions..."
             value={query}
             onChange={(e) => {
               setQuery(e.target.value);
               setSelectedIndex(0);
             }}
             onKeyDown={handleKeyDown}
-            className="flex-1 bg-transparent border-none outline-none font-mono text-sm text-text-main placeholder:text-muted-main/60 uppercase font-semibold"
+            className="flex-1 bg-transparent border-none outline-none font-mono text-sm text-text-main placeholder:text-muted-main/60 font-semibold"
           />
           <kbd className="hidden sm:inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded bg-surface-main border border-border-main text-muted-main">
             ESC
           </kbd>
           <button
+            type="button"
             onClick={() => setIsOpen(false)}
-            className="p-1 rounded-lg text-muted-main hover:text-text-main"
+            className="p-1 rounded-lg text-muted-main hover:text-text-main cursor-pointer"
+            aria-label="Close command palette"
           >
             <X className="w-4 h-4" />
           </button>
@@ -275,7 +300,7 @@ export function CommandPalette() {
         <div className="max-h-96 overflow-y-auto p-2 space-y-1 divide-y divide-border-main/20">
           {filteredItems.length === 0 ? (
             <div className="py-12 text-center text-xs text-muted-main uppercase tracking-wider italic">
-              NO MATCHING STUDIO COMMANDS OR DRAWINGS FOUND
+              No matching studio commands or drawings found
             </div>
           ) : (
             filteredItems.map((item, idx) => {
@@ -288,9 +313,9 @@ export function CommandPalette() {
                   onClick={item.action}
                   onMouseEnter={() => setSelectedIndex(idx)}
                   className={cn(
-                    'p-3 rounded-xl flex items-center justify-between gap-3 cursor-pointer transition-all',
+                    'p-3 rounded-xl flex items-center justify-between gap-3 cursor-pointer transition-colors',
                     isSelected
-                      ? 'bg-black text-white dark:bg-white dark:text-black shadow-sm font-semibold'
+                      ? 'bg-black text-white dark:bg-white dark:text-black shadow-xs font-semibold'
                       : 'hover:bg-surface-hover text-text-main'
                   )}
                 >
@@ -306,7 +331,7 @@ export function CommandPalette() {
                       <Icon className="w-4 h-4" />
                     </div>
                     <div className="min-w-0">
-                      <div className="text-xs font-bold uppercase truncate">{item.title}</div>
+                      <div className="text-xs font-bold truncate">{item.title}</div>
                       {item.subtitle && (
                         <div
                           className={cn(
@@ -342,13 +367,13 @@ export function CommandPalette() {
         {/* Footer Shortcut Hints */}
         <div className="p-3 border-t border-border-main bg-surface-hover/30 flex items-center justify-between text-[10px] text-muted-main uppercase font-bold">
           <div className="flex items-center gap-3">
-            <span>↑↓ NAVIGATE</span>
-            <span>↵ SELECT</span>
-            <span>ESC CLOSE</span>
+            <span>↑↓ Navigate</span>
+            <span>↵ Select</span>
+            <span>ESC Close</span>
           </div>
           <div className="flex items-center gap-1">
             <Command className="w-3 h-3 text-accent-cyan" />
-            <span>ESTUDIO COMMAND PALETTE</span>
+            <span>Studio Palette</span>
           </div>
         </div>
       </div>

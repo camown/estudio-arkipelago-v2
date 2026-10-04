@@ -767,6 +767,30 @@ export default function ProjectsPage() {
   }, []);
 
   // Universal Escape & Shortcut Key Handler
+  const activeModalRef = useRef({
+    isCreateRFIModalOpen,
+    isCreateSubmittalModalOpen,
+    isUploadSheetModalOpen,
+    isAddProjectModalOpen,
+    isAddFolderModalOpen,
+    isFilterPopoverOpen,
+    selectedProjectForDetail,
+    activeFolderFilter,
+  });
+
+  useEffect(() => {
+    activeModalRef.current = {
+      isCreateRFIModalOpen,
+      isCreateSubmittalModalOpen,
+      isUploadSheetModalOpen,
+      isAddProjectModalOpen,
+      isAddFolderModalOpen,
+      isFilterPopoverOpen,
+      selectedProjectForDetail,
+      activeFolderFilter,
+    };
+  });
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
@@ -786,37 +810,30 @@ export default function ProjectsPage() {
       }
 
       if (e.key === 'Escape') {
-        if (isCreateRFIModalOpen) {
+        const state = activeModalRef.current;
+        if (state.isCreateRFIModalOpen) {
           setIsCreateRFIModalOpen(false);
-        } else if (isCreateSubmittalModalOpen) {
+        } else if (state.isCreateSubmittalModalOpen) {
           setIsCreateSubmittalModalOpen(false);
-        } else if (isUploadSheetModalOpen) {
+        } else if (state.isUploadSheetModalOpen) {
           setIsUploadSheetModalOpen(false);
-        } else if (isAddProjectModalOpen) {
+        } else if (state.isAddProjectModalOpen) {
           setIsAddProjectModalOpen(false);
-        } else if (isAddFolderModalOpen) {
+        } else if (state.isAddFolderModalOpen) {
           setIsAddFolderModalOpen(false);
-        } else if (isFilterPopoverOpen) {
+        } else if (state.isFilterPopoverOpen) {
           setIsFilterPopoverOpen(false);
-        } else if (selectedProjectForDetail) {
+        } else if (state.selectedProjectForDetail) {
           setSelectedProjectForDetail(null);
-        } else if (activeFolderFilter) {
+        } else if (state.activeFolderFilter) {
           setActiveFolderFilter(null);
         }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [
-    isCreateRFIModalOpen,
-    isCreateSubmittalModalOpen,
-    isUploadSheetModalOpen,
-    isAddProjectModalOpen,
-    isAddFolderModalOpen,
-    isFilterPopoverOpen,
-    selectedProjectForDetail,
-    activeFolderFilter
-  ]);
+  }, []);
+
 
   // Handle Sheet File Selection
   const handleSheetFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {

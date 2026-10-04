@@ -2,11 +2,11 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/lib/hooks/useAuth';
-import { getProfileForEmail } from '@/lib/hooks/useAuth';
+import { useAuth, getProfileForEmail } from '@/lib/hooks/useAuth';
 import { PRESET_ACCOUNTS } from '@/lib/constants';
 import { Shield, Users, User as UserIcon, Wrench } from 'lucide-react';
 import Logo from '@/components/ui/Logo';
+
 
 const ROLE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   partner: Shield,

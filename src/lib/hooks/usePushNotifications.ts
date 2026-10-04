@@ -75,15 +75,28 @@ export function usePushNotifications() {
         applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
       });
 
-      // 4. Send subscription payload to Next.js API
+      // 4. Send subscription payload to both Spring Boot engine and Next.js
+      const payload = {
+        subscription,
+        userEmail: user?.email || 'architect@arkipelago.ph',
+        userId: user?.id || null,
+        userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'Unknown',
+      };
+
+      try {
+        await fetch('/spring-api/notifications/subscribe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+      } catch (springErr) {
+        console.warn('Spring Boot notification sync notice:', springErr);
+      }
+
       await fetch('/api/notifications/subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          subscription,
-          userEmail: user?.email || 'architect@arkipelago.ph',
-          userId: user?.id || null,
-        }),
+        body: JSON.stringify(payload),
       });
 
       setIsSubscribed(true);
@@ -98,15 +111,25 @@ export function usePushNotifications() {
 
   const sendTestPush = useCallback(async () => {
     try {
+      const pushBody = {
+        title: 'ESTUDIO ARKIPELAGO 🔔',
+        message: 'Messenger-style push notifications are now active on this device!',
+        url: '/chat',
+        targetEmail: user?.email || undefined,
+      };
+
+      try {
+        await fetch('/spring-api/notifications/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(pushBody),
+        });
+      } catch {}
+
       await fetch('/api/notifications/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: 'ESTUDIO ARKIPELAGO 🔔',
-          message: 'Messenger-style push notifications are now active on this device!',
-          url: '/chat',
-          targetEmail: user?.email || undefined,
-        }),
+        body: JSON.stringify(pushBody),
       });
     } catch (e) {
       console.error('Test push error:', e);

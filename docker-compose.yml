@@ -1,0 +1,31 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: arkipelago-postgres
+    restart: always
+    environment:
+      POSTGRES_DB: estudio_arkipelago
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  minio:
+    image: minio/minio:latest
+    container_name: arkipelago-minio
+    restart: always
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: arkipelago
+      MINIO_ROOT_PASSWORD: arkipelagopassword
+    ports:
+      - "9000:9000" # S3 API endpoint
+      - "9001:9001" # Web Console
+    volumes:
+      - miniodata:/data
+
+volumes:
+  pgdata:
+  miniodata:

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Clock, 
   Calendar, 
@@ -44,8 +44,12 @@ export default function HRPage() {
 
   const [selectedType, setSelectedType] = useState<HRRequestType>('overtime');
   const [reason, setReason] = useState('');
-  
   const [todayStr] = useState(getInitialTodayDate);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Form states
   const [otDate, setOtDate] = useState(todayStr);
@@ -302,7 +306,7 @@ export default function HRPage() {
               Human Resources (HR)
             </h1>
             <span className="text-[11px] font-mono px-2.5 py-0.5 rounded-full bg-surface-hover text-muted-main border border-border-main hidden sm:inline-block">
-              {visibleRequests.length} Records
+              {isMounted ? visibleRequests.length : 0} Records
             </span>
           </div>
           <p className="text-xs text-muted-main mt-1 font-sans">
@@ -310,7 +314,7 @@ export default function HRPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <span className={`text-[10px] font-mono px-2.5 py-1 font-semibold rounded-full capitalize tracking-wide border ${
+          <span suppressHydrationWarning className={`text-[10px] font-mono px-2.5 py-1 font-semibold rounded-full capitalize tracking-wide border ${
             isPartner ? 'bg-amber-500/20 text-amber-600 border-amber-500/40' : isSenior ? 'bg-blue-500/20 text-blue-600 border-blue-500/40' : 'bg-surface-hover text-muted-main border-border-main'
           }`}>
             Role: {user?.role ? user.role.replace('_', ' ') : 'Junior Architect'}
@@ -622,19 +626,19 @@ export default function HRPage() {
                     onClick={() => setStatusFilter('pending')}
                     className={`px-2.5 py-1 rounded transition-all cursor-pointer ${statusFilter === 'pending' ? 'bg-surface-main text-text-main font-bold shadow-xs' : 'text-muted-main'}`}
                   >
-                    Pending ({pendingCount})
+                    Pending ({isMounted ? pendingCount : 0})
                   </button>
                   <button
                     onClick={() => setStatusFilter('cleared')}
                     className={`px-2.5 py-1 rounded transition-all cursor-pointer ${statusFilter === 'cleared' ? 'bg-surface-main text-text-main font-bold shadow-xs' : 'text-muted-main'}`}
                   >
-                    Approved & Cleared ({clearedCount})
+                    Approved & Cleared ({isMounted ? clearedCount : 0})
                   </button>
                   <button
                     onClick={() => setStatusFilter('all')}
                     className={`px-2.5 py-1 rounded transition-all cursor-pointer ${statusFilter === 'all' ? 'bg-surface-main text-text-main font-bold shadow-xs' : 'text-muted-main'}`}
                   >
-                    All ({eligibleRequests.length})
+                    All ({isMounted ? eligibleRequests.length : 0})
                   </button>
                 </div>
 
@@ -663,7 +667,7 @@ export default function HRPage() {
             </div>
 
             <div className="flex-1 flex flex-col justify-start">
-              {visibleRequests.length === 0 ? (
+              {!isMounted || visibleRequests.length === 0 ? (
                 <div className="border border-dashed border-border-strong rounded-xl p-8 text-center bg-surface-hover/30 my-auto">
                   <p className="text-muted-main text-xs italic">
                     No registered submittals in this category

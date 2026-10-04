@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+
 import type { TimeEntry } from '@/types';
 import { MOCK_PROJECTS } from '@/lib/constants';
 import { useAuth } from '@/lib/hooks/useAuth';
@@ -32,6 +33,56 @@ export function formatElapsed(seconds: number): string {
     .map((val) => String(val).padStart(2, '0'))
     .join(':');
 }
+
+/**
+ * Isolated, high-performance ticking elapsed time component.
+ * Ticks locally every second without causing parent pages or sidebars to re-render.
+ */
+export function LiveElapsedTime({
+  startTime,
+  isClocked,
+  fallback = '00:00:00',
+  className,
+}: {
+  startTime?: Date | string | null;
+  isClocked?: boolean;
+  fallback?: string;
+  className?: string;
+}) {
+  const [elapsed, setElapsed] = useState(() => {
+    if (!isClocked || !startTime) return 0;
+    const startMs = new Date(startTime).getTime();
+    return Math.max(0, Math.floor((Date.now() - startMs) / 1000));
+  });
+
+  useEffect(() => {
+    if (!isClocked || !startTime) {
+      setElapsed(0);
+      return;
+    }
+
+    const startMs = new Date(startTime).getTime();
+    const update = () => {
+      setElapsed(Math.max(0, Math.floor((Date.now() - startMs) / 1000)));
+    };
+
+    update();
+    const id = setInterval(update, 1000);
+    return () => clearInterval(id);
+  }, [isClocked, startTime]);
+
+  if (!isClocked || !startTime) {
+    return React.createElement('span', { className, suppressHydrationWarning: true }, fallback);
+  }
+
+  return React.createElement(
+    'span',
+    { className, suppressHydrationWarning: true },
+    formatElapsed(elapsed)
+  );
+}
+
+
 
 function getStoredClockInState(userId?: string) {
   if (typeof window === 'undefined') {
@@ -170,24 +221,16 @@ export function useClockIn() {
     };
   }, [syncStateFromStorage]);
 
-  // Tick elapsed duration every second while clocked in
+  // Synchronize elapsed time on state updates
   useEffect(() => {
-    if (!isClocked || !startTime) {
-      return;
-    }
-
-    const updateTimer = () => {
+    if (startTime) {
       const now = Date.now();
       const startMs = new Date(startTime).getTime();
-      const diffSeconds = Math.max(0, Math.floor((now - startMs) / 1000));
-      setElapsed(diffSeconds);
-    };
-
-    updateTimer();
-    const intervalId = setInterval(updateTimer, 1000);
-
-    return () => clearInterval(intervalId);
-  }, [isClocked, startTime]);
+      setElapsed(Math.max(0, Math.floor((now - startMs) / 1000)));
+    } else {
+      setElapsed(0);
+    }
+  }, [startTime, isClocked]);
 
   const clockIn = useCallback((projectId: string) => {
     const now = new Date();

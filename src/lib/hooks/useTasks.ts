@@ -2,10 +2,14 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { TaskItem } from '@/types';
+export type { TaskItem };
 import { supabase, isSupabaseConfigured } from '@/lib/supabase/client';
 
-const STORAGE_KEY = 'arkipelago_unified_tasks';
-const EVENT_NAME = 'arkipelago_tasks_updated';
+const TASKS_STORAGE_KEY = 'arkipelago_unified_tasks';
+const TASKS_EVENT_NAME = 'arkipelago_tasks_updated';
+const TASKS_CHANNEL_NAME = 'arkipelago_tasks_channel';
+const TASKS_REALTIME_CHANNEL = 'realtime:tasks';
+
 
 const INITIAL_TASKS: TaskItem[] = [
   {
@@ -61,9 +65,9 @@ const INITIAL_TASKS: TaskItem[] = [
 function getStoredTasks(): TaskItem[] {
   if (typeof window === 'undefined') return INITIAL_TASKS;
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(TASKS_STORAGE_KEY);
     if (!raw) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_TASKS));
+      localStorage.setItem(TASKS_STORAGE_KEY, JSON.stringify(INITIAL_TASKS));
       return INITIAL_TASKS;
     }
     return JSON.parse(raw);
@@ -76,7 +80,7 @@ function getStoredTasks(): TaskItem[] {
 function persistTasks(tasks: TaskItem[]) {
   if (typeof window === 'undefined') return;
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+    localStorage.setItem(TASKS_STORAGE_KEY, JSON.stringify(tasks));
   } catch (e) {
     console.error('Error persisting tasks', e);
   }
@@ -92,17 +96,17 @@ export function useTasks() {
   useEffect(() => {
     syncTasks();
     const handleStorage = (e: StorageEvent) => {
-      if (e.key === STORAGE_KEY) syncTasks();
+      if (e.key === TASKS_STORAGE_KEY) syncTasks();
     };
     const handleCustom = () => syncTasks();
 
     window.addEventListener('storage', handleStorage);
-    window.addEventListener(EVENT_NAME, handleCustom);
+    window.addEventListener(TASKS_EVENT_NAME, handleCustom);
 
     let bc: BroadcastChannel | null = null;
     if (typeof BroadcastChannel !== 'undefined') {
       try {
-        bc = new BroadcastChannel('arkipelago_tasks_channel');
+        bc = new BroadcastChannel(TASKS_CHANNEL_NAME);
         bc.onmessage = () => syncTasks();
       } catch (e) {
         console.error('BroadcastChannel error', e);
@@ -111,10 +115,11 @@ export function useTasks() {
 
     return () => {
       window.removeEventListener('storage', handleStorage);
-      window.removeEventListener(EVENT_NAME, handleCustom);
+      window.removeEventListener(TASKS_EVENT_NAME, handleCustom);
       if (bc) bc.close();
     };
   }, [syncTasks]);
+
 
   // Supabase Cloud Sync & Realtime
   useEffect(() => {
@@ -150,17 +155,25 @@ export function useTasks() {
 
     fetchSupabaseTasks();
 
-    const channelName = `realtime_tasks_${Date.now()}`;
-    const channel = supabase
-      .channel(channelName)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => {
-        fetchSupabaseTasks();
-      })
-      .subscribe();
+    try {
+      const channel = supabase
+        .channel(TASKS_REALTIME_CHANNEL)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => {
+          fetchSupabaseTasks();
+        })
+        .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+      return () => {
+        try {
+          supabase.removeChannel(channel);
+        } catch {
+          // ignore cleanup errors
+        }
+      };
+    } catch (err) {
+      console.warn('Realtime tasks subscription notice:', err);
+    }
+
   }, []);
 
   const addTask = useCallback(async (newTaskData: Partial<TaskItem>) => {
@@ -187,9 +200,9 @@ export function useTasks() {
     setTasks(updated);
     
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(new Event(EVENT_NAME));
+      window.dispatchEvent(new Event(TASKS_EVENT_NAME));
       if (typeof BroadcastChannel !== 'undefined') {
-        const bc = new BroadcastChannel('arkipelago_tasks_channel');
+        const bc = new BroadcastChannel(TASKS_CHANNEL_NAME);
         bc.postMessage('tasks_updated');
         bc.close();
       }
@@ -227,9 +240,9 @@ export function useTasks() {
     setTasks(updated);
     
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(new Event(EVENT_NAME));
+      window.dispatchEvent(new Event(TASKS_EVENT_NAME));
       if (typeof BroadcastChannel !== 'undefined') {
-        const bc = new BroadcastChannel('arkipelago_tasks_channel');
+        const bc = new BroadcastChannel(TASKS_CHANNEL_NAME);
         bc.postMessage('tasks_updated');
         bc.close();
       }
@@ -243,6 +256,7 @@ export function useTasks() {
       }
     }
   }, []);
+
 
   return {
     tasks,

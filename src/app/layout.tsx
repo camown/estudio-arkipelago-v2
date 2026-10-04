@@ -80,10 +80,15 @@ export default function RootLayout({
                     document.documentElement.setAttribute('data-theme', 'dark');
                   }
                 } catch(e) {}
+                // Enable transitions only after theme is set to avoid flash
+                requestAnimationFrame(function() {
+                  document.body.classList.add('theme-ready');
+                });
               })();
             `,
           }}
         />
+
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${jetbrainsMono.variable} ${jakartaDisplay.variable} antialiased min-h-screen bg-bg-main text-text-main`}

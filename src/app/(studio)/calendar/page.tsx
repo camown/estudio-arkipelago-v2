@@ -24,12 +24,19 @@ import {
   Clock,
   Users,
   CalendarDays,
-  LayoutList
+  LayoutList,
+  Columns,
+  Car,
+  CalendarRange,
+  Circle,
+  Sparkles
 } from 'lucide-react';
 import { TaskInitializationModal } from '@/components/dashboard/TaskInitializationModal';
 import { useTasks } from '@/lib/hooks/useTasks';
+import { TaskItem } from '@/types';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/Badge';
+import { getWeekDates, getTypeBadgeStyles } from '@/lib/schedule';
 
 export interface StudioMeeting {
   id: string;
@@ -188,7 +195,7 @@ const INITIAL_MEETINGS: StudioMeeting[] = [
 
 export default function CalendarPage() {
   const router = useRouter();
-  const { tasks, addTask } = useTasks();
+  const { tasks, addTask, updateTaskStatus } = useTasks();
   
   // Navigation tab
   const [activeTab, setActiveTab] = useState<'CALENDAR' | 'TASKS'>(() => {
@@ -198,9 +205,44 @@ export default function CalendarPage() {
     return tabParam === 'TASKS' || tabParam === 'tasks' ? 'TASKS' : 'CALENDAR';
   });
 
-  // Calendar display state
-  const [calendarViewMode, setCalendarViewMode] = useState<'AGENDA' | 'GRID'>('AGENDA');
+  // Calendar display state: PlanSense Daily Flow, 7-Day Week, Agenda List, Month Grid
+  const [calendarViewMode, setCalendarViewMode] = useState<'FLOW' | 'WEEK' | 'AGENDA' | 'GRID'>('FLOW');
   const [currentDate, setCurrentDate] = useState(new Date(2026, 8, 26)); // Sat Sep 26, 2026 (matching reference UI)
+  const [selectedScrubDateStr, setSelectedScrubDateStr] = useState<string>('2026-09-26');
+  const [flowFilter, setFlowFilter] = useState<'ALL' | 'MEETINGS' | 'TASKS'>('ALL');
+
+  // PlanSense Quick Add Drawer / Modal State
+  const [isQuickAddModalOpen, setIsQuickAddModalOpen] = useState(false);
+  const [quickAddType, setQuickAddType] = useState<'TASK' | 'MEETING'>('TASK');
+  const [quickAddTitle, setQuickAddTitle] = useState('');
+  const [quickAddProject, setQuickAddProject] = useState('MT-2024');
+  const [quickAddPriority, setQuickAddPriority] = useState<'LOW' | 'MEDIUM' | 'HIGH'>('HIGH');
+  const [quickAddTime, setQuickAddTime] = useState('10:00 AM');
+  const [quickAddSuccess, setQuickAddSuccess] = useState(false);
+
+  // Streamlined Weekly Calendar Navigation
+  const weekDays = useMemo(() => getWeekDates(currentDate), [currentDate]);
+
+  const handlePrevWeek = () => {
+    setCurrentDate((prev) => {
+      const next = new Date(prev);
+      next.setDate(prev.getDate() - 7);
+      return next;
+    });
+  };
+
+  const handleNextWeek = () => {
+    setCurrentDate((prev) => {
+      const next = new Date(prev);
+      next.setDate(prev.getDate() + 7);
+      return next;
+    });
+  };
+
+  const handleThisWeek = () => {
+    setCurrentDate(new Date(2026, 8, 26));
+    setSelectedScrubDateStr('2026-09-26');
+  };
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
@@ -214,8 +256,6 @@ export default function CalendarPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
   const [selectedTypeFilter, setSelectedTypeFilter] = useState<'ALL' | StudioMeeting['type']>('ALL');
-  const [sourceSegment, setSourceSegment] = useState<'ALL' | 'CALENDLY_ONLY'>('ALL');
-  const [timeHorizon, setTimeHorizon] = useState<'TODAY' | 'UPCOMING' | 'THIS_WEEK' | 'LAST_WEEK'>('TODAY');
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
 
   // Meetings collection
@@ -357,22 +397,7 @@ export default function CalendarPage() {
     }
   }, [handleSyncGoogleCalendar]);
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        if (selectedMeeting) setSelectedMeeting(null);
-        else if (selectedEvent) setSelectedEvent(null);
-        else if (isScheduleModalOpen) setIsScheduleModalOpen(false);
-        else if (isSettingsModalOpen) setIsSettingsModalOpen(false);
-        else if (isTaskModalOpen) setIsTaskModalOpen(false);
-        else if (isFilterMenuOpen) setIsFilterMenuOpen(false);
-        else if (isCalendarSourceMenuOpen) setIsCalendarSourceMenuOpen(false);
-        else if (isDatePickerOpen) setIsDatePickerOpen(false);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [
+  const activeOverlayRef = useRef({
     selectedMeeting,
     selectedEvent,
     isScheduleModalOpen,
@@ -381,7 +406,39 @@ export default function CalendarPage() {
     isFilterMenuOpen,
     isCalendarSourceMenuOpen,
     isDatePickerOpen,
-  ]);
+  });
+
+  useEffect(() => {
+    activeOverlayRef.current = {
+      selectedMeeting,
+      selectedEvent,
+      isScheduleModalOpen,
+      isSettingsModalOpen,
+      isTaskModalOpen,
+      isFilterMenuOpen,
+      isCalendarSourceMenuOpen,
+      isDatePickerOpen,
+    };
+  });
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        const state = activeOverlayRef.current;
+        if (state.selectedMeeting) setSelectedMeeting(null);
+        else if (state.selectedEvent) setSelectedEvent(null);
+        else if (state.isScheduleModalOpen) setIsScheduleModalOpen(false);
+        else if (state.isSettingsModalOpen) setIsSettingsModalOpen(false);
+        else if (state.isTaskModalOpen) setIsTaskModalOpen(false);
+        else if (state.isFilterMenuOpen) setIsFilterMenuOpen(false);
+        else if (state.isCalendarSourceMenuOpen) setIsCalendarSourceMenuOpen(false);
+        else if (state.isDatePickerOpen) setIsDatePickerOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
 
   const handleConnectGmail = () => {
     router.push('/api/auth/google/login');
@@ -402,12 +459,7 @@ export default function CalendarPage() {
   // Filtered meetings computed live according to toolbar inputs
   const filteredMeetings = useMemo(() => {
     return meetings.filter((meeting) => {
-      // 1. Source Segment filter
-      if (sourceSegment === 'CALENDLY_ONLY' && meeting.source !== 'CALENDLY') {
-        return false;
-      }
-
-      // 2. Calendar source filter dropdown
+      // 1. Calendar source filter dropdown
       if (selectedCalendarSource === 'Google Calendar') {
         if (
           meeting.source !== 'GOOGLE' &&
@@ -434,7 +486,7 @@ export default function CalendarPage() {
         }
       }
 
-      // 3. Search query filter
+      // 2. Search query filter
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         const matchesQuery =
@@ -446,34 +498,18 @@ export default function CalendarPage() {
         if (!matchesQuery) return false;
       }
 
-      // 4. Type filter popover
+      // 3. Type filter popover
       if (selectedTypeFilter !== 'ALL' && meeting.type !== selectedTypeFilter) {
         return false;
-      }
-
-      // 5. Time Horizon Filter (relative to Sat Sep 26, 2026)
-      const targetDate = '2026-09-26';
-      if (timeHorizon === 'TODAY') {
-        return meeting.date === targetDate;
-      } else if (timeHorizon === 'UPCOMING') {
-        return meeting.date > targetDate;
-      } else if (timeHorizon === 'THIS_WEEK') {
-        // Week of Sep 20 - Sep 26
-        return meeting.date >= '2026-09-20' && meeting.date <= '2026-09-26';
-      } else if (timeHorizon === 'LAST_WEEK') {
-        // Previous week Sep 13 - Sep 19
-        return meeting.date >= '2026-09-13' && meeting.date <= '2026-09-19';
       }
 
       return true;
     });
   }, [
     meetings,
-    sourceSegment,
     selectedCalendarSource,
     searchQuery,
     selectedTypeFilter,
-    timeHorizon,
   ]);
 
   // Handle scheduling a new meeting
@@ -554,6 +590,87 @@ export default function CalendarPage() {
 
     return cells;
   }, [year, month]);
+
+  // PlanSense Day Selection & Computed Items
+  const selectedDayInfo = useMemo(() => {
+    const found = weekDays.find((d) => d.dateStr === selectedScrubDateStr);
+    if (found) return found;
+    return (
+      weekDays[0] || {
+        date: new Date(),
+        dateStr: selectedScrubDateStr,
+        dayNum: 26,
+        dayNameShort: 'SAT',
+        dayNameFull: 'Saturday',
+        monthShort: 'SEP',
+        isToday: true,
+      }
+    );
+  }, [weekDays, selectedScrubDateStr]);
+
+  const selectedDayMeetings = useMemo(() => {
+    return filteredMeetings.filter((m) => m.date === selectedScrubDateStr);
+  }, [filteredMeetings, selectedScrubDateStr]);
+
+  const selectedDayTasks = useMemo(() => {
+    return tasks.filter((t) => {
+      if (t.startDate === selectedScrubDateStr || t.endDate === selectedScrubDateStr) return true;
+      return false;
+    });
+  }, [tasks, selectedScrubDateStr]);
+
+  const handleToggleTaskStatus = (task: TaskItem) => {
+    const nextStatus = task.status === 'COMPLETED' ? 'IN_PROGRESS' : 'COMPLETED';
+    updateTaskStatus(task.id, nextStatus);
+    showToast(`✓ Task marked as ${nextStatus === 'COMPLETED' ? 'Completed' : 'In Progress'}`);
+  };
+
+  const handleQuickAddSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!quickAddTitle.trim()) return;
+
+    if (quickAddType === 'TASK') {
+      await addTask({
+        name: quickAddTitle.trim(),
+        projectId: quickAddProject,
+        description: `Scheduled for ${selectedScrubDateStr} via PlanSense Quick Action`,
+        projectPhase: 'SCHEMATIC',
+        deliverables: ['Deliverable Package'],
+        taskType: 'DELIVERABLE',
+        priority: quickAddPriority,
+        assignedMember: 'Lead Architect',
+        startDate: selectedScrubDateStr,
+        endDate: selectedScrubDateStr,
+        timeNeeded: '8h',
+      });
+      showToast(`✓ Created deliverable "${quickAddTitle.trim()}"`);
+    } else {
+      const newMtg: StudioMeeting = {
+        id: `mtg-${Date.now()}`,
+        title: quickAddTitle.trim(),
+        client: 'Client Coordination',
+        projectCode: quickAddProject,
+        date: selectedScrubDateStr,
+        startTime: quickAddTime,
+        endTime: '11:30 AM',
+        type: quickAddPriority === 'HIGH' ? 'Site Inspection' : 'Client Review',
+        source: 'STUDIO',
+        location: 'Studio Boardroom / Site Location',
+        attendees: ['Lead Architect', 'Project Team'],
+        description: 'Scheduled via PlanSense Daily Flow Quick Action',
+        status: 'confirmed',
+      };
+      setMeetings((prev) => [newMtg, ...prev]);
+      showToast(`✓ Scheduled ${newMtg.type} on ${selectedScrubDateStr}`);
+    }
+
+    setQuickAddSuccess(true);
+    setTimeout(() => {
+      setQuickAddSuccess(false);
+      setIsQuickAddModalOpen(false);
+      setQuickAddTitle('');
+    }, 600);
+  };
 
   return (
     <div className="font-sans text-text-main space-y-6 pb-16 relative min-h-screen">
@@ -798,32 +915,6 @@ export default function CalendarPage() {
                   )}
                 </div>
               </div>
-
-              {/* Right Segmented Control: [ All meetings | Calendly only ] */}
-              <div className="flex items-center bg-surface-hover/70 p-1 rounded-xl border border-border-main self-start lg:self-auto">
-                <button
-                  onClick={() => setSourceSegment('ALL')}
-                  className={cn(
-                    'px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer',
-                    sourceSegment === 'ALL'
-                      ? 'bg-surface-main text-text-main shadow-2xs border border-border-main/60'
-                      : 'text-muted-main hover:text-text-main'
-                  )}
-                >
-                  All meetings
-                </button>
-                <button
-                  onClick={() => setSourceSegment('CALENDLY_ONLY')}
-                  className={cn(
-                    'px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer',
-                    sourceSegment === 'CALENDLY_ONLY'
-                      ? 'bg-black text-white dark:bg-white dark:text-black shadow-2xs'
-                      : 'text-muted-main hover:text-text-main'
-                  )}
-                >
-                  Calendly only
-                </button>
-              </div>
             </div>
 
             {/* ROW 2: Date Selector, Vertical Divider, Time Horizon Pills, Counter */}
@@ -845,7 +936,6 @@ export default function CalendarPage() {
                       <button
                         onClick={() => {
                           setCurrentDate(new Date(2026, 8, 26));
-                          setTimeHorizon('TODAY');
                           setIsDatePickerOpen(false);
                         }}
                         className="w-full text-left px-3 py-2 rounded-lg hover:bg-surface-hover text-text-main flex items-center justify-between font-semibold"
@@ -856,7 +946,6 @@ export default function CalendarPage() {
                       <button
                         onClick={() => {
                           setCurrentDate(new Date(2026, 8, 28));
-                          setTimeHorizon('UPCOMING');
                           setIsDatePickerOpen(false);
                         }}
                         className="w-full text-left px-3 py-2 rounded-lg hover:bg-surface-hover text-text-main flex items-center justify-between font-semibold"
@@ -867,68 +956,6 @@ export default function CalendarPage() {
                     </div>
                   )}
                 </div>
-
-                {/* Vertical Divider */}
-                <span className="text-border-strong font-light hidden sm:inline" aria-hidden="true">|</span>
-
-                {/* Time Horizon Pills */}
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  {/* Today Pill */}
-                  <button
-                    onClick={() => setTimeHorizon('TODAY')}
-                    className={cn(
-                      'px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs',
-                      timeHorizon === 'TODAY'
-                        ? 'bg-black text-white dark:bg-white dark:text-black font-bold'
-                        : 'border border-border-main hover:border-text-main bg-surface-main text-muted-main hover:text-text-main'
-                    )}
-                  >
-                    {timeHorizon === 'TODAY' && <Check className="w-3.5 h-3.5" />}
-                    <span>Today</span>
-                  </button>
-
-                  {/* Upcoming Pill */}
-                  <button
-                    onClick={() => setTimeHorizon('UPCOMING')}
-                    className={cn(
-                      'px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs',
-                      timeHorizon === 'UPCOMING'
-                        ? 'bg-black text-white dark:bg-white dark:text-black font-bold'
-                        : 'border border-border-main hover:border-text-main bg-surface-main text-muted-main hover:text-text-main'
-                    )}
-                  >
-                    {timeHorizon === 'UPCOMING' && <Check className="w-3.5 h-3.5" />}
-                    <span>Upcoming</span>
-                  </button>
-
-                  {/* This week Pill */}
-                  <button
-                    onClick={() => setTimeHorizon('THIS_WEEK')}
-                    className={cn(
-                      'px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs',
-                      timeHorizon === 'THIS_WEEK'
-                        ? 'bg-black text-white dark:bg-white dark:text-black font-bold'
-                        : 'border border-border-main hover:border-text-main bg-surface-main text-muted-main hover:text-text-main'
-                    )}
-                  >
-                    {timeHorizon === 'THIS_WEEK' && <Check className="w-3.5 h-3.5" />}
-                    <span>This week</span>
-                  </button>
-
-                  {/* Last week Pill */}
-                  <button
-                    onClick={() => setTimeHorizon('LAST_WEEK')}
-                    className={cn(
-                      'px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs',
-                      timeHorizon === 'LAST_WEEK'
-                        ? 'bg-black text-white dark:bg-white dark:text-black font-bold'
-                        : 'border border-border-main hover:border-text-main bg-surface-main text-muted-main hover:text-text-main'
-                    )}
-                  >
-                    {timeHorizon === 'LAST_WEEK' && <Check className="w-3.5 h-3.5" />}
-                    <span>Last week</span>
-                  </button>
-                </div>
               </div>
 
               {/* Right: Counter text + View Mode Toggle */}
@@ -937,12 +964,38 @@ export default function CalendarPage() {
                   Displaying {filteredMeetings.length} {filteredMeetings.length === 1 ? 'meeting' : 'meetings'}
                 </span>
 
-                {/* View Switcher: Agenda vs Month Grid */}
+                {/* View Switcher: PlanSense Flow vs Week vs Agenda vs Month Grid */}
                 <div className="flex items-center border border-border-main rounded-lg p-0.5 bg-surface-hover/40">
+                  <button
+                    onClick={() => setCalendarViewMode('FLOW')}
+                    className={cn(
+                      'px-2.5 py-1.5 rounded text-xs transition-colors cursor-pointer flex items-center gap-1.5 plansense-press',
+                      calendarViewMode === 'FLOW'
+                        ? 'bg-surface-main text-text-main shadow-2xs font-bold'
+                        : 'text-muted-main hover:text-text-main'
+                    )}
+                    title="PlanSense Daily Flow (Tactile Scrubber & Dual-Track)"
+                  >
+                    <CalendarRange className="w-3.5 h-3.5" />
+                    <span>Flow</span>
+                  </button>
+                  <button
+                    onClick={() => setCalendarViewMode('WEEK')}
+                    className={cn(
+                      'px-2.5 py-1.5 rounded text-xs transition-colors cursor-pointer flex items-center gap-1.5 plansense-press',
+                      calendarViewMode === 'WEEK'
+                        ? 'bg-surface-main text-text-main shadow-2xs font-bold'
+                        : 'text-muted-main hover:text-text-main'
+                    )}
+                    title="Weekly Calendar View"
+                  >
+                    <Columns className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Week</span>
+                  </button>
                   <button
                     onClick={() => setCalendarViewMode('AGENDA')}
                     className={cn(
-                      'p-1.5 rounded text-xs transition-colors cursor-pointer',
+                      'px-2.5 py-1.5 rounded text-xs transition-colors cursor-pointer flex items-center gap-1.5 plansense-press',
                       calendarViewMode === 'AGENDA'
                         ? 'bg-surface-main text-text-main shadow-2xs font-bold'
                         : 'text-muted-main hover:text-text-main'
@@ -950,11 +1003,12 @@ export default function CalendarPage() {
                     title="Meetings Agenda View"
                   >
                     <LayoutList className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Agenda</span>
                   </button>
                   <button
                     onClick={() => setCalendarViewMode('GRID')}
                     className={cn(
-                      'p-1.5 rounded text-xs transition-colors cursor-pointer',
+                      'px-2.5 py-1.5 rounded text-xs transition-colors cursor-pointer flex items-center gap-1.5 plansense-press',
                       calendarViewMode === 'GRID'
                         ? 'bg-surface-main text-text-main shadow-2xs font-bold'
                         : 'text-muted-main hover:text-text-main'
@@ -962,14 +1016,608 @@ export default function CalendarPage() {
                     title="Month Grid View"
                   >
                     <CalendarDays className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Month</span>
                   </button>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* MAIN VIEW CONTENT: AGENDA LIST OR MONTH GRID */}
-          {calendarViewMode === 'AGENDA' ? (
+          {/* MAIN VIEW CONTENT: PLANSENSE DAILY FLOW, WEEKLY CALENDAR, AGENDA LIST, OR MONTH GRID */}
+          {calendarViewMode === 'FLOW' ? (
+            /* PLANSENSE DAILY FLOW STREAM WITH TACTILE SCRUBBER & DUAL-TRACK */
+            <div className="space-y-4">
+              {/* PlanSense Week Navigation & Tactile Day Scrubber */}
+              <div className="bg-surface-main border border-border-main rounded-2xl p-4 sm:p-5 shadow-xs space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-1 border border-border-main rounded-xl p-1 bg-surface-hover/50">
+                      <button
+                        onClick={handlePrevWeek}
+                        className="p-1.5 rounded-lg hover:bg-surface-hover text-muted-main hover:text-text-main transition-colors cursor-pointer plansense-press"
+                        title="Previous Week"
+                        aria-label="Previous Week"
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={handleThisWeek}
+                        className="px-2.5 py-1 rounded-lg text-xs font-mono font-bold hover:bg-surface-hover text-text-main transition-colors cursor-pointer plansense-press"
+                      >
+                        Today
+                      </button>
+                      <button
+                        onClick={handleNextWeek}
+                        className="p-1.5 rounded-lg hover:bg-surface-hover text-muted-main hover:text-text-main transition-colors cursor-pointer plansense-press"
+                        title="Next Week"
+                        aria-label="Next Week"
+                      >
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    <div>
+                      <h3 className="text-sm sm:text-base font-bold text-text-main font-sans">
+                        {weekDays[0].monthShort} {weekDays[0].dayNum} – {weekDays[6].monthShort} {weekDays[6].dayNum}, {weekDays[0].date.getFullYear()}
+                      </h3>
+                      <p className="text-[11px] text-zinc-600 dark:text-zinc-400 font-mono">
+                        PlanSense Dual-Track Mobile &amp; Tablet Schedule
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Micro-dot legend */}
+                  <div className="flex items-center gap-3 font-mono text-xs">
+                    <div className="flex items-center gap-1.5 text-zinc-700 dark:text-zinc-300">
+                      <span className="w-2 h-2 rounded-full bg-amber-500 shadow-2xs" />
+                      <span className="font-medium">Site Inspection</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-zinc-700 dark:text-zinc-300">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-2xs" />
+                      <span className="font-medium">Client Review</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-zinc-700 dark:text-zinc-300">
+                      <span className="w-2 h-2 rounded-full bg-accent-cyan shadow-2xs" />
+                      <span className="font-medium">Deliverables</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Tactile 7-Day Scrubber Bar */}
+                <div className="grid grid-cols-7 gap-1.5 sm:gap-2.5 bg-surface-hover/30 p-1.5 rounded-xl border border-border-main/50">
+                  {weekDays.map((day) => {
+                    const isSelected = day.dateStr === selectedScrubDateStr;
+                    const dayMtgs = filteredMeetings.filter((m) => m.date === day.dateStr);
+                    const hasSiteInspection = dayMtgs.some((m) => m.type === 'Site Inspection');
+                    const hasClientReview = dayMtgs.some((m) => m.type === 'Client Review');
+                    const dayTasksCount = tasks.filter((t) => t.startDate === day.dateStr || t.endDate === day.dateStr).length;
+
+                    return (
+                      <button
+                        key={day.dateStr}
+                        type="button"
+                        onClick={() => setSelectedScrubDateStr(day.dateStr)}
+                        className={cn(
+                          'flex flex-col items-center justify-center py-2 sm:py-3 px-1 rounded-xl cursor-pointer text-center relative group plansense-scrub-item',
+                          isSelected
+                            ? 'bg-black text-white dark:bg-white dark:text-black shadow-sm font-bold scale-[1.02]'
+                            : 'hover:bg-surface-hover text-zinc-700 dark:text-zinc-300 hover:text-text-main'
+                        )}
+                      >
+                        <span className="text-[10px] sm:text-xs font-mono uppercase tracking-wider block">
+                          {day.dayNameShort}
+                        </span>
+                        <span className="text-sm sm:text-lg font-mono font-bold leading-tight mt-0.5">
+                          {day.dayNum}
+                        </span>
+
+                        {/* PlanSense Color-Coded Micro-Indicator Dots */}
+                        <div className="h-2 flex items-center justify-center gap-1 mt-1.5">
+                          {hasSiteInspection && (
+                            <span
+                              className="w-1.5 h-1.5 rounded-full bg-amber-500 shadow-2xs"
+                              title="Site Inspection scheduled"
+                            />
+                          )}
+                          {hasClientReview && (
+                            <span
+                              className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-2xs"
+                              title="Client Review confirmed"
+                            />
+                          )}
+                          {(dayTasksCount > 0 || (dayMtgs.length > 0 && !hasSiteInspection && !hasClientReview)) && (
+                            <span
+                              className="w-1.5 h-1.5 rounded-full bg-accent-cyan shadow-2xs"
+                              title="Deliverables scheduled"
+                            />
+                          )}
+                        </div>
+
+                        {day.isToday && (
+                          <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-accent-cyan" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Selected Day Agenda Action Bar & Filters */}
+              <div className="bg-surface-main border border-border-main rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <h3 className="text-base sm:text-lg font-bold font-sans text-text-main">
+                    {selectedDayInfo.dayNameFull}, {selectedDayInfo.monthShort} {selectedDayInfo.dayNum}
+                  </h3>
+                  <span className="text-xs font-mono text-zinc-700 dark:text-zinc-300 bg-surface-hover px-2.5 py-0.5 rounded-lg border border-border-main font-semibold">
+                    {selectedDayMeetings.length + selectedDayTasks.length} Scheduled Items
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {/* Category Filter */}
+                  <div className="flex items-center border border-border-main rounded-xl p-0.5 bg-surface-hover/50 text-xs font-mono">
+                    <button
+                      onClick={() => setFlowFilter('ALL')}
+                      className={cn(
+                        'px-2.5 py-1 rounded-lg transition-colors cursor-pointer plansense-press',
+                        flowFilter === 'ALL'
+                          ? 'bg-black text-white dark:bg-white dark:text-black font-bold shadow-2xs'
+                          : 'text-zinc-600 dark:text-zinc-400 hover:text-text-main'
+                      )}
+                    >
+                      All
+                    </button>
+                    <button
+                      onClick={() => setFlowFilter('MEETINGS')}
+                      className={cn(
+                        'px-2.5 py-1 rounded-lg transition-colors cursor-pointer plansense-press',
+                        flowFilter === 'MEETINGS'
+                          ? 'bg-amber-500 text-black font-bold shadow-2xs'
+                          : 'text-zinc-600 dark:text-zinc-400 hover:text-text-main'
+                      )}
+                    >
+                      Site &amp; Reviews
+                    </button>
+                    <button
+                      onClick={() => setFlowFilter('TASKS')}
+                      className={cn(
+                        'px-2.5 py-1 rounded-lg transition-colors cursor-pointer plansense-press',
+                        flowFilter === 'TASKS'
+                          ? 'bg-accent-cyan text-black font-bold shadow-2xs'
+                          : 'text-zinc-600 dark:text-zinc-400 hover:text-text-main'
+                      )}
+                    >
+                      Deliverables
+                    </button>
+                  </div>
+
+                  {/* PlanSense 1-Tap Quick Add */}
+                  <button
+                    onClick={() => {
+                      setQuickAddTitle('');
+                      setIsQuickAddModalOpen(true);
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-black text-white dark:bg-white dark:text-black font-bold text-xs plansense-press shadow-xs cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Quick Add</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* PlanSense Dual-Track Streams Container */}
+              <div
+                key={selectedScrubDateStr}
+                className="grid grid-cols-1 lg:grid-cols-2 gap-4 animate-plansense-pop"
+              >
+                {/* Track 1: Site Inspections & Consultations */}
+                {(flowFilter === 'ALL' || flowFilter === 'MEETINGS') && (
+                  <div className="bg-surface-main border border-border-main rounded-2xl p-4 sm:p-5 shadow-xs space-y-3.5">
+                    <div className="flex items-center justify-between border-b border-border-main/60 pb-3">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-amber-500" />
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-text-main font-mono">
+                          Site Inspections &amp; Client Reviews ({selectedDayMeetings.length})
+                        </h4>
+                      </div>
+                      <span className="text-[11px] font-mono text-zinc-600 dark:text-zinc-400">
+                        Chronological Timeline
+                      </span>
+                    </div>
+
+                    {selectedDayMeetings.length > 0 ? (
+                      <div className="space-y-3">
+                        {selectedDayMeetings.map((meeting) => {
+                          const badge = getTypeBadgeStyles(meeting.type);
+                          return (
+                            <div
+                              key={meeting.id}
+                              onClick={() => setSelectedMeeting(meeting)}
+                              className="p-4 rounded-xl border border-border-main bg-surface-hover/30 hover:bg-surface-hover hover:border-text-main transition-all cursor-pointer group shadow-2xs space-y-2.5 plansense-press"
+                            >
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="text-xs font-mono font-bold text-text-main bg-surface-main px-2 py-0.5 rounded border border-border-main flex items-center gap-1.5">
+                                  <Clock className="w-3.5 h-3.5 text-zinc-500" />
+                                  {meeting.startTime} – {meeting.endTime}
+                                </span>
+                                <span className={cn('px-2 py-0.5 rounded-full text-[10px] font-semibold border', badge.border, badge.bg, badge.text)}>
+                                  {meeting.type}
+                                </span>
+                              </div>
+
+                              <div>
+                                <h5 className="text-sm font-bold text-text-main group-hover:underline">
+                                  {meeting.title}
+                                </h5>
+                                <p className="text-xs text-zinc-700 dark:text-zinc-300 font-medium mt-0.5">
+                                  Client: {meeting.client} • Project: <span className="font-mono font-bold text-text-main">{meeting.projectCode}</span>
+                                </p>
+                              </div>
+
+                              <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-border-main/40 text-xs text-zinc-600 dark:text-zinc-400">
+                                <span className="flex items-center gap-1.5 text-[11px] font-mono">
+                                  {meeting.meetingLink ? (
+                                    <Video className="w-3.5 h-3.5 text-blue-500" />
+                                  ) : (
+                                    <MapPin className="w-3.5 h-3.5 text-amber-500" />
+                                  )}
+                                  {meeting.location}
+                                </span>
+
+                                <span className="text-[10px] font-mono font-semibold text-text-main">
+                                  {meeting.attendees.length} Attendees →
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="py-10 text-center space-y-2.5">
+                        <p className="text-xs text-zinc-600 dark:text-zinc-400 font-mono">
+                          No site inspections or consultations scheduled for this date.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setNewMeetingDate(selectedScrubDateStr);
+                            setIsScheduleModalOpen(true);
+                          }}
+                          className="px-3 py-1.5 rounded-lg border border-border-strong text-xs font-bold hover:bg-surface-hover plansense-press cursor-pointer inline-flex items-center gap-1.5 text-text-main"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>Schedule Inspection</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Track 2: Project Deliverables & CAD/BIM Queue */}
+                {(flowFilter === 'ALL' || flowFilter === 'TASKS') && (
+                  <div className="bg-surface-main border border-border-main rounded-2xl p-4 sm:p-5 shadow-xs space-y-3.5">
+                    <div className="flex items-center justify-between border-b border-border-main/60 pb-3">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-accent-cyan" />
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-text-main font-mono">
+                          Studio Deliverables &amp; Queue ({selectedDayTasks.length})
+                        </h4>
+                      </div>
+                      <span className="text-[11px] font-mono text-zinc-600 dark:text-zinc-400">
+                        Interactive Action Track
+                      </span>
+                    </div>
+
+                    {selectedDayTasks.length > 0 ? (
+                      <div className="space-y-3">
+                        {selectedDayTasks.map((task) => {
+                          const isDone = task.status === 'COMPLETED';
+                          return (
+                            <div
+                              key={task.id}
+                              className={cn(
+                                'p-4 rounded-xl border transition-all space-y-2.5 shadow-2xs plansense-press',
+                                isDone
+                                  ? 'border-emerald-500/40 bg-emerald-500/5 opacity-75'
+                                  : 'border-border-main bg-surface-hover/30 hover:bg-surface-hover hover:border-text-main'
+                              )}
+                            >
+                              <div className="flex items-start gap-3">
+                                <button
+                                  type="button"
+                                  onClick={() => handleToggleTaskStatus(task)}
+                                  className="mt-0.5 cursor-pointer plansense-press text-text-main hover:scale-110 transition-transform"
+                                  title={isDone ? 'Mark as In Progress' : 'Mark as Completed'}
+                                >
+                                  {isDone ? (
+                                    <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+                                  ) : (
+                                    <Circle className="w-5 h-5 text-zinc-400 dark:text-zinc-500 hover:text-accent-cyan" />
+                                  )}
+                                </button>
+
+                                <div className="space-y-1 flex-1">
+                                  <div className="flex items-center gap-2">
+                                    <span
+                                      className={cn(
+                                        'text-sm font-bold text-text-main',
+                                        isDone && 'line-through text-zinc-500 dark:text-zinc-400'
+                                      )}
+                                    >
+                                      {task.name}
+                                    </span>
+                                  </div>
+                                  {task.description && (
+                                    <p className="text-xs text-zinc-700 dark:text-zinc-300 font-medium">
+                                      {task.description}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-border-main/40 text-xs font-mono">
+                                <div className="flex items-center gap-2">
+                                  {task.projectPhase && (
+                                    <span className="px-2 py-0.5 rounded bg-surface-main border border-border-main text-[10px] font-bold text-text-main">
+                                      {task.projectPhase}
+                                    </span>
+                                  )}
+                                  <span
+                                    className={cn(
+                                      'px-2 py-0.5 rounded text-[10px] font-bold border',
+                                      task.priority === 'HIGH'
+                                        ? 'bg-rose-500/10 border-rose-500/30 text-rose-600 dark:text-rose-400'
+                                        : 'bg-zinc-500/10 border-zinc-500/30 text-zinc-600 dark:text-zinc-400'
+                                    )}
+                                  >
+                                    {task.priority} Priority
+                                  </span>
+                                </div>
+
+                                <span className="text-[11px] text-zinc-700 dark:text-zinc-300 font-medium">
+                                  {task.assignedMember || 'Lead Architect'} {task.timeNeeded ? `• ${task.timeNeeded}` : ''}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="py-10 text-center space-y-2.5">
+                        <p className="text-xs text-zinc-600 dark:text-zinc-400 font-mono">
+                          No deliverables or drafting queue items set for this date.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setQuickAddType('TASK');
+                            setIsQuickAddModalOpen(true);
+                          }}
+                          className="px-3 py-1.5 rounded-lg border border-border-strong text-xs font-bold hover:bg-surface-hover plansense-press cursor-pointer inline-flex items-center gap-1.5 text-text-main"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>Create Deliverable</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : calendarViewMode === 'WEEK' ? (
+            /* STREAMLINED 7-DAY WEEKLY CALENDAR VIEW */
+            <div className="space-y-4">
+              {/* Week Navigation & Summary Header */}
+              <div className="bg-surface-main border border-border-main rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-1 border border-border-main rounded-xl p-1 bg-surface-hover/50">
+                    <button
+                      onClick={handlePrevWeek}
+                      className="p-1.5 rounded-lg hover:bg-surface-hover text-muted-main hover:text-text-main transition-colors cursor-pointer"
+                      title="Previous Week"
+                      aria-label="Previous Week"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={handleThisWeek}
+                      className="px-2.5 py-1 rounded-lg text-xs font-mono font-semibold hover:bg-surface-hover text-text-main transition-colors cursor-pointer"
+                    >
+                      This Week
+                    </button>
+                    <button
+                      onClick={handleNextWeek}
+                      className="p-1.5 rounded-lg hover:bg-surface-hover text-muted-main hover:text-text-main transition-colors cursor-pointer"
+                      title="Next Week"
+                      aria-label="Next Week"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  <div>
+                    <h3 className="text-sm sm:text-base font-bold text-text-main font-sans">
+                      {weekDays[0].monthShort} {weekDays[0].dayNum} – {weekDays[6].monthShort} {weekDays[6].dayNum}, {weekDays[0].date.getFullYear()}
+                    </h3>
+                    <p className="text-[11px] text-muted-main font-mono">
+                      Architectural deliverables &amp; site consultations
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2 font-mono text-xs">
+                  <div className="px-2.5 py-1 rounded-lg bg-surface-hover border border-border-main text-muted-main flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-indigo-500" />
+                    <span>Client Reviews</span>
+                  </div>
+                  <div className="px-2.5 py-1 rounded-lg bg-surface-hover border border-border-main text-muted-main flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                    <span>Site Inspections</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* 7-Column Weekly Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-7 gap-3.5">
+                {weekDays.map((day) => {
+                  const dayMeetings = meetings.filter((m) => m.date === day.dateStr);
+                  const daySynced = syncedEvents.filter((e) => {
+                    const startStr = e.start ? e.start.split('T')[0] : `2026-09-${String(e.day).padStart(2, '0')}`;
+                    return startStr === day.dateStr;
+                  });
+                  const dayTasks = tasks.filter((t) => t.endDate === day.dateStr || t.startDate === day.dateStr);
+                  const totalItems = dayMeetings.length + daySynced.length + dayTasks.length;
+
+                  return (
+                    <div
+                      key={day.dateStr}
+                      className={cn(
+                        'bg-surface-main border rounded-2xl p-3.5 flex flex-col justify-between min-h-[380px] transition-all shadow-xs space-y-3',
+                        day.isToday
+                          ? 'border-accent-cyan ring-1 ring-accent-cyan/30'
+                          : 'border-border-main/80 hover:border-text-main'
+                      )}
+                    >
+                      {/* Day Header */}
+                      <div className="border-b border-border-main/50 pb-2.5 space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-muted-main">
+                            {day.dayNameShort}
+                          </span>
+                          {day.isToday ? (
+                            <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-accent-cyan/20 text-accent-cyan border border-accent-cyan/30">
+                              TODAY
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-mono text-muted-main">
+                              {totalItems} {totalItems === 1 ? 'item' : 'items'}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="flex items-baseline gap-1.5">
+                          <span className={cn(
+                            'text-xl font-bold font-mono tracking-tight',
+                            day.isToday ? 'text-accent-cyan font-extrabold' : 'text-text-main'
+                          )}>
+                            {day.dayNum}
+                          </span>
+                          <span className="text-[10px] font-mono text-muted-main uppercase">
+                            {day.monthShort}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Items Stream */}
+                      <div className="space-y-2 flex-1 overflow-y-auto max-h-[460px] pr-0.5">
+                        {/* Meetings */}
+                        {dayMeetings.map((m) => {
+                          const isSite = m.type === 'Site Inspection';
+                          return (
+                            <div
+                              key={m.id}
+                              onClick={() => setSelectedMeeting(m)}
+                              className="p-2.5 rounded-xl border border-border-main bg-surface-hover/40 hover:bg-surface-hover hover:border-text-main transition-all cursor-pointer space-y-1.5 group shadow-2xs"
+                            >
+                              <div className="flex items-center justify-between gap-1">
+                                <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-surface-main border border-border-main text-text-main">
+                                  {m.projectCode}
+                                </span>
+                                <span className={cn(
+                                  'text-[9px] font-bold px-1.5 py-0.2 rounded border uppercase font-mono',
+                                  getTypeBadgeStyles(m.type)
+                                )}>
+                                  {m.type === 'Site Inspection' ? 'Site' : m.type === 'Client Review' ? 'Review' : 'Design'}
+                                </span>
+                              </div>
+
+                              <p className="text-xs font-bold text-text-main line-clamp-2 group-hover:text-accent-cyan transition-colors">
+                                {m.title}
+                              </p>
+
+                              <div className="text-[10px] text-muted-main font-mono flex items-center gap-1">
+                                <Clock className="w-3 h-3 text-muted-main shrink-0" />
+                                <span>{m.startTime.split(' ')[0]} – {m.endTime.split(' ')[0]}</span>
+                              </div>
+
+                              {isSite && (
+                                <div className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                                  <Car className="w-2.5 h-2.5" />
+                                  <span>+30m transit buffer</span>
+                                </div>
+                              )}
+
+                              {m.location && (
+                                <div className="text-[10px] text-muted-main truncate flex items-center gap-1">
+                                  <MapPin className="w-3 h-3 text-muted-main shrink-0" />
+                                  <span className="truncate">{m.location}</span>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+
+                        {/* Synced GCal Events */}
+                        {daySynced.map((evt) => (
+                          <div
+                            key={evt.id}
+                            onClick={() => setSelectedEvent(evt)}
+                            className="p-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 text-xs font-semibold cursor-pointer transition-all space-y-1 shadow-2xs"
+                          >
+                            <div className="flex items-center gap-1 text-[10px] font-mono">
+                              <span>📅</span>
+                              <span className="font-bold">Google Calendar</span>
+                            </div>
+                            <p className="text-[11px] font-sans truncate">{evt.summary}</p>
+                          </div>
+                        ))}
+
+                        {/* Active Tasks Due */}
+                        {dayTasks.map((t) => (
+                          <div
+                            key={t.id}
+                            className="p-2 rounded-xl border border-border-main/80 bg-surface-main text-xs space-y-1"
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="text-[9px] font-mono font-bold text-muted-main">
+                                TASK DELIVERABLE
+                              </span>
+                              <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-surface-hover border border-border-main text-text-main">
+                                {t.priority}
+                              </span>
+                            </div>
+                            <p className="text-[11px] font-medium text-text-main line-clamp-1">
+                              {t.name}
+                            </p>
+                          </div>
+                        ))}
+
+                        {/* Empty state */}
+                        {totalItems === 0 && (
+                          <div className="py-8 text-center text-muted-main border border-dashed border-border-main/50 rounded-xl space-y-1">
+                            <span className="text-[11px] font-mono block">Clear</span>
+                            <span className="text-[10px] text-muted-main/70 block">No events scheduled</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Add Button at bottom of Day column */}
+                      <button
+                        onClick={() => {
+                          setNewMeetingDate(day.dateStr);
+                          setIsScheduleModalOpen(true);
+                        }}
+                        className="w-full py-1.5 rounded-lg border border-dashed border-border-main hover:border-text-main hover:bg-surface-hover text-[11px] font-mono font-semibold text-muted-main hover:text-text-main flex items-center justify-center gap-1 transition-colors cursor-pointer"
+                      >
+                        <Plus className="w-3 h-3" />
+                        <span>Schedule</span>
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : calendarViewMode === 'AGENDA' ? (
             /* AGENDA / MEETINGS LIST VIEW */
             <div className="space-y-3">
               {filteredMeetings.length > 0 ? (
@@ -1070,16 +1718,14 @@ export default function CalendarPage() {
                   <div>
                     <h3 className="text-sm font-bold text-text-main">Displaying 0 meetings</h3>
                     <p className="text-xs text-muted-main max-w-sm mx-auto mt-1">
-                      No meetings or briefings found matching the active time horizon ({timeHorizon.toLowerCase()}) or filter criteria.
+                      No meetings or briefings found matching the active filter criteria.
                     </p>
                   </div>
                   <div className="flex items-center justify-center gap-2 pt-2">
                     <button
                       onClick={() => {
-                        setTimeHorizon('TODAY');
                         setSelectedTypeFilter('ALL');
                         setSearchQuery('');
-                        setSourceSegment('ALL');
                       }}
                       className="px-3.5 py-1.5 rounded-lg border border-border-main hover:border-text-main bg-surface-main text-xs font-semibold transition-all"
                     >
@@ -1502,6 +2148,155 @@ export default function CalendarPage() {
                 Close
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* PLANSENSE QUICK ADD MODAL */}
+      {isQuickAddModalOpen && (
+        <div
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setIsQuickAddModalOpen(false);
+          }}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-150 cursor-pointer overflow-y-auto"
+        >
+          <div className="bg-surface-main border border-border-main rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl relative text-text-main cursor-default animate-plansense-slide-up">
+            <div className="flex items-center justify-between border-b border-border-main pb-3">
+              <div>
+                <h3 className="text-base font-bold text-text-main font-sans">
+                  Quick Action Entry
+                </h3>
+                <p className="text-xs text-zinc-600 dark:text-zinc-400 font-mono mt-0.5">
+                  PlanSense Swift Action • {selectedScrubDateStr}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsQuickAddModalOpen(false)}
+                className="p-1 rounded-lg hover:bg-surface-hover text-zinc-600 dark:text-zinc-400 hover:text-text-main cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {quickAddSuccess ? (
+              <div className="py-8 text-center space-y-2 animate-plansense-pop">
+                <div className="w-10 h-10 rounded-full bg-emerald-500/20 text-emerald-500 flex items-center justify-center mx-auto">
+                  <Check className="w-5 h-5 stroke-[3]" />
+                </div>
+                <h4 className="text-sm font-bold text-text-main">Scheduled Successfully</h4>
+                <p className="text-xs text-zinc-600 dark:text-zinc-400 font-mono">
+                  Saved to architectural timeline
+                </p>
+              </div>
+            ) : (
+              <form onSubmit={handleQuickAddSubmit} className="space-y-4">
+                {/* Segmented Type Toggle */}
+                <div className="grid grid-cols-2 gap-2 p-1 bg-surface-hover rounded-xl border border-border-main text-xs font-mono font-bold">
+                  <button
+                    type="button"
+                    onClick={() => setQuickAddType('TASK')}
+                    className={cn(
+                      'py-2 rounded-lg transition-colors cursor-pointer text-center plansense-press',
+                      quickAddType === 'TASK'
+                        ? 'bg-black text-white dark:bg-white dark:text-black shadow-xs'
+                        : 'text-zinc-600 dark:text-zinc-400 hover:text-text-main'
+                    )}
+                  >
+                    Deliverable / Task
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setQuickAddType('MEETING')}
+                    className={cn(
+                      'py-2 rounded-lg transition-colors cursor-pointer text-center plansense-press',
+                      quickAddType === 'MEETING'
+                        ? 'bg-black text-white dark:bg-white dark:text-black shadow-xs'
+                        : 'text-zinc-600 dark:text-zinc-400 hover:text-text-main'
+                    )}
+                  >
+                    Site Visit / Review
+                  </button>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold font-mono text-text-main">
+                    {quickAddType === 'TASK' ? 'Deliverable Name' : 'Inspection / Review Title'}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={quickAddTitle}
+                    onChange={(e) => setQuickAddTitle(e.target.value)}
+                    placeholder={
+                      quickAddType === 'TASK'
+                        ? 'e.g. Schematic Floorplan Revision Set'
+                        : 'e.g. Concrete Slump & Rebar Inspection'
+                    }
+                    className="w-full px-3.5 py-2 rounded-xl border border-border-main bg-surface-main text-sm font-sans text-text-main placeholder:text-zinc-400 focus:outline-hidden focus:border-text-main"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold font-mono text-text-main">
+                      Project
+                    </label>
+                    <select
+                      value={quickAddProject}
+                      onChange={(e) => setQuickAddProject(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-border-main bg-surface-main text-xs font-mono font-bold text-text-main focus:outline-hidden focus:border-text-main"
+                    >
+                      <option value="MT-2024">MT-2024 (Makati Tower)</option>
+                      <option value="TRH-2024">TRH-2024 (Tagaytay Ridge)</option>
+                      <option value="CV-2024">CV-2024 (Casa Verde)</option>
+                      <option value="SEV-2023">SEV-2023 (Siargao Villa)</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold font-mono text-text-main">
+                      {quickAddType === 'TASK' ? 'Priority' : 'Time'}
+                    </label>
+                    {quickAddType === 'TASK' ? (
+                      <select
+                        value={quickAddPriority}
+                        onChange={(e) => setQuickAddPriority(e.target.value as any)}
+                        className="w-full px-3 py-2 rounded-xl border border-border-main bg-surface-main text-xs font-mono font-bold text-text-main focus:outline-hidden focus:border-text-main"
+                      >
+                        <option value="HIGH">High Priority</option>
+                        <option value="MEDIUM">Medium Priority</option>
+                        <option value="LOW">Low Priority</option>
+                      </select>
+                    ) : (
+                      <input
+                        type="text"
+                        value={quickAddTime}
+                        onChange={(e) => setQuickAddTime(e.target.value)}
+                        placeholder="10:00 AM"
+                        className="w-full px-3 py-2 rounded-xl border border-border-main bg-surface-main text-xs font-mono text-text-main focus:outline-hidden focus:border-text-main"
+                      />
+                    )}
+                  </div>
+                </div>
+
+                <div className="pt-2 flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsQuickAddModalOpen(false)}
+                    className="px-4 py-2 rounded-xl border border-border-main text-xs font-mono font-bold hover:bg-surface-hover text-zinc-600 dark:text-zinc-400 cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2 rounded-xl bg-black text-white dark:bg-white dark:text-black text-xs font-mono font-bold plansense-press shadow-xs cursor-pointer"
+                  >
+                    Confirm &amp; Add
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       )}

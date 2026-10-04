@@ -7,7 +7,7 @@ import { NAV_ITEMS, MOCK_PROJECTS } from '@/lib/constants';
 import { User } from '@/types';
 import { cn } from '@/lib/utils';
 import { LogOut, ChevronLeft, ChevronRight, Clock } from 'lucide-react';
-import { useClockIn } from '@/lib/hooks/useClockIn';
+import { useClockIn, LiveElapsedTime } from '@/lib/hooks/useClockIn';
 import { useSidebar } from '@/lib/sidebarContext';
 import Logo from '@/components/ui/Logo';
 import { USER_EVENT_NAME, STORAGE_KEY } from '@/lib/hooks/useAuth';
@@ -24,12 +24,13 @@ export function Sidebar({ user }: SidebarProps) {
 
   const {
     isClockedIn,
+    startTime,
     clockIn,
     clockOut,
     selectedProjectId,
     setSelectedProjectId,
-    elapsedTime,
   } = useClockIn();
+
 
   const availableProjects = user?.role === 'contractor' && user?.assignedProjectCodes
     ? MOCK_PROJECTS.filter((p) => user.assignedProjectCodes?.includes(p.code))
@@ -48,6 +49,13 @@ export function Sidebar({ user }: SidebarProps) {
     const requiredRank = roleRank[item.minRole] || 1;
     return userRank >= requiredRank;
   });
+
+  // Shared logout — ensures consistent key usage everywhere
+  const handleLogout = () => {
+    localStorage.removeItem(STORAGE_KEY);
+    window.dispatchEvent(new CustomEvent(USER_EVENT_NAME, { detail: null }));
+    router.push('/login');
+  };
 
   return (
     <aside
@@ -169,11 +177,16 @@ export function Sidebar({ user }: SidebarProps) {
                     <span className="text-text-main font-semibold truncate">
                       {availableProjects.find((p) => p.id === selectedProjectId)?.name || 'Unknown Project'}
                     </span>
-                    <span className="text-xl font-bold font-mono tracking-tight">{elapsedTime}</span>
+                    <LiveElapsedTime
+                      startTime={startTime}
+                      isClocked={isClockedIn}
+                      className="text-xl font-bold font-mono tracking-tight"
+                    />
                   </div>
                 ) : (
                   <div className="text-muted-main italic text-[11px]">No active session</div>
                 )}
+
               </div>
 
               <div className="flex flex-col space-y-1">
@@ -233,9 +246,10 @@ export function Sidebar({ user }: SidebarProps) {
                 </div>
                 {isClockedIn && (
                   <div className="text-text-main font-mono text-xs font-bold mt-1">
-                    {elapsedTime}
+                    <LiveElapsedTime startTime={startTime} isClocked={isClockedIn} />
                   </div>
                 )}
+
                 <div className="text-[10px] text-muted-main mt-1 font-mono">
                   Click to {isClockedIn ? 'Clock Out' : 'Clock In'}
                 </div>
@@ -249,22 +263,21 @@ export function Sidebar({ user }: SidebarProps) {
       {!isCollapsed ? (
         <div className="border-t border-border-main p-4 bg-surface-main flex items-center justify-between relative z-20">
           <div className="flex items-center space-x-3 overflow-hidden">
-            <div className="w-10 h-10 shrink-0 rounded-full border border-border-strong flex items-center justify-center font-bold text-sm bg-surface-hover text-text-main">
+            <div
+              suppressHydrationWarning
+              className="w-10 h-10 shrink-0 rounded-full border border-border-strong flex items-center justify-center font-bold text-sm bg-surface-hover text-text-main"
+            >
               {user?.name?.charAt(0) || 'U'}
             </div>
-            <div className="flex flex-col overflow-hidden">
-              <span className="text-sm font-semibold truncate text-text-main">{user?.name || 'Guest'}</span>
-              <span className="text-xs text-muted-main capitalize truncate">
+            <div className="flex flex-col overflow-hidden" suppressHydrationWarning>
+              <span className="text-sm font-semibold truncate text-text-main" suppressHydrationWarning>{user?.name || 'Guest'}</span>
+              <span className="text-xs text-muted-main capitalize truncate" suppressHydrationWarning>
                 {user?.role?.replace('_', ' ') || 'Viewer'}
               </span>
             </div>
           </div>
           <button
-            onClick={() => {
-              localStorage.removeItem(STORAGE_KEY);
-              window.dispatchEvent(new CustomEvent(USER_EVENT_NAME, { detail: null }));
-              router.push('/login');
-            }}
+            onClick={handleLogout}
             className="text-muted-main hover:text-accent-red transition-colors p-1.5 rounded-lg hover:bg-surface-hover cursor-pointer"
             title="Sign Out"
             aria-label="Sign Out"
@@ -286,11 +299,7 @@ export function Sidebar({ user }: SidebarProps) {
           </div>
 
           <button
-            onClick={() => {
-              localStorage.removeItem(STORAGE_KEY);
-              window.dispatchEvent(new CustomEvent(USER_EVENT_NAME, { detail: null }));
-              router.push('/login');
-            }}
+            onClick={handleLogout}
             className="p-2 text-muted-main hover:text-accent-red transition-colors rounded-lg hover:bg-surface-hover cursor-pointer"
             title="Sign Out"
             aria-label="Sign Out"

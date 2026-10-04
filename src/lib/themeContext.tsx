@@ -35,23 +35,24 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 function getInitialThemePrefs() {
   if (typeof window === 'undefined') {
-    return { themeMode: 'light' as ThemeMode, customColors: DEFAULT_LIGHT_COLORS, isCustomized: false };
+    return { themeMode: 'dark' as ThemeMode, customColors: DEFAULT_DARK_COLORS, isCustomized: false };
   }
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
       const parsed = JSON.parse(stored);
       return {
-        themeMode: (parsed.themeMode || 'light') as ThemeMode,
-        customColors: parsed.customColors || DEFAULT_LIGHT_COLORS,
+        themeMode: (parsed.themeMode || 'dark') as ThemeMode,
+        customColors: parsed.customColors || DEFAULT_DARK_COLORS,
         isCustomized: Boolean(parsed.isCustomized),
       };
     }
   } catch (e) {
     console.error('Failed to load theme preferences:', e);
   }
-  return { themeMode: 'light' as ThemeMode, customColors: DEFAULT_LIGHT_COLORS, isCustomized: false };
+  return { themeMode: 'dark' as ThemeMode, customColors: DEFAULT_DARK_COLORS, isCustomized: false };
 }
+
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [initialPrefs] = useState(getInitialThemePrefs);

@@ -28,13 +28,14 @@ export default function DirectoryPage() {
 
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isAddModalOpen) {
+      if (e.key === 'Escape') {
         setIsAddModalOpen(false);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isAddModalOpen]);
+  }, []);
+
   
   // Custom entries state
   const [entries, setEntries] = useState<DirectoryEntry[]>([

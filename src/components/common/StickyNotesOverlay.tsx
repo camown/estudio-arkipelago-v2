@@ -151,19 +151,20 @@ export function StickyNotesOverlay() {
 
   return (
     <>
-      {/* Floating Toggle Button - positioned above BottomNav on mobile */}
-      <div className="fixed bottom-20 md:bottom-6 right-4 sm:right-6 z-40 flex items-center gap-2">
+      {/* Floating Toggle Button - positioned prominently beside the messenger button */}
+      <div className="fixed bottom-20 md:bottom-6 right-22 md:right-22 z-[115] flex items-center gap-2">
         <button
           onClick={() => setIsOpen(!isOpen)}
           className={cn(
-            'p-3 rounded-full shadow-lg border transition-all cursor-pointer flex items-center gap-2',
+            'p-3 rounded-2xl shadow-xl border transition-all cursor-pointer flex items-center gap-2 hover:scale-105 active:scale-95',
             isOpen
-              ? 'bg-amber-500 text-black border-amber-600'
-              : 'bg-surface-main text-text-main border-border-main hover:border-text-main'
+              ? 'bg-amber-500 text-black border-amber-600 ring-2 ring-amber-400/40'
+              : 'bg-surface-main text-text-main border-border-main hover:border-amber-500'
           )}
-          title="Sticky Memos"
+          title="Toggle Studio Sticky Memos"
+          aria-label="Toggle Sticky Memos"
         >
-          <StickyNote className="w-5 h-5 text-amber-500" />
+          <StickyNote className="w-5 h-5 text-amber-500 fill-amber-500/20" />
           {notes.length > 0 && (
             <span className="text-xs font-mono font-bold">{notes.length}</span>
           )}
@@ -172,8 +173,9 @@ export function StickyNotesOverlay() {
         {isOpen && (
           <button
             onClick={addNote}
-            className="p-3 bg-black text-white dark:bg-white dark:text-black rounded-full shadow-lg hover:opacity-90 transition-opacity cursor-pointer"
-            title="Add Memo"
+            className="p-3 bg-black text-white dark:bg-white dark:text-black rounded-2xl shadow-xl hover:opacity-90 active:scale-95 transition-all cursor-pointer border border-border-main"
+            title="Create New Sticky Memo"
+            aria-label="Create New Sticky Memo"
           >
             <Plus className="w-4 h-4" />
           </button>
@@ -182,7 +184,8 @@ export function StickyNotesOverlay() {
 
       {/* Render Sticky Notes */}
       {isOpen && (
-        <div className="fixed inset-0 pointer-events-none z-30 overflow-hidden font-mono">
+        <div className="fixed inset-0 pointer-events-none z-[110] overflow-hidden font-mono">
+
           {notes.map((note) => {
             const colorCfg = COLORS.find(c => c.key === note.color) || COLORS[0];
             const isDragging = draggingId === note.id;
